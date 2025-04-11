@@ -62,36 +62,52 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       return;
     }
 
-    // Add the note
-    addActionNote(action.id, newNote);
-    
-    // Add all attachments
-    attachmentUrls.forEach(url => {
-      addAttachment(action.id, url);
-    });
-    
-    // Reset form
-    setNewNote('');
-    setUploadedFiles([]);
-    setAttachmentUrls([]);
-
-    // Show success message
-    toast({
-      title: "Anotação adicionada",
-      description: "A anotação foi adicionada com sucesso.",
-      variant: "default",
-    });
-
-    // If this is completing an action and onComplete is provided, call it
-    // But don't automatically change the status
-    if (isCompleting && onComplete) {
-      // Don't call updateActionStatus here - user must do it manually
-      setIsCompleting(false);
+    try {
+      // Add the note
+      addActionNote(action.id, newNote);
       
-      // Close the dialog after adding the note
-      if (onClose) {
-        onClose();
+      // Add all attachments - com melhorias para garantir persistência
+      attachmentUrls.forEach(url => {
+        try {
+          addAttachment(action.id, url);
+        } catch (attachError) {
+          console.error("Erro ao adicionar anexo:", attachError);
+          toast({
+            title: "Erro com anexo",
+            description: "Houve um problema ao salvar um anexo. Tente novamente.",
+            variant: "destructive",
+          });
+        }
+      });
+      
+      // Reset form
+      setNewNote('');
+      setUploadedFiles([]);
+      setAttachmentUrls([]);
+
+      // Show success message
+      toast({
+        title: "Anotação adicionada",
+        description: "A anotação foi adicionada com sucesso.",
+        variant: "default",
+      });
+
+      // If this is completing an action and onComplete is provided, call it
+      if (isCompleting && onComplete) {
+        setIsCompleting(false);
+        
+        // Close the dialog after adding the note
+        if (onClose) {
+          onClose();
+        }
       }
+    } catch (error) {
+      console.error("Erro ao adicionar anotação:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar a anotação. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -99,7 +115,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     setIsCompleting(true);
     
     // If we already have notes or attachments, add them 
-    // but don't automatically complete the action
     if (newNote.trim() || attachmentUrls.length > 0) {
       handleAddNote();
     }
@@ -107,21 +122,51 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
 
   const handleDeleteNote = (noteId: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta anotação?')) {
-      deleteActionNote(noteId, action.id);
+      try {
+        deleteActionNote(noteId, action.id);
+      } catch (error) {
+        console.error("Erro ao excluir anotação:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir a anotação. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      setUploadedFiles(prev => [...prev, ...newFiles]);
-      
-      // Create URLs for the file previews
-      const newAttachments = newFiles.map(file => 
-        URL.createObjectURL(file)
-      );
-      
-      setAttachmentUrls(prev => [...prev, ...newAttachments]);
+      try {
+        const newFiles = Array.from(e.target.files);
+        
+        // Verificar tamanho total antes de processar
+        const totalSize = newFiles.reduce((acc, file) => acc + file.size, 0);
+        if (totalSize > 5 * 1024 * 1024) { // 5MB limit
+          toast({
+            title: "Arquivos muito grandes",
+            description: "O tamanho total dos arquivos excede 5MB. Escolha arquivos menores.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        setUploadedFiles(prev => [...prev, ...newFiles]);
+        
+        // Create URLs for the file previews
+        const newAttachments = newFiles.map(file => 
+          URL.createObjectURL(file)
+        );
+        
+        setAttachmentUrls(prev => [...prev, ...newAttachments]);
+      } catch (fileError) {
+        console.error("Erro ao processar arquivos:", fileError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível processar os arquivos selecionados.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -132,17 +177,21 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   };
 
   const removeFile = (index: number) => {
-    const newFiles = [...uploadedFiles];
-    const newAttachments = [...attachmentUrls];
-    
-    // Revoke object URL to avoid memory leaks
-    URL.revokeObjectURL(newAttachments[index]);
-    
-    newFiles.splice(index, 1);
-    newAttachments.splice(index, 1);
-    
-    setUploadedFiles(newFiles);
-    setAttachmentUrls(newAttachments);
+    try {
+      const newFiles = [...uploadedFiles];
+      const newAttachments = [...attachmentUrls];
+      
+      // Revoke object URL to avoid memory leaks
+      URL.revokeObjectURL(newAttachments[index]);
+      
+      newFiles.splice(index, 1);
+      newAttachments.splice(index, 1);
+      
+      setUploadedFiles(newFiles);
+      setAttachmentUrls(newAttachments);
+    } catch (error) {
+      console.error("Erro ao remover arquivo:", error);
+    }
   };
 
   // Get file icon based on file type
@@ -204,6 +253,10 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                       src={url} 
                       alt={`Anexo ${index + 1}`} 
                       className="max-h-32 object-contain mb-1" 
+                      onError={(e) => {
+                        // Fallback para imagens que não carregam
+                        (e.target as HTMLImageElement).src = '/placeholder.svg';
+                      }}
                     />
                   ) : (
                     <FileText className="h-12 w-12 text-blue-500 mb-1" />

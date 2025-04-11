@@ -70,17 +70,28 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.setItem('clients', JSON.stringify(mockClients));
       }
 
-      // Carregar responsáveis do localStorage
+      // Carregar responsáveis do localStorage - MELHORADO para evitar sumir
       const savedResponsibles = localStorage.getItem('responsibles');
       if (savedResponsibles) {
-        const parsedResponsibles = JSON.parse(savedResponsibles);
-        if (Array.isArray(parsedResponsibles) && parsedResponsibles.length > 0) {
-          console.log("Carregando responsáveis do localStorage:", parsedResponsibles.length);
-          setResponsibles(parsedResponsibles);
-        } else {
-          console.log("Dados de responsáveis inválidos no localStorage, usando dados mock");
+        try {
+          const parsedResponsibles = JSON.parse(savedResponsibles);
+          if (Array.isArray(parsedResponsibles) && parsedResponsibles.length > 0) {
+            console.log("Carregando responsáveis do localStorage:", parsedResponsibles.length);
+            setResponsibles(parsedResponsibles);
+          } else {
+            console.log("Dados de responsáveis inválidos no localStorage, usando dados mock");
+            setResponsibles(mockResponsibles);
+            localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
+          }
+        } catch (parseError) {
+          console.error("Erro ao analisar responsáveis do localStorage:", parseError);
           setResponsibles(mockResponsibles);
           localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
+          toast({
+            title: "Erro de dados",
+            description: "Dados de responsáveis corrompidos. Carregando dados padrão.",
+            variant: "destructive",
+          });
         }
       } else {
         console.log("Nenhum responsável encontrado no localStorage, usando dados mock");
@@ -124,12 +135,23 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [clients, toast]);
 
-  // Salvar responsáveis no localStorage sempre que forem alterados
+  // Salvar responsáveis no localStorage sempre que forem alterados - MELHORADO
   useEffect(() => {
     try {
       if (responsibles && responsibles.length > 0) {
         console.log("Salvando responsáveis no localStorage:", responsibles.length);
-        localStorage.setItem('responsibles', JSON.stringify(responsibles));
+        
+        // Criar uma cópia dos dados para evitar problemas de referência circular
+        const responsiblesData = JSON.parse(JSON.stringify(responsibles));
+        
+        // Salvar em localStorage
+        localStorage.setItem('responsibles', JSON.stringify(responsiblesData));
+        
+        // Verificar se o salvamento foi bem-sucedido
+        const savedData = localStorage.getItem('responsibles');
+        if (!savedData) {
+          throw new Error("Falha ao salvar responsáveis: não foi possível ler após salvar");
+        }
       }
     } catch (error) {
       console.error("Erro ao salvar responsáveis no localStorage:", error);
@@ -186,13 +208,24 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const updatedResponsibles = [...responsibles, newResponsible];
     setResponsibles(updatedResponsibles);
-    localStorage.setItem('responsibles', JSON.stringify(updatedResponsibles));
     
-    toast({
-      title: "Responsável adicionado",
-      description: `${responsibleData.name} foi adicionado(a) com sucesso como responsável.`,
-      variant: "default",
-    });
+    try {
+      // Salvar imediatamente para garantir persistência
+      localStorage.setItem('responsibles', JSON.stringify(updatedResponsibles));
+      
+      toast({
+        title: "Responsável adicionado",
+        description: `${responsibleData.name} foi adicionado(a) com sucesso como responsável.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Erro ao salvar responsável:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "O responsável foi adicionado, mas houve um problema ao salvar localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateCompanyLogo = (logoUrl: string) => {

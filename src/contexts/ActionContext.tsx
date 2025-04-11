@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -43,31 +44,94 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { sendActionNotification } = useEmail();
   const { responsibles } = useCompany();
 
+  // Função para ajudar a realizar backup automático
+  const backupActionsToLocalStorage = (actionsData: Action[]) => {
+    try {
+      // Criar uma versão simplificada para backup (sem objetos complexos)
+      const simplifiedActions = JSON.parse(JSON.stringify(actionsData));
+      localStorage.setItem('actions_backup', JSON.stringify(simplifiedActions));
+      console.log("Backup de ações criado com sucesso.");
+    } catch (error) {
+      console.error("Erro ao criar backup de ações:", error);
+    }
+  };
+
   useEffect(() => {
     try {
+      let dataToUse: Action[] = [];
+      let useBackup = false;
+      
+      // Tentar carregar os dados principais
       const savedActions = localStorage.getItem('actions');
       
       if (savedActions) {
-        const parsedActions = JSON.parse(savedActions, (key, value) => {
-          const dateKeys = ['startDate', 'endDate', 'completedAt', 'createdAt', 'updatedAt'];
-          if (dateKeys.includes(key) && value) {
-            return new Date(value);
+        try {
+          const parsedActions = JSON.parse(savedActions, (key, value) => {
+            const dateKeys = ['startDate', 'endDate', 'completedAt', 'createdAt', 'updatedAt'];
+            if (dateKeys.includes(key) && value) {
+              return new Date(value);
+            }
+            return value;
+          });
+          
+          if (Array.isArray(parsedActions) && parsedActions.length > 0) {
+            console.log("Carregando ações do localStorage:", parsedActions.length);
+            dataToUse = parsedActions;
+          } else {
+            console.log("Nenhuma ação válida encontrada no localStorage, verificando backup...");
+            useBackup = true;
           }
-          return value;
-        });
-        
-        if (Array.isArray(parsedActions) && parsedActions.length > 0) {
-          console.log("Carregando ações do localStorage:", parsedActions.length);
-          setActions(parsedActions);
-        } else {
-          console.log("Nenhuma ação válida encontrada no localStorage, usando dados mock");
-          setActions(mockActions);
-          localStorage.setItem('actions', JSON.stringify(mockActions));
+        } catch (parseError) {
+          console.error("Erro ao analisar ações:", parseError);
+          useBackup = true;
         }
       } else {
-        console.log("Nenhuma ação encontrada no localStorage, usando dados mock");
-        setActions(mockActions);
+        console.log("Nenhuma ação encontrada no localStorage, verificando backup...");
+        useBackup = true;
+      }
+      
+      // Se precisar usar o backup
+      if (useBackup) {
+        const actionsBackup = localStorage.getItem('actions_backup');
+        if (actionsBackup) {
+          try {
+            const parsedBackup = JSON.parse(actionsBackup, (key, value) => {
+              const dateKeys = ['startDate', 'endDate', 'completedAt', 'createdAt', 'updatedAt'];
+              if (dateKeys.includes(key) && value) {
+                return new Date(value);
+              }
+              return value;
+            });
+            
+            if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
+              console.log("Restaurando ações do backup:", parsedBackup.length);
+              dataToUse = parsedBackup;
+              toast({
+                title: "Dados restaurados",
+                description: "As ações foram restauradas do backup.",
+                variant: "default",
+              });
+            } else {
+              console.log("Backup de ações inválido, usando dados mock");
+              dataToUse = mockActions;
+            }
+          } catch (backupError) {
+            console.error("Erro ao analisar backup de ações:", backupError);
+            dataToUse = mockActions;
+          }
+        } else {
+          console.log("Nenhum backup encontrado, usando dados mock");
+          dataToUse = mockActions;
+        }
+      }
+      
+      // Definir os dados a serem usados
+      setActions(dataToUse);
+      
+      // Salvar no localStorage e criar backup se forem os dados mock
+      if (dataToUse === mockActions) {
         localStorage.setItem('actions', JSON.stringify(mockActions));
+        backupActionsToLocalStorage(mockActions);
       }
     } catch (error) {
       console.error('Erro ao analisar dados de ações:', error);
@@ -78,14 +142,22 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       setActions(mockActions);
       localStorage.setItem('actions', JSON.stringify(mockActions));
+      backupActionsToLocalStorage(mockActions);
     }
   }, [toast]);
 
+  // Salvar ações no localStorage sempre que forem alteradas
   useEffect(() => {
     try {
       if (actions && actions.length > 0) {
         console.log("Salvando ações no localStorage:", actions.length);
-        localStorage.setItem('actions', JSON.stringify(actions));
+        
+        // Criar uma versão simplificada para localStorage
+        const actionsToSave = JSON.parse(JSON.stringify(actions));
+        localStorage.setItem('actions', JSON.stringify(actionsToSave));
+        
+        // Criar backup a cada alteração
+        backupActionsToLocalStorage(actions);
       }
     } catch (error) {
       console.error('Erro ao salvar ações no localStorage:', error);
@@ -121,7 +193,16 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updatedAt: now
     };
 
-    setActions(prevActions => [...prevActions, newAction]);
+    const updatedActions = [...actions, newAction];
+    setActions(updatedActions);
+    
+    // Salvar imediatamente para garantir persistência
+    try {
+      localStorage.setItem('actions', JSON.stringify(updatedActions));
+      backupActionsToLocalStorage(updatedActions);
+    } catch (saveError) {
+      console.error("Erro ao salvar nova ação:", saveError);
+    }
     
     toast({
       title: "Ação adicionada",
@@ -131,18 +212,26 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const updateActionStatus = (id: string, status: 'pendente' | 'concluido' | 'atrasado', completedAt?: Date) => {
-    setActions(prevActions => 
-      prevActions.map(action => 
-        action.id === id 
-          ? { 
-              ...action, 
-              status, 
-              completedAt: status === 'concluido' ? completedAt || new Date() : action.completedAt,
-              updatedAt: new Date()
-            } 
-          : action
-      )
+    const updatedActions = actions.map(action => 
+      action.id === id 
+        ? { 
+            ...action, 
+            status, 
+            completedAt: status === 'concluido' ? completedAt || new Date() : action.completedAt,
+            updatedAt: new Date()
+          } 
+        : action
     );
+    
+    setActions(updatedActions);
+
+    // Salvar imediatamente para garantir persistência
+    try {
+      localStorage.setItem('actions', JSON.stringify(updatedActions));
+      backupActionsToLocalStorage(updatedActions);
+    } catch (saveError) {
+      console.error("Erro ao salvar atualização de status:", saveError);
+    }
 
     toast({
       title: "Status atualizado",
@@ -163,17 +252,25 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isDeleted: false
     };
 
-    setActions(prevActions => 
-      prevActions.map(action => 
-        action.id === actionId 
-          ? { 
-              ...action, 
-              notes: [...action.notes, newNote],
-              updatedAt: new Date()
-            } 
-          : action
-      )
+    const updatedActions = actions.map(action => 
+      action.id === actionId 
+        ? { 
+            ...action, 
+            notes: [...action.notes, newNote],
+            updatedAt: new Date()
+          } 
+        : action
     );
+    
+    setActions(updatedActions);
+
+    // Salvar imediatamente para garantir persistência
+    try {
+      localStorage.setItem('actions', JSON.stringify(updatedActions));
+      backupActionsToLocalStorage(updatedActions);
+    } catch (saveError) {
+      console.error("Erro ao salvar nova nota:", saveError);
+    }
 
     toast({
       title: "Anotação adicionada",
