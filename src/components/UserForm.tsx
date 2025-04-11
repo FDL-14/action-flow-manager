@@ -61,6 +61,8 @@ const formSchema = z.object({
   canAddNotes: z.boolean().default(true),
   canViewReports: z.boolean().default(false),
   viewAllActions: z.boolean().default(false),
+  canEditUser: z.boolean().default(false), // New permission
+  canEditAction: z.boolean().default(false), // New permission
   companyIds: z.array(z.string()).min(1, "Selecione pelo menos uma empresa"),
 });
 
@@ -87,6 +89,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       canAddNotes: editUser?.permissions?.[0]?.canAddNotes || true,
       canViewReports: editUser?.permissions?.[0]?.canViewReports || false,
       viewAllActions: editUser?.permissions?.[0]?.viewAllActions || false,
+      canEditUser: editUser?.permissions?.[0]?.canEditUser || false, // New permission
+      canEditAction: editUser?.permissions?.[0]?.canEditAction || false, // New permission
       companyIds: editUser?.companyIds || [company?.id || ''],
     },
   });
@@ -114,6 +118,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       form.setValue('canDelete', true);
       form.setValue('canViewReports', true);
       form.setValue('viewAllActions', true);
+      form.setValue('canEditUser', true);
+      form.setValue('canEditAction', true);
     }
   }, [roleValue, form]);
 
@@ -148,6 +154,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
             canAddNotes: values.canAddNotes,
             canViewReports: values.canViewReports,
             viewAllActions: values.viewAllActions,
+            canEditUser: values.canEditUser,
+            canEditAction: values.canEditAction,
           }
         });
         
@@ -171,6 +179,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
             canAddNotes: values.canAddNotes,
             canViewReports: values.canViewReports,
             viewAllActions: values.viewAllActions,
+            canEditUser: values.canEditUser,
+            canEditAction: values.canEditAction,
           }
         });
         
@@ -385,6 +395,27 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
 
                     <FormField
                       control={form.control}
+                      name="canEditAction"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Editar Ação</FormLabel>
+                            <FormDescription>
+                              Pode editar detalhes das ações
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name="canDelete"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0">
@@ -419,6 +450,27 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                             <FormLabel>Concluir ações</FormLabel>
                             <FormDescription>
                               Pode marcar ações como concluídas
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="canEditUser"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Editar Usuários</FormLabel>
+                            <FormDescription>
+                              Pode editar informações de usuários
                             </FormDescription>
                           </div>
                         </FormItem>

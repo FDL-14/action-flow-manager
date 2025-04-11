@@ -4,6 +4,8 @@ import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
+import { useEmail } from '@/services/email';
+import { useCompany } from './CompanyContext';
 
 interface ActionContextType {
   actions: Action[];
@@ -16,6 +18,7 @@ interface ActionContextType {
   deleteActionNote: (actionNoteId: string, actionId: string) => void;
   addAttachment: (actionId: string, attachment: string) => void;
   getActionSummary: () => ActionSummary;
+  sendActionEmail: (actionId: string) => Promise<void>;
 }
 
 const ActionContext = createContext<ActionContextType>({
@@ -28,7 +31,8 @@ const ActionContext = createContext<ActionContextType>({
   addActionNote: () => {},
   deleteActionNote: () => {},
   addAttachment: () => {},
-  getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 })
+  getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 }),
+  sendActionEmail: async () => {},
 });
 
 export const useActions = () => useContext(ActionContext);
@@ -37,6 +41,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [actions, setActions] = useState<Action[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { sendActionNotification } = useEmail();
+  const { responsibles } = useCompany();
 
   useEffect(() => {
     // Load from localStorage if available or use mock data
@@ -212,6 +218,46 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   };
 
+  const sendActionEmail = async (actionId: string) => {
+    const action = actions.find(a => a.id === actionId);
+    if (!action) {
+      toast({
+        title: "Erro",
+        description: "Ação não encontrada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const responsible = responsibles.find(r => r.id === action.responsibleId);
+    const requester = action.requesterId ? responsibles.find(r => r.id === action.requesterId) : undefined;
+
+    if (!responsible) {
+      toast({
+        title: "Erro",
+        description: "Responsável não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await sendActionNotification(
+        responsible,
+        requester,
+        action.subject,
+        action.description
+      );
+    } catch (error) {
+      console.error("Error sending action email:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar o email. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <ActionContext.Provider value={{
       actions,
@@ -223,7 +269,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addActionNote,
       deleteActionNote,
       addAttachment,
-      getActionSummary
+      getActionSummary,
+      sendActionEmail
     }}>
       {children}
     </ActionContext.Provider>

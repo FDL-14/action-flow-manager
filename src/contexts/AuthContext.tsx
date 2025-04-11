@@ -24,6 +24,8 @@ interface AuthContextType {
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
+      canEditUser?: boolean;
+      canEditAction?: boolean;
     }
   }) => Promise<boolean>;
   updateUser: (userData: { 
@@ -41,6 +43,8 @@ interface AuthContextType {
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
+      canEditUser?: boolean;
+      canEditAction?: boolean;
     }
   }) => Promise<boolean>;
   resetUserPassword: (userId: string) => void;
@@ -145,6 +149,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
+      canEditUser?: boolean;
+      canEditAction?: boolean;
     }
   }): Promise<boolean> => {
     if (users.some(u => u.cpf === userData.cpf)) {
@@ -166,6 +172,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canAddNotes: true,
       canViewReports: userData.role === 'master',
       viewAllActions: userData.role === 'master',
+      canEditUser: userData.role === 'master',
+      canEditAction: userData.role === 'master',
     };
 
     const newUser: User = {
@@ -212,6 +220,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
+      canEditUser?: boolean;
+      canEditAction?: boolean;
     }
   }): Promise<boolean> => {
     // Check if trying to update to a CPF that already exists in another user
@@ -236,6 +246,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           canAddNotes: true,
           canViewReports: userData.role === 'master',
           viewAllActions: userData.role === 'master',
+          canEditUser: userData.role === 'master',
+          canEditAction: userData.role === 'master',
         };
 
         return {

@@ -21,6 +21,8 @@ export interface Permission {
   canAddNotes?: boolean;
   canViewReports?: boolean;
   viewAllActions?: boolean;
+  canEditUser?: boolean; // New permission for editing users
+  canEditAction?: boolean; // New permission for editing actions
 }
 
 export interface Company {

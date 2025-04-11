@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash, Upload, X, Paperclip, FileImage, FileText } from 'lucide-react';
+import { Trash, Upload, X, Paperclip, FileImage, FileText, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -19,11 +19,14 @@ interface ActionNotesProps {
 
 const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }) => {
   const { user } = useAuth();
-  const { addActionNote, deleteActionNote, addAttachment } = useActions();
+  const { addActionNote, deleteActionNote, addAttachment, updateActionStatus } = useActions();
   const [newNote, setNewNote] = useState('');
   const [isAttachmentRequired, setIsAttachmentRequired] = useState(action.status === 'concluido');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Fix to prevent UI freezing - clean up on unmount
@@ -37,6 +40,17 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       });
     };
   }, [attachmentUrls]);
+
+  // If user initiates a complete action, show a message requiring notes/attachments
+  useEffect(() => {
+    if (isCompleting && (newNote.trim().length === 0 && attachmentUrls.length === 0)) {
+      toast({
+        title: "Atenção",
+        description: "Adicione uma anotação ou anexo para concluir esta ação.",
+        variant: "default",
+      });
+    }
+  }, [isCompleting, newNote, attachmentUrls.length, toast]);
 
   const handleAddNote = () => {
     if (!newNote.trim() && attachmentUrls.length === 0) {
@@ -69,10 +83,28 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     });
 
     // If this is completing an action, call the onComplete callback
-    if (action.status !== 'concluido' && onComplete) {
-      onComplete();
+    if (isCompleting) {
+      updateActionStatus(action.id, 'concluido', new Date());
+      setIsCompleting(false);
+      
       // Close the dialog after completion
-      if (onClose) onClose();
+      if (onComplete) {
+        onComplete();
+      }
+      
+      // Close the dialog after completion
+      if (onClose) {
+        onClose();
+      }
+    }
+  };
+
+  const handleCompleteAction = () => {
+    setIsCompleting(true);
+    
+    // If we already have notes or attachments, complete immediately
+    if (newNote.trim() || attachmentUrls.length > 0) {
+      handleAddNote();
     }
   };
 
@@ -87,12 +119,18 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       const newFiles = Array.from(e.target.files);
       setUploadedFiles(prev => [...prev, ...newFiles]);
       
-      // Simulate file URLs for the mock attachments
+      // Create URLs for the file previews
       const newAttachments = newFiles.map(file => 
         URL.createObjectURL(file)
       );
       
       setAttachmentUrls(prev => [...prev, ...newAttachments]);
+    }
+  };
+
+  const handleCameraCapture = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
     }
   };
 
@@ -198,29 +236,51 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         
         <div className="mb-4">
           <Label className="block mb-2">Anexos</Label>
-          <div className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors duration-150">
-            <input
-              type="file"
-              id="notes-file-upload"
-              className="hidden"
-              multiple
-              onChange={handleFileChange}
-            />
-            <label htmlFor="notes-file-upload" className="cursor-pointer">
+          <div className="flex flex-wrap gap-2 mb-2">
+            <div 
+              className="border-2 border-dashed rounded-md p-3 text-center cursor-pointer hover:bg-gray-50 transition-colors duration-150 flex-1"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <div className="flex flex-col items-center">
                 <Upload className="h-6 w-6 text-gray-400 mb-1" />
-                <p className="text-sm text-gray-500">
-                  Enviar arquivos ou arraste e solte
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  PNG, JPG, PDF, DOCX e XLSX
-                </p>
+                <p className="text-sm text-gray-500">Enviar arquivos</p>
               </div>
-            </label>
+            </div>
+            
+            <div 
+              className="border-2 border-dashed rounded-md p-3 text-center cursor-pointer hover:bg-gray-50 transition-colors duration-150 flex-1"
+              onClick={handleCameraCapture}
+            >
+              <div className="flex flex-col items-center">
+                <Camera className="h-6 w-6 text-gray-400 mb-1" />
+                <p className="text-sm text-gray-500">Tirar foto</p>
+              </div>
+            </div>
           </div>
+          
+          <input
+            type="file"
+            id="notes-file-upload"
+            ref={fileInputRef}
+            className="hidden"
+            multiple
+            onChange={handleFileChange}
+            accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx"
+          />
+          
+          <input
+            type="file"
+            id="camera-capture"
+            ref={cameraInputRef}
+            className="hidden"
+            capture="environment"
+            accept="image/*"
+            onChange={handleFileChange}
+          />
 
           {uploadedFiles.length > 0 && (
             <div className="mt-3 space-y-2">
+              <h4 className="text-sm font-medium">Arquivos selecionados:</h4>
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
                   <div className="flex items-center">
@@ -249,12 +309,24 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
           >
             Fechar
           </Button>
-          <Button 
-            onClick={handleAddNote}
-            disabled={isAttachmentRequired && !hasNoteOrAttachment}
-          >
-            Adicionar Anotação
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleAddNote}
+              variant="outline"
+            >
+              Adicionar Anotação
+            </Button>
+            
+            {action.status !== 'concluido' && (
+              <Button 
+                onClick={handleCompleteAction}
+                variant="default"
+                disabled={isCompleting && !hasNoteOrAttachment}
+              >
+                Concluir Ação
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
