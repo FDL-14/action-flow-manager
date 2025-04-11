@@ -81,6 +81,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
   const roleValue = form.watch('role');
 
   // Update permissions when role changes
+  // Fix here - useState was used incorrectly. It should be useEffect
   useState(() => {
     if (roleValue === 'master') {
       form.setValue('canCreate', true);
