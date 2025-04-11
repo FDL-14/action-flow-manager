@@ -8,16 +8,34 @@ interface SendEmailParams {
   content: string;
 }
 
-// Mock implementation for email service
+// Implementation using Resend API
 export const useEmail = () => {
   const { toast } = useToast();
+  const RESEND_API_KEY = "re_Wam1nCv4_PbZdfrtTt9ig9B6f4YsVB294";
 
   const sendEmail = async (params: SendEmailParams): Promise<boolean> => {
     try {
-      console.log("Sending email:", params);
+      console.log("Sending email with Resend:", params);
       
-      // This is where we would integrate with Resend
-      // Mock successful email sending
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: "onboarding@resend.dev", // Default sender from Resend
+          to: params.to,
+          subject: params.subject,
+          html: params.content
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erro ao enviar email");
+      }
+
       toast({
         title: "Email enviado",
         description: `Email enviado com sucesso para ${params.to.join(", ")}`,

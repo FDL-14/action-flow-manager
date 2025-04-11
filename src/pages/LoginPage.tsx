@@ -57,9 +57,9 @@ const LoginPage = () => {
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <img 
-            src="/lovable-uploads/9711af99-4540-4536-bce1-178f2b8872df.png" 
+            src="/lovable-uploads/e1cb7317-7a9e-4fee-bc52-391984a333ae.png" 
             alt="Total Data Logo" 
-            className="h-16" 
+            className="h-24" 
           />
         </div>
         

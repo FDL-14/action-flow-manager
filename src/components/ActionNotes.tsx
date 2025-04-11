@@ -19,7 +19,7 @@ interface ActionNotesProps {
 
 const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }) => {
   const { user } = useAuth();
-  const { addActionNote, deleteActionNote, addAttachment, updateActionStatus } = useActions();
+  const { addActionNote, deleteActionNote, addAttachment } = useActions();
   const [newNote, setNewNote] = useState('');
   const [isAttachmentRequired, setIsAttachmentRequired] = useState(action.status === 'concluido');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -82,17 +82,13 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       variant: "default",
     });
 
-    // If this is completing an action, call the onComplete callback
-    if (isCompleting) {
-      updateActionStatus(action.id, 'concluido', new Date());
+    // If this is completing an action and onComplete is provided, call it
+    // But don't automatically change the status
+    if (isCompleting && onComplete) {
+      // Don't call updateActionStatus here - user must do it manually
       setIsCompleting(false);
       
-      // Close the dialog after completion
-      if (onComplete) {
-        onComplete();
-      }
-      
-      // Close the dialog after completion
+      // Close the dialog after adding the note
       if (onClose) {
         onClose();
       }
@@ -102,7 +98,8 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const handleCompleteAction = () => {
     setIsCompleting(true);
     
-    // If we already have notes or attachments, complete immediately
+    // If we already have notes or attachments, add them 
+    // but don't automatically complete the action
     if (newNote.trim() || attachmentUrls.length > 0) {
       handleAddNote();
     }
@@ -316,16 +313,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             >
               Adicionar Anotação
             </Button>
-            
-            {action.status !== 'concluido' && (
-              <Button 
-                onClick={handleCompleteAction}
-                variant="default"
-                disabled={isCompleting && !hasNoteOrAttachment}
-              >
-                Concluir Ação
-              </Button>
-            )}
           </div>
         </div>
       </div>

@@ -20,7 +20,8 @@ import {
   AlertTriangle, 
   Mail, 
   FileImage,
-  Download
+  Download,
+  Edit
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,7 +36,7 @@ interface ActionCardProps {
 
 const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   const { responsibles, clients } = useCompany();
-  const { updateActionStatus } = useActions();
+  const { updateActionStatus, sendActionEmail } = useActions();
   const [showNotes, setShowNotes] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -104,10 +105,14 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
     });
   };
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
+    await sendActionEmail(action.id);
+  };
+
+  const handleEditAction = () => {
     toast({
-      title: "Email enviado",
-      description: "Função de envio de email será implementada em breve.",
+      title: "Editar ação",
+      description: "Função de editar ação será implementada em breve.",
       variant: "default",
     });
   };
@@ -129,6 +134,19 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
     const hasViewAllPermission = user.permissions?.some(p => p.viewAllActions);
     
     return hasViewAllPermission || false;
+  };
+
+  // Check if user has permission to edit actions
+  const canEditAction = () => {
+    if (!user) return false;
+    
+    // Masters can edit all actions
+    if (user.role === 'master') return true;
+    
+    // Check if user has editAction permission
+    const hasEditPermission = user.permissions?.some(p => p.canEditAction);
+    
+    return hasEditPermission || false;
   };
 
   // Get latest attachment preview
@@ -198,6 +216,18 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
               Email
             </Button>
             
+            {canEditAction() && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleEditAction}
+                className="hidden sm:flex"
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Editar
+              </Button>
+            )}
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -230,6 +260,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                   <Mail className="mr-2 h-4 w-4" />
                   Enviar email
                 </DropdownMenuItem>
+                {canEditAction() && (
+                  <DropdownMenuItem onClick={handleEditAction} className="sm:hidden">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -276,29 +312,24 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
         )}
       </CardContent>
 
-      <Dialog open={showNotes} onOpenChange={setShowNotes}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {action.status !== 'concluido' ? 
-                `Concluir ação - ${action.subject}` : 
-                `Anotações - ${action.subject}`}
-            </DialogTitle>
-          </DialogHeader>
-          <ActionNotes 
-            action={action} 
-            onClose={closeNotes} 
-            onComplete={handleCompleteAction}
-          />
-          {action.status !== 'concluido' && (
-            <div className="flex justify-end mt-4">
-              <Button onClick={handleCompleteAction}>
-                Marcar como Concluído
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {showNotes && (
+        <Dialog open={showNotes} onOpenChange={setShowNotes}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {action.status !== 'concluido' ? 
+                  `Anotações - ${action.subject}` : 
+                  `Anotações - ${action.subject}`}
+              </DialogTitle>
+            </DialogHeader>
+            <ActionNotes 
+              action={action} 
+              onClose={closeNotes} 
+              onComplete={handleCompleteAction}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 };
