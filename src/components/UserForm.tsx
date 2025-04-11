@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -80,9 +79,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
 
   const roleValue = form.watch('role');
 
-  // Update permissions when role changes
-  // Fix here - useState was used incorrectly. It should be useEffect
-  useState(() => {
+  // Update permissions when role changes - now using useEffect
+  useEffect(() => {
     if (roleValue === 'master') {
       form.setValue('canCreate', true);
       form.setValue('canEdit', true);
