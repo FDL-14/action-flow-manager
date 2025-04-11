@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,7 +35,6 @@ const Navbar = () => {
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },
   ];
   
-  // Apenas mostra a página de Usuários para usuários master
   if (user?.role === 'master') {
     navItems.push({ name: 'Usuários', path: '/users', icon: <Users className="h-5 w-5 mr-2" /> });
   }
@@ -49,7 +47,7 @@ const Navbar = () => {
         <div className="mr-4 flex">
           <Link to="/dashboard" className="flex items-center space-x-2">
             <img 
-              src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+              src="/lovable-uploads/daf5142a-3bdb-4bbb-b2b2-09f3f7b3b87f.png" 
               alt="Total Data Logo" 
               className="h-8 w-auto" 
             />
@@ -58,7 +56,6 @@ const Navbar = () => {
         </div>
         
         {isMobile ? (
-          // Navegação mobile
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="ml-auto">
@@ -69,7 +66,7 @@ const Navbar = () => {
               <div className="grid gap-4 py-4">
                 <div className="px-2 py-1 mb-4 flex items-center">
                   <img 
-                    src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+                    src="/lovable-uploads/daf5142a-3bdb-4bbb-b2b2-09f3f7b3b87f.png" 
                     alt="Total Data Logo" 
                     className="h-10 mr-3" 
                   />
@@ -110,7 +107,6 @@ const Navbar = () => {
             </SheetContent>
           </Sheet>
         ) : (
-          // Navegação desktop
           <nav className="ml-auto flex items-center space-x-1">
             {navItems.map((item) => (
               <Link

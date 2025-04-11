@@ -43,7 +43,7 @@ const DashboardPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div className="flex items-center mb-4 sm:mb-0">
           <img 
-            src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+            src="/lovable-uploads/daf5142a-3bdb-4bbb-b2b2-09f3f7b3b87f.png" 
             alt="Total Data Logo" 
             className="h-12 mr-3 object-contain" 
           />
