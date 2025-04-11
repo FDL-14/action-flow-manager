@@ -17,16 +17,7 @@ const RequestersPage = () => {
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <div className="flex items-center mb-4 sm:mb-0">
-          {company?.logo && (
-            <img 
-              src={company.logo} 
-              alt={`${company.name} Logo`} 
-              className="h-10 mr-3" 
-            />
-          )}
-          <h1 className="text-2xl font-bold">Gerenciamento de Solicitantes</h1>
-        </div>
+        <h1 className="text-2xl font-bold">Gerenciamento de Solicitantes</h1>
         <Button onClick={() => setShowRequesterForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Solicitante

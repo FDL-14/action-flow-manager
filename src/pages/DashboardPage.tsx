@@ -41,14 +41,7 @@ const DashboardPage = () => {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <div className="flex items-center mb-4 sm:mb-0">
-          <img 
-            src="/lovable-uploads/bbef40c8-e0f3-4855-872c-98b10feabdd5.png" 
-            alt="Total Data Logo" 
-            className="h-12 mr-3 object-contain" 
-          />
-          <h1 className="text-2xl font-bold">Gestão de Ações</h1>
-        </div>
+        <h1 className="text-2xl font-bold">Gestão de Ações</h1>
         <Button onClick={() => setShowActionForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Ação
