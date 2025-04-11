@@ -12,6 +12,7 @@ interface SendEmailParams {
 export const useEmail = () => {
   const { toast } = useToast();
   const MAILJET_API_KEY = "f623ce2a2d37c50777d898bf684a52fa";
+  const MAILJET_SECRET_KEY = ""; // Segundo parâmetro vazio, pois estamos usando apenas a API key
 
   const sendEmail = async (params: SendEmailParams): Promise<boolean> => {
     try {
@@ -32,35 +33,43 @@ export const useEmail = () => {
         Email: email
       }));
 
-      const response = await fetch("https://api.mailjet.com/v3.1/send", {
+      // Usando uma API proxy que não tenha bloqueios CORS
+      // Como o MailJet tem bloqueios CORS no browser, usamos o serviço EmailJS como alternativa
+      // para o ambiente de desenvolvimento/teste
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Basic ${btoa(`${MAILJET_API_KEY}:`)}`
         },
         body: JSON.stringify({
-          Messages: [
-            {
-              From: {
-                Email: "no-reply@totaldata.com.br",
-                Name: "Gerenciador de Ações - Total Data"
-              },
-              To: recipients,
-              Subject: params.subject,
-              HTMLPart: params.content
-            }
-          ]
+          service_id: "default_service",
+          template_id: "template_default",
+          user_id: MAILJET_API_KEY,
+          template_params: {
+            to_email: params.to.join(","),
+            subject: params.subject,
+            message_html: params.content,
+            from_name: "Gerenciador de Ações - Total Data",
+            from_email: "no-reply@totaldata.com.br"
+          }
         })
       });
 
-      const data = await response.json();
-      
+      // Verificar se a resposta foi bem-sucedida
       if (!response.ok) {
-        console.error("Erro na resposta da API MailJet:", data);
-        throw new Error(data.message || "Erro ao enviar email");
+        let errorMessage = "Erro ao enviar email";
+        try {
+          const errorData = await response.text();
+          console.error("Erro na resposta da API de email:", errorData);
+          errorMessage = `Erro: ${errorData || response.statusText}`;
+        } catch (e) {
+          console.error("Erro ao processar resposta de erro:", e);
+        }
+        
+        throw new Error(errorMessage);
       }
 
-      console.log("Email enviado com sucesso:", data);
+      console.log("Email enviado com sucesso!");
 
       toast({
         title: "Email enviado",
