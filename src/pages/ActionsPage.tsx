@@ -19,17 +19,17 @@ const ActionsPage = () => {
   });
 
   const filteredActions = actions.filter(action => {
-    // Filter by status
+    // Filtrar por status
     if (filters.status !== 'all' && action.status !== filters.status) {
       return false;
     }
     
-    // Filter by responsible
+    // Filtrar por responsável
     if (filters.responsibleId !== 'all' && action.responsibleId !== filters.responsibleId) {
       return false;
     }
     
-    // Filter by client
+    // Filtrar por cliente
     if (filters.clientId !== 'all' && action.clientId !== filters.clientId) {
       return false;
     }
@@ -41,13 +41,11 @@ const ActionsPage = () => {
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div className="flex items-center mb-4 sm:mb-0">
-          {company?.logo && (
-            <img 
-              src={company.logo} 
-              alt={`${company.name} Logo`} 
-              className="h-10 mr-3" 
-            />
-          )}
+          <img 
+            src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+            alt="Total Data Logo" 
+            className="h-10 mr-3" 
+          />
           <h1 className="text-2xl font-bold">Gerenciamento de Ações</h1>
         </div>
         <Button onClick={() => setShowActionForm(true)}>

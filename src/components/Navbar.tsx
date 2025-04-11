@@ -36,7 +36,7 @@ const Navbar = () => {
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },
   ];
   
-  // Only show Users page to master users
+  // Apenas mostra a página de Usuários para usuários master
   if (user?.role === 'master') {
     navItems.push({ name: 'Usuários', path: '/users', icon: <Users className="h-5 w-5 mr-2" /> });
   }
@@ -48,13 +48,17 @@ const Navbar = () => {
       <div className="container flex h-16 items-center">
         <div className="mr-4 flex">
           <Link to="/dashboard" className="flex items-center space-x-2">
-            <Building2 className="h-6 w-6" />
+            <img 
+              src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+              alt="Total Data Logo" 
+              className="h-8 w-auto" 
+            />
             <span className="font-bold hidden md:inline-block">Gerenciador de Ações</span>
           </Link>
         </div>
         
         {isMobile ? (
-          // Mobile navigation
+          // Navegação mobile
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="ml-auto">
@@ -63,13 +67,20 @@ const Navbar = () => {
             </SheetTrigger>
             <SheetContent side="left">
               <div className="grid gap-4 py-4">
-                <div className="px-2 py-1 mb-2">
-                  <h3 className="mb-1 text-lg font-semibold">Menu</h3>
-                  {user && (
-                    <p className="text-sm text-muted-foreground">
-                      Logado como {user.name}
-                    </p>
-                  )}
+                <div className="px-2 py-1 mb-4 flex items-center">
+                  <img 
+                    src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+                    alt="Total Data Logo" 
+                    className="h-10 mr-3" 
+                  />
+                  <div>
+                    <h3 className="mb-1 text-lg font-semibold">Menu</h3>
+                    {user && (
+                      <p className="text-sm text-muted-foreground">
+                        Logado como {user.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {navItems.map((item) => (
                   <Link
@@ -99,7 +110,7 @@ const Navbar = () => {
             </SheetContent>
           </Sheet>
         ) : (
-          // Desktop navigation
+          // Navegação desktop
           <nav className="ml-auto flex items-center space-x-1">
             {navItems.map((item) => (
               <Link

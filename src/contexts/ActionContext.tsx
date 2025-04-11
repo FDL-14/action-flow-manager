@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -45,12 +44,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { responsibles } = useCompany();
 
   useEffect(() => {
-    // Load from localStorage if available or use mock data
-    const savedActions = localStorage.getItem('actions');
-    
-    if (savedActions) {
-      try {
-        // Convert string dates back to Date objects
+    try {
+      const savedActions = localStorage.getItem('actions');
+      
+      if (savedActions) {
         const parsedActions = JSON.parse(savedActions, (key, value) => {
           const dateKeys = ['startDate', 'endDate', 'completedAt', 'createdAt', 'updatedAt'];
           if (dateKeys.includes(key) && value) {
@@ -58,20 +55,47 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
           return value;
         });
-        setActions(parsedActions);
-      } catch (error) {
-        console.error('Error parsing actions data:', error);
+        
+        if (Array.isArray(parsedActions) && parsedActions.length > 0) {
+          console.log("Carregando ações do localStorage:", parsedActions.length);
+          setActions(parsedActions);
+        } else {
+          console.log("Nenhuma ação válida encontrada no localStorage, usando dados mock");
+          setActions(mockActions);
+          localStorage.setItem('actions', JSON.stringify(mockActions));
+        }
+      } else {
+        console.log("Nenhuma ação encontrada no localStorage, usando dados mock");
         setActions(mockActions);
+        localStorage.setItem('actions', JSON.stringify(mockActions));
       }
-    } else {
+    } catch (error) {
+      console.error('Erro ao analisar dados de ações:', error);
+      toast({
+        title: "Erro de dados",
+        description: "Houve um problema ao carregar as ações. Usando dados padrão.",
+        variant: "destructive",
+      });
       setActions(mockActions);
+      localStorage.setItem('actions', JSON.stringify(mockActions));
     }
-  }, []);
+  }, [toast]);
 
-  // Save actions to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('actions', JSON.stringify(actions));
-  }, [actions]);
+    try {
+      if (actions && actions.length > 0) {
+        console.log("Salvando ações no localStorage:", actions.length);
+        localStorage.setItem('actions', JSON.stringify(actions));
+      }
+    } catch (error) {
+      console.error('Erro ao salvar ações no localStorage:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as alterações localmente.",
+        variant: "destructive",
+      });
+    }
+  }, [actions, toast]);
 
   const getActionsByStatus = (status: 'pendente' | 'concluido' | 'atrasado' | 'all') => {
     if (status === 'all') return actions;

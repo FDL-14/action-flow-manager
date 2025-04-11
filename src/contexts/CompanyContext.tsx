@@ -33,44 +33,113 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load from localStorage if available
-    const savedCompany = localStorage.getItem('company');
-    const savedClients = localStorage.getItem('clients');
-    const savedResponsibles = localStorage.getItem('responsibles');
-
-    if (savedCompany) {
-      try {
-        setCompanyState(JSON.parse(savedCompany));
-      } catch (error) {
-        console.error('Error parsing company data:', error);
+    try {
+      // Carregar empresa do localStorage
+      const savedCompany = localStorage.getItem('company');
+      if (savedCompany) {
+        const parsedCompany = JSON.parse(savedCompany);
+        if (parsedCompany && parsedCompany.id) {
+          console.log("Carregando empresa do localStorage");
+          setCompanyState(parsedCompany);
+        } else {
+          console.log("Dados de empresa inválidos no localStorage, usando dados padrão");
+          setCompanyState(defaultCompany);
+          localStorage.setItem('company', JSON.stringify(defaultCompany));
+        }
+      } else {
+        console.log("Nenhuma empresa encontrada no localStorage, usando dados padrão");
         setCompanyState(defaultCompany);
+        localStorage.setItem('company', JSON.stringify(defaultCompany));
       }
-    } else {
-      setCompanyState(defaultCompany);
-    }
 
-    if (savedClients) {
-      try {
-        setClients(JSON.parse(savedClients));
-      } catch (error) {
-        console.error('Error parsing clients data:', error);
+      // Carregar clientes do localStorage
+      const savedClients = localStorage.getItem('clients');
+      if (savedClients) {
+        const parsedClients = JSON.parse(savedClients);
+        if (Array.isArray(parsedClients) && parsedClients.length > 0) {
+          console.log("Carregando clientes do localStorage:", parsedClients.length);
+          setClients(parsedClients);
+        } else {
+          console.log("Dados de clientes inválidos no localStorage, usando dados mock");
+          setClients(mockClients);
+          localStorage.setItem('clients', JSON.stringify(mockClients));
+        }
+      } else {
+        console.log("Nenhum cliente encontrado no localStorage, usando dados mock");
         setClients(mockClients);
+        localStorage.setItem('clients', JSON.stringify(mockClients));
       }
-    } else {
-      setClients(mockClients);
-    }
 
-    if (savedResponsibles) {
-      try {
-        setResponsibles(JSON.parse(savedResponsibles));
-      } catch (error) {
-        console.error('Error parsing responsibles data:', error);
+      // Carregar responsáveis do localStorage
+      const savedResponsibles = localStorage.getItem('responsibles');
+      if (savedResponsibles) {
+        const parsedResponsibles = JSON.parse(savedResponsibles);
+        if (Array.isArray(parsedResponsibles) && parsedResponsibles.length > 0) {
+          console.log("Carregando responsáveis do localStorage:", parsedResponsibles.length);
+          setResponsibles(parsedResponsibles);
+        } else {
+          console.log("Dados de responsáveis inválidos no localStorage, usando dados mock");
+          setResponsibles(mockResponsibles);
+          localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
+        }
+      } else {
+        console.log("Nenhum responsável encontrado no localStorage, usando dados mock");
         setResponsibles(mockResponsibles);
+        localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
       }
-    } else {
+    } catch (error) {
+      console.error("Erro ao carregar dados do localStorage:", error);
+      toast({
+        title: "Erro de dados",
+        description: "Houve um problema ao carregar os dados da empresa. Usando dados padrão.",
+        variant: "destructive",
+      });
+      
+      // Usar dados padrão em caso de erro
+      setCompanyState(defaultCompany);
+      setClients(mockClients);
       setResponsibles(mockResponsibles);
+      
+      // Salvar dados padrão no localStorage
+      localStorage.setItem('company', JSON.stringify(defaultCompany));
+      localStorage.setItem('clients', JSON.stringify(mockClients));
+      localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
     }
-  }, []);
+  }, [toast]);
+
+  // Salvar clientes no localStorage sempre que forem alterados
+  useEffect(() => {
+    try {
+      if (clients && clients.length > 0) {
+        console.log("Salvando clientes no localStorage:", clients.length);
+        localStorage.setItem('clients', JSON.stringify(clients));
+      }
+    } catch (error) {
+      console.error("Erro ao salvar clientes no localStorage:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar os clientes localmente.",
+        variant: "destructive",
+      });
+    }
+  }, [clients, toast]);
+
+  // Salvar responsáveis no localStorage sempre que forem alterados
+  useEffect(() => {
+    try {
+      if (responsibles && responsibles.length > 0) {
+        console.log("Salvando responsáveis no localStorage:", responsibles.length);
+        localStorage.setItem('responsibles', JSON.stringify(responsibles));
+      }
+    } catch (error) {
+      console.error("Erro ao salvar responsáveis no localStorage:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar os responsáveis localmente.",
+        variant: "destructive",
+      });
+    }
+  }, [responsibles, toast]);
 
   const setCompany = (newCompany: Company) => {
     setCompanyState(newCompany);
@@ -86,7 +155,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!company) return;
     
     const newClient: Client = {
-      id: (clients.length + 1).toString(),
+      id: Date.now().toString(), // Usando timestamp como ID para evitar colisões
       companyId: company.id,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -108,7 +177,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!company) return;
     
     const newResponsible: Responsible = {
-      id: (responsibles.length + 1).toString(),
+      id: Date.now().toString(), // Usando timestamp como ID para evitar colisões
       companyId: company.id,
       createdAt: new Date(),
       updatedAt: new Date(),

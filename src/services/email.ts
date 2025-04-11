@@ -8,14 +8,14 @@ interface SendEmailParams {
   content: string;
 }
 
-// Implementation using Resend API
+// Implementação usando a API Resend
 export const useEmail = () => {
   const { toast } = useToast();
   const RESEND_API_KEY = "re_Wam1nCv4_PbZdfrtTt9ig9B6f4YsVB294";
 
   const sendEmail = async (params: SendEmailParams): Promise<boolean> => {
     try {
-      console.log("Sending email with Resend:", params);
+      console.log("Enviando e-mail com Resend:", params);
       
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -24,7 +24,7 @@ export const useEmail = () => {
           "Authorization": `Bearer ${RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: "onboarding@resend.dev", // Default sender from Resend
+          from: "fabiano@totalseguranca.net", // Endereço do remetente
           to: params.to,
           subject: params.subject,
           html: params.content
@@ -33,6 +33,7 @@ export const useEmail = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Erro na resposta da API Resend:", errorData);
         throw new Error(errorData.message || "Erro ao enviar email");
       }
 
@@ -44,7 +45,7 @@ export const useEmail = () => {
       
       return true;
     } catch (error) {
-      console.error("Error sending email:", error);
+      console.error("Erro ao enviar email:", error);
       toast({
         title: "Erro ao enviar email",
         description: "Não foi possível enviar o email. Tente novamente mais tarde.",
@@ -62,12 +63,12 @@ export const useEmail = () => {
   ): Promise<boolean> => {
     const recipients = [];
     
-    // Add responsible email
+    // Adicionar e-mail do responsável
     if (responsible?.email) {
       recipients.push(responsible.email);
     }
     
-    // Add requester email if available
+    // Adicionar e-mail do solicitante se disponível
     if (requester?.email) {
       recipients.push(requester.email);
     }
@@ -82,11 +83,30 @@ export const useEmail = () => {
     }
     
     const emailContent = `
-      <h1>Nova ação atribuída</h1>
-      <p><strong>Assunto:</strong> ${subject}</p>
-      <p><strong>Descrição:</strong> ${description}</p>
-      <p><strong>Responsável:</strong> ${responsible.name}</p>
-      ${requester ? `<p><strong>Solicitante:</strong> ${requester.name}</p>` : ''}
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; }
+            .header { background-color: #3b82f6; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; }
+            .footer { background-color: #f3f4f6; padding: 10px; text-align: center; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Nova ação atribuída</h1>
+          </div>
+          <div class="content">
+            <p><strong>Assunto:</strong> ${subject}</p>
+            <p><strong>Descrição:</strong> ${description}</p>
+            <p><strong>Responsável:</strong> ${responsible.name}</p>
+            ${requester ? `<p><strong>Solicitante:</strong> ${requester.name}</p>` : ''}
+          </div>
+          <div class="footer">
+            <p>Este é um e-mail automático do sistema Gerenciador de Ações - Total Data.</p>
+          </div>
+        </body>
+      </html>
     `;
     
     return sendEmail({
