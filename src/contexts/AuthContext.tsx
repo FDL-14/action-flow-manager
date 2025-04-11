@@ -6,22 +6,29 @@ import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
+  users: User[];
   isAuthenticated: boolean;
   login: (cpf: string, password: string) => Promise<boolean>;
   logout: () => void;
+  addUser: (userData: { name: string; cpf: string; role: 'user' | 'master' }) => Promise<boolean>;
+  resetUserPassword: (userId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  users: [],
   isAuthenticated: false,
   login: async () => false,
-  logout: () => {}
+  logout: () => {},
+  addUser: async () => false,
+  resetUserPassword: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
 
@@ -38,17 +45,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('user');
       }
     }
+
+    // Load users from localStorage
+    const savedUsers = localStorage.getItem('users');
+    if (savedUsers) {
+      try {
+        const parsedUsers = JSON.parse(savedUsers);
+        setUsers(parsedUsers);
+      } catch (error) {
+        console.error('Error parsing users from localStorage:', error);
+      }
+    } else {
+      // Initialize with default master user
+      setUsers([defaultMasterUser]);
+      localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
+    }
   }, []);
 
   const login = async (cpf: string, password: string): Promise<boolean> => {
-    // In a real app, this would make an API call
-    if (cpf === defaultMasterUser.cpf && password === '@54321') {
-      setUser(defaultMasterUser);
+    const foundUser = users.find(u => u.cpf === cpf);
+    
+    if (foundUser && password === '@54321') {
+      setUser(foundUser);
       setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(defaultMasterUser));
+      localStorage.setItem('user', JSON.stringify(foundUser));
       toast({
         title: "Login realizado com sucesso",
-        description: `Bem-vindo, ${defaultMasterUser.name}!`,
+        description: `Bem-vindo, ${foundUser.name}!`,
         variant: "default",
       });
       return true;
@@ -73,8 +96,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const addUser = async (userData: { name: string; cpf: string; role: 'user' | 'master' }): Promise<boolean> => {
+    // Check if user with this CPF already exists
+    if (users.some(u => u.cpf === userData.cpf)) {
+      toast({
+        title: "Erro",
+        description: "Já existe um usuário com este CPF",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const newUser: User = {
+      id: Date.now().toString(),
+      name: userData.name,
+      cpf: userData.cpf,
+      role: userData.role,
+    };
+
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
+    toast({
+      title: "Usuário criado",
+      description: "O usuário foi criado com sucesso",
+      variant: "default",
+    });
+    return true;
+  };
+
+  const resetUserPassword = (userId: string) => {
+    // In a real app, this would reset the password in a database
+    // For now, we just show a toast since we're using a hardcoded password
+    toast({
+      title: "Senha redefinida",
+      description: "A senha foi redefinida para @54321",
+      variant: "default",
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      users,
+      isAuthenticated, 
+      login, 
+      logout,
+      addUser,
+      resetUserPassword
+    }}>
       {children}
     </AuthContext.Provider>
   );

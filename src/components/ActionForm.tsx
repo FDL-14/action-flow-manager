@@ -44,7 +44,7 @@ const formSchema = z.object({
   description: z.string().min(10, 'Descrição deve ter pelo menos 10 caracteres'),
   responsibleId: z.string().min(1, 'Selecione um responsável'),
   clientId: z.string().optional(),
-  requesterId: z.string().optional(),
+  requesterId: z.string().min(1, 'Selecione um solicitante'),
   startDate: z.string().min(1, 'Data de início é obrigatória'),
   endDate: z.string().min(1, 'Data de término é obrigatória'),
 });
@@ -115,7 +115,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         description: values.description,
         responsibleId: values.responsibleId,
         clientId: values.clientId || undefined,
-        requesterId: values.requesterId || undefined,
+        requesterId: values.requesterId,
         startDate: new Date(values.startDate),
         endDate: new Date(values.endDate),
         companyId: company.id,

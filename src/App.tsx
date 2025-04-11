@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CompanyProvider } from "./contexts/CompanyContext";
 import { ActionProvider } from "./contexts/ActionContext";
@@ -15,6 +15,7 @@ import ActionsPage from "./pages/ActionsPage";
 import ClientsPage from "./pages/ClientsPage";
 import ResponsiblesPage from "./pages/ResponsiblesPage";
 import CompanyPage from "./pages/CompanyPage";
+import UsersPage from "./pages/UsersPage";
 import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,12 @@ const App = () => (
                 <Route path="/company" element={
                   <AuthLayout>
                     <CompanyPage />
+                  </AuthLayout>
+                } />
+                
+                <Route path="/users" element={
+                  <AuthLayout>
+                    <UsersPage />
                   </AuthLayout>
                 } />
                 

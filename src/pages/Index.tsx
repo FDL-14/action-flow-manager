@@ -8,7 +8,7 @@ const Index = () => {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Redirecionar para o dashboard se estiver autenticado, login se não
+    // Redirect to dashboard if authenticated, login if not
     if (isAuthenticated) {
       navigate('/dashboard');
     } else {
@@ -16,7 +16,7 @@ const Index = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  return null; // Esta página apenas redireciona
+  return null; // This page only redirects
 };
 
 export default Index;

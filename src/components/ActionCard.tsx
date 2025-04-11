@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Check, Paperclip, FileText, AlertTriangle } from 'lucide-react';
+import { MoreVertical, Check, Paperclip, FileText, AlertTriangle, Mail } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ActionNotes from './ActionNotes';
@@ -31,6 +31,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
 
   const responsible = responsibles.find(r => r.id === action.responsibleId);
   const client = action.clientId ? clients.find(c => c.id === action.clientId) : null;
+  const requester = action.requesterId ? responsibles.find(r => r.id === action.requesterId) : null;
   
   const getStatusColor = () => {
     switch(action.status) {
@@ -85,6 +86,14 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
     });
   };
 
+  const handleSendEmail = () => {
+    toast({
+      title: "Email enviado",
+      description: "Função de envio de email será implementada em breve.",
+      variant: "default",
+    });
+  };
+
   const toggleNotes = () => setShowNotes(!showNotes);
 
   return (
@@ -102,8 +111,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
               </div>
             )}
             {responsible && (
-              <div className="text-sm text-gray-600 mb-2">
+              <div className="text-sm text-gray-600 mb-1">
                 Responsável: {responsible.name}
+              </div>
+            )}
+            {requester && (
+              <div className="text-sm text-gray-600 mb-2">
+                Solicitante: {requester.name}
               </div>
             )}
             <p className="text-sm text-gray-700 mb-3">{action.description}</p>
@@ -124,6 +138,16 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
           </div>
           
           <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSendEmail}
+              className="hidden sm:flex"
+            >
+              <Mail className="h-4 w-4 mr-1" />
+              Email
+            </Button>
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -151,6 +175,10 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                 <DropdownMenuItem onClick={toggleNotes}>
                   <FileText className="mr-2 h-4 w-4" />
                   Ver anotações
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSendEmail} className="sm:hidden">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Enviar email
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
