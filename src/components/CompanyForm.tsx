@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCompany } from '@/contexts/CompanyContext';
+import { Company } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -28,15 +29,19 @@ import { Upload, X } from 'lucide-react';
 interface CompanyFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialData?: Company | null;
 }
 
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+  address: z.string().optional(),
+  cnpj: z.string().optional(),
+  phone: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange }) => {
+const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialData }) => {
   const { company, setCompany, updateCompanyLogo } = useCompany();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -45,21 +50,29 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange }) => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: company?.name || '',
+      name: '',
+      address: '',
+      cnpj: '',
+      phone: '',
     },
   });
 
   useEffect(() => {
-    if (company) {
+    const dataToUse = initialData || company;
+    
+    if (dataToUse) {
       form.reset({
-        name: company.name,
+        name: dataToUse.name,
+        address: dataToUse.address || '',
+        cnpj: dataToUse.cnpj || '',
+        phone: dataToUse.phone || '',
       });
       
-      if (company.logo) {
-        setLogoPreview(company.logo);
+      if (dataToUse.logo) {
+        setLogoPreview(dataToUse.logo);
       }
     }
-  }, [company, form]);
+  }, [initialData, company, form]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -76,11 +89,16 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange }) => {
 
   const onSubmit = (values: FormValues) => {
     try {
-      if (!company) {
+      const dataToUpdate = initialData || company;
+      
+      if (!dataToUpdate) {
         // Create new company
         const newCompany = {
           id: '1',
           name: values.name,
+          address: values.address,
+          cnpj: values.cnpj,
+          phone: values.phone,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -93,14 +111,17 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange }) => {
       } else {
         // Update existing company
         const updatedCompany = {
-          ...company,
+          ...dataToUpdate,
           name: values.name,
+          address: values.address,
+          cnpj: values.cnpj,
+          phone: values.phone,
           updatedAt: new Date(),
         };
         
         setCompany(updatedCompany);
         
-        if (logoPreview !== company.logo) {
+        if (logoPreview !== dataToUpdate.logo) {
           if (logoPreview) {
             updateCompanyLogo(logoPreview);
           } else {
@@ -197,6 +218,48 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange }) => {
                     <FormLabel>Nome da Empresa</FormLabel>
                     <FormControl>
                       <Input placeholder="Ex: Minha Empresa Ltda" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Endereço</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Rua Exemplo, 123" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cnpj"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CNPJ</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: 00.000.000/0001-00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: (00) 0000-0000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

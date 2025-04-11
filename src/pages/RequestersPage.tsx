@@ -9,6 +9,11 @@ const RequestersPage = () => {
   const { company, responsibles } = useCompany();
   const [showRequesterForm, setShowRequesterForm] = useState(false);
 
+  // Filter responsibles that are of type 'requester' or have role 'Solicitante'
+  const requesters = responsibles.filter(resp => 
+    resp.type === 'requester' || resp.role === 'Solicitante'
+  );
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -48,7 +53,7 @@ const RequestersPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {responsibles.filter(resp => resp.type === 'requester').map((requester) => (
+              {requesters.map((requester) => (
                 <tr key={requester.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{requester.name}</div>
@@ -57,14 +62,14 @@ const RequestersPage = () => {
                     <div className="text-sm text-gray-500">{requester.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{requester.phone}</div>
+                    <div className="text-sm text-gray-500">{requester.phone || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{requester.companyName}</div>
+                    <div className="text-sm text-gray-500">{requester.companyName || '-'}</div>
                   </td>
                 </tr>
               ))}
-              {responsibles.filter(resp => resp.type === 'requester').length === 0 && (
+              {requesters.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                     Nenhum solicitante cadastrado.

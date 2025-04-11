@@ -65,7 +65,9 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
         name: values.name,
         email: values.email,
         phone: values.phone,
-        type: 'requester', // Mark as a requester
+        department: 'Solicitantes',
+        role: 'Solicitante',
+        type: 'requester', 
         companyName: selectedCompany?.name || values.companyName || '',
       });
       

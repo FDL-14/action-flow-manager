@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -26,6 +27,9 @@ export interface Company {
   id: string;
   name: string;
   logo?: string;
+  address?: string;
+  cnpj?: string;
+  phone?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +39,9 @@ export interface Client {
   name: string;
   email?: string;
   phone?: string;
+  logo?: string;
+  address?: string;
+  cnpj?: string;
   companyId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -44,9 +51,12 @@ export interface Responsible {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   department: string;
   role: string;
+  type?: 'responsible' | 'requester';
   companyId: string;
+  companyName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
