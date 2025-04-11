@@ -48,7 +48,7 @@ const Navbar = () => {
         <div className="mr-4 flex">
           <Link to="/dashboard" className="flex items-center space-x-2">
             <img 
-              src="/lovable-uploads/daf5142a-3bdb-4bbb-b2b2-09f3f7b3b87f.png" 
+              src="/lovable-uploads/bbef40c8-e0f3-4855-872c-98b10feabdd5.png" 
               alt="Total Data Logo" 
               className="h-8 w-auto" 
             />
@@ -67,7 +67,7 @@ const Navbar = () => {
               <div className="grid gap-4 py-4">
                 <div className="px-2 py-1 mb-4 flex items-center">
                   <img 
-                    src="/lovable-uploads/daf5142a-3bdb-4bbb-b2b2-09f3f7b3b87f.png" 
+                    src="/lovable-uploads/bbef40c8-e0f3-4855-872c-98b10feabdd5.png" 
                     alt="Total Data Logo" 
                     className="h-10 mr-3" 
                   />

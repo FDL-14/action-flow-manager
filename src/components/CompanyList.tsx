@@ -28,7 +28,14 @@ const CompanyList = () => {
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gerenciamento de Empresas</h1>
+        <div className="flex items-center">
+          <img 
+            src="/lovable-uploads/bbef40c8-e0f3-4855-872c-98b10feabdd5.png" 
+            alt="Total Data Logo" 
+            className="h-10 mr-3" 
+          />
+          <h1 className="text-2xl font-bold">Gerenciamento de Empresas</h1>
+        </div>
         <Button onClick={handleAddCompany}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Empresa

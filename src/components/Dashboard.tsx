@@ -29,7 +29,14 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold tracking-tight">Dashboard de Ações</h2>
+      <div className="flex items-center">
+        <img 
+          src="/lovable-uploads/bbef40c8-e0f3-4855-872c-98b10feabdd5.png" 
+          alt="Total Data Logo" 
+          className="h-8 mr-3 hidden sm:block" 
+        />
+        <h2 className="text-2xl font-bold tracking-tight">Dashboard de Ações</h2>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

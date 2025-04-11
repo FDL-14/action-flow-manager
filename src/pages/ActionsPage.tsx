@@ -42,7 +42,7 @@ const ActionsPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div className="flex items-center mb-4 sm:mb-0">
           <img 
-            src="/lovable-uploads/03d0bccf-96bd-4e96-b531-fdf0fe634f4c.png" 
+            src="/lovable-uploads/bbef40c8-e0f3-4855-872c-98b10feabdd5.png" 
             alt="Total Data Logo" 
             className="h-10 mr-3" 
           />

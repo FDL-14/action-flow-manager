@@ -17,6 +17,16 @@ export const useEmail = () => {
     try {
       console.log("Enviando e-mail com Resend:", params);
       
+      // Verificar se há destinatários
+      if (!params.to || params.to.length === 0) {
+        toast({
+          title: "Erro ao enviar email",
+          description: "Nenhum destinatário especificado",
+          variant: "destructive",
+        });
+        return false;
+      }
+
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -31,13 +41,13 @@ export const useEmail = () => {
         })
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Erro na resposta da API Resend:", errorData);
-        throw new Error(errorData.message || "Erro ao enviar email");
+        console.error("Erro na resposta da API Resend:", data);
+        throw new Error(data.message || "Erro ao enviar email");
       }
 
-      const data = await response.json();
       console.log("Email enviado com sucesso:", data);
 
       toast({
@@ -51,7 +61,7 @@ export const useEmail = () => {
       console.error("Erro ao enviar email:", error);
       toast({
         title: "Erro ao enviar email",
-        description: "Não foi possível enviar o email. Tente novamente mais tarde.",
+        description: `Não foi possível enviar o email. Verifique se a chave API está correta: ${RESEND_API_KEY}`,
         variant: "destructive",
       });
       return false;
