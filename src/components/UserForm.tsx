@@ -20,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface UserFormProps {
   open: boolean;
@@ -42,6 +44,14 @@ const formSchema = z.object({
   role: z.enum(['user', 'master'], {
     required_error: "Você deve selecionar uma função",
   }),
+  canCreate: z.boolean().default(false),
+  canEdit: z.boolean().default(false),
+  canDelete: z.boolean().default(false),
+  canMarkComplete: z.boolean().default(true),
+  canMarkDelayed: z.boolean().default(true),
+  canAddNotes: z.boolean().default(true),
+  canViewReports: z.boolean().default(false),
+  viewAllActions: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -57,8 +67,29 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
       name: '',
       cpf: '',
       role: 'user',
+      canCreate: false,
+      canEdit: false, 
+      canDelete: false,
+      canMarkComplete: true,
+      canMarkDelayed: true,
+      canAddNotes: true,
+      canViewReports: false,
+      viewAllActions: false,
     },
   });
+
+  const roleValue = form.watch('role');
+
+  // Update permissions when role changes
+  useState(() => {
+    if (roleValue === 'master') {
+      form.setValue('canCreate', true);
+      form.setValue('canEdit', true);
+      form.setValue('canDelete', true);
+      form.setValue('canViewReports', true);
+      form.setValue('viewAllActions', true);
+    }
+  }, [roleValue, form]);
 
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
@@ -67,6 +98,16 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
         name: values.name,
         cpf: values.cpf,
         role: values.role,
+        permissions: {
+          canCreate: values.canCreate,
+          canEdit: values.canEdit,
+          canDelete: values.canDelete,
+          canMarkComplete: values.canMarkComplete,
+          canMarkDelayed: values.canMarkDelayed,
+          canAddNotes: values.canAddNotes,
+          canViewReports: values.canViewReports,
+          viewAllActions: values.viewAllActions,
+        }
       });
       
       form.reset();
@@ -89,7 +130,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Usuário</DialogTitle>
           <DialogDescription>
@@ -151,6 +192,180 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
                 </FormItem>
               )}
             />
+
+            <div className="border rounded-md p-4">
+              <h3 className="text-md font-medium mb-3">Permissões</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="canCreate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Criar ações</FormLabel>
+                        <FormDescription>
+                          Pode criar novas ações
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="canEdit"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Editar ações</FormLabel>
+                        <FormDescription>
+                          Pode editar ações existentes
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="canDelete"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Excluir ações</FormLabel>
+                        <FormDescription>
+                          Pode excluir ações
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="canMarkComplete"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Concluir ações</FormLabel>
+                        <FormDescription>
+                          Pode marcar ações como concluídas
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="canMarkDelayed"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Marcar atrasos</FormLabel>
+                        <FormDescription>
+                          Pode marcar ações como atrasadas
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="canAddNotes"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Adicionar anotações</FormLabel>
+                        <FormDescription>
+                          Pode adicionar anotações às ações
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="canViewReports"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Ver relatórios</FormLabel>
+                        <FormDescription>
+                          Pode visualizar relatórios
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="viewAllActions"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Ver todas as ações</FormLabel>
+                        <FormDescription>
+                          Pode ver ações de outros usuários
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

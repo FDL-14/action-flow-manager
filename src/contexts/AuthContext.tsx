@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -9,7 +10,21 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (cpf: string, password: string) => Promise<boolean>;
   logout: () => void;
-  addUser: (userData: { name: string; cpf: string; role: 'user' | 'master' }) => Promise<boolean>;
+  addUser: (userData: { 
+    name: string; 
+    cpf: string; 
+    role: 'user' | 'master'; 
+    permissions?: {
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+      canMarkComplete: boolean;
+      canMarkDelayed: boolean;
+      canAddNotes: boolean;
+      canViewReports: boolean;
+      viewAllActions: boolean;
+    }
+  }) => Promise<boolean>;
   resetUserPassword: (userId: string) => void;
 }
 
@@ -92,7 +107,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const addUser = async (userData: { name: string; cpf: string; role: 'user' | 'master' }): Promise<boolean> => {
+  const addUser = async (userData: { 
+    name: string; 
+    cpf: string; 
+    role: 'user' | 'master';
+    permissions?: {
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+      canMarkComplete: boolean;
+      canMarkDelayed: boolean;
+      canAddNotes: boolean;
+      canViewReports: boolean;
+      viewAllActions: boolean;
+    }
+  }): Promise<boolean> => {
     if (users.some(u => u.cpf === userData.cpf)) {
       toast({
         title: "Erro",
@@ -102,13 +131,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
+    // Default permissions if not provided
+    const defaultPermissions = {
+      canCreate: userData.role === 'master',
+      canEdit: userData.role === 'master',
+      canDelete: userData.role === 'master',
+      canMarkComplete: true,
+      canMarkDelayed: true,
+      canAddNotes: true,
+      canViewReports: userData.role === 'master',
+      viewAllActions: userData.role === 'master',
+    };
+
     const newUser: User = {
       id: Date.now().toString(),
       name: userData.name,
       cpf: userData.cpf,
       email: `${userData.cpf}@example.com`,
       role: userData.role,
-      permissions: []
+      permissions: [
+        {
+          id: "default",
+          name: "Default Permissions",
+          description: "Default user permissions",
+          ...userData.permissions || defaultPermissions
+        }
+      ]
     };
 
     const updatedUsers = [...users, newUser];

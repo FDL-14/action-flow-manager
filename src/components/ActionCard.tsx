@@ -60,6 +60,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   };
 
   const handleMarkComplete = () => {
+    // When marking as complete, first show the notes dialog to require a note/attachment
+    setShowNotes(true);
+    // We'll actually complete the action after they add a note
+  };
+
+  const handleCompleteAction = () => {
     updateActionStatus(action.id, 'concluido', new Date());
     toast({
       title: "Ação concluída",
@@ -95,6 +101,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   };
 
   const toggleNotes = () => setShowNotes(!showNotes);
+  const closeNotes = () => setShowNotes(false);
 
   return (
     <Card className={`mb-4 border-l-4 ${getStatusColor()}`}>
@@ -198,9 +205,23 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
       <Dialog open={showNotes} onOpenChange={setShowNotes}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Anotações - {action.subject}</DialogTitle>
+            <DialogTitle>
+              {action.status !== 'concluido' ? 
+                `Concluir ação - ${action.subject}` : 
+                `Anotações - ${action.subject}`}
+            </DialogTitle>
           </DialogHeader>
-          <ActionNotes action={action} />
+          <ActionNotes 
+            action={action} 
+            onClose={closeNotes} 
+          />
+          {action.status !== 'concluido' && (
+            <div className="flex justify-end mt-4">
+              <Button onClick={handleCompleteAction}>
+                Marcar como Concluído
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>

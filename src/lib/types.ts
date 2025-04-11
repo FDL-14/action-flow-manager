@@ -6,12 +6,21 @@ export interface User {
   email: string;
   role: 'master' | 'admin' | 'user';
   permissions: Permission[];
+  accessibleCompanies?: string[]; // IDs of companies the user can access
 }
 
 export interface Permission {
   id: string;
   name: string;
   description: string;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canMarkComplete?: boolean;
+  canMarkDelayed?: boolean;
+  canAddNotes?: boolean;
+  canViewReports?: boolean;
+  viewAllActions?: boolean;
 }
 
 export interface Company {
