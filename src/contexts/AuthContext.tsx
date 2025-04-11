@@ -13,6 +13,7 @@ interface AuthContextType {
   addUser: (userData: { 
     name: string; 
     cpf: string; 
+    email: string;
     role: 'user' | 'master'; 
     companyIds?: string[];
     permissions?: {
@@ -32,6 +33,7 @@ interface AuthContextType {
     id: string;
     name: string; 
     cpf: string; 
+    email: string;
     role: 'user' | 'master';
     companyIds?: string[];
     permissions?: {
@@ -47,6 +49,7 @@ interface AuthContextType {
       canEditAction?: boolean;
     }
   }) => Promise<boolean>;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   resetUserPassword: (userId: string) => void;
 }
 
@@ -58,6 +61,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   addUser: async () => false,
   updateUser: async () => false,
+  changePassword: async () => false,
   resetUserPassword: () => {},
 });
 
@@ -86,7 +90,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (savedUsers) {
       try {
         const parsedUsers = JSON.parse(savedUsers);
-        setUsers(parsedUsers);
+        
+        // Ensure all users have an email field
+        const updatedUsers = parsedUsers.map((u: User) => {
+          if (!u.email) {
+            return {
+              ...u,
+              email: `${u.cpf}@example.com` // Default email
+            };
+          }
+          return u;
+        });
+        
+        setUsers(updatedUsers);
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
       } catch (error) {
         console.error('Error parsing users from localStorage:', error);
       }
@@ -94,7 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Add company ID to the default master user
       const updatedMasterUser = {
         ...defaultMasterUser,
-        companyIds: ['1']  // Default company ID
+        companyIds: ['1'],  // Default company ID
+        email: 'admin@example.com' // Add default email
       };
       setUsers([updatedMasterUser]);
       localStorage.setItem('users', JSON.stringify([updatedMasterUser]));
@@ -104,7 +122,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (cpf: string, password: string): Promise<boolean> => {
     const foundUser = users.find(u => u.cpf === cpf);
     
-    if (foundUser && password === '@54321') {
+    // Special case for the user with CPF 70635016150
+    if (cpf === '70635016150' && password === '@54321') {
+      // If user doesn't exist, create them
+      if (!foundUser) {
+        const newUser: User = {
+          id: Date.now().toString(),
+          name: "LEONARDO CARRIJO MARTINS",
+          cpf: "70635016150",
+          email: "leonardo@example.com",
+          role: 'user',
+          companyIds: ['1'],
+          permissions: [
+            {
+              id: "default",
+              name: "Default Permissions",
+              description: "Default user permissions",
+              canCreate: true,
+              canEdit: true,
+              canDelete: false,
+              canMarkComplete: true,
+              canMarkDelayed: true,
+              canAddNotes: true,
+              canViewReports: false,
+              viewAllActions: false,
+              canEditUser: false,
+              canEditAction: true
+            }
+          ]
+        };
+        
+        const updatedUsers = [...users, newUser];
+        setUsers(updatedUsers);
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        
+        setUser(newUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        
+        toast({
+          title: "Login realizado com sucesso",
+          description: `Bem-vindo, ${newUser.name}!`,
+          variant: "default",
+        });
+        return true;
+      }
+    }
+    
+    if (foundUser && (password === '@54321' || password === foundUser.password)) {
       setUser(foundUser);
       setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(foundUser));
@@ -138,6 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addUser = async (userData: { 
     name: string; 
     cpf: string; 
+    email: string;
     role: 'user' | 'master';
     companyIds?: string[];
     permissions?: {
@@ -180,7 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: Date.now().toString(),
       name: userData.name,
       cpf: userData.cpf,
-      email: `${userData.cpf}@example.com`,
+      email: userData.email || `${userData.cpf}@example.com`,
       role: userData.role,
       companyIds: userData.companyIds || ['1'], // Default company ID
       permissions: [
@@ -209,6 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     id: string;
     name: string; 
     cpf: string; 
+    email: string;
     role: 'user' | 'master';
     companyIds?: string[];
     permissions?: {
@@ -254,6 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...user,
           name: userData.name,
           cpf: userData.cpf,
+          email: userData.email || user.email,
           role: userData.role,
           companyIds: userData.companyIds || user.companyIds || ['1'],
           permissions: [
@@ -289,7 +357,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
+    const userToUpdate = users.find(u => u.id === userId);
+    
+    if (!userToUpdate) {
+      toast({
+        title: "Erro",
+        description: "Usuário não encontrado",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Check if current password is correct (either default or user set)
+    if (currentPassword !== '@54321' && currentPassword !== userToUpdate.password) {
+      toast({
+        title: "Erro",
+        description: "Senha atual incorreta",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Update the password
+    const updatedUsers = users.map(u => {
+      if (u.id === userId) {
+        return {
+          ...u,
+          password: newPassword
+        };
+      }
+      return u;
+    });
+
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+
+    // Update current user if changing own password
+    if (user && user.id === userId) {
+      const updatedUser = updatedUsers.find(u => u.id === userId);
+      if (updatedUser) {
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    }
+    
+    toast({
+      title: "Senha alterada",
+      description: "Sua senha foi alterada com sucesso",
+      variant: "default",
+    });
+    return true;
+  };
+
   const resetUserPassword = (userId: string) => {
+    const updatedUsers = users.map(u => {
+      if (u.id === userId) {
+        return {
+          ...u,
+          password: undefined // Reset to use default password
+        };
+      }
+      return u;
+    });
+
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
     toast({
       title: "Senha redefinida",
       description: "A senha foi redefinida para @54321",
@@ -306,6 +440,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       addUser,
       updateUser,
+      changePassword,
       resetUserPassword
     }}>
       {children}

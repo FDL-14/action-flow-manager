@@ -50,6 +50,7 @@ interface UserFormProps {
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   cpf: z.string().min(11, 'CPF deve ter pelo menos 11 dígitos').max(14, 'CPF não pode ter mais que 14 caracteres'),
+  email: z.string().email('Email inválido'),
   role: z.enum(['user', 'master'], {
     required_error: "Você deve selecionar uma função",
   }),
@@ -61,8 +62,8 @@ const formSchema = z.object({
   canAddNotes: z.boolean().default(true),
   canViewReports: z.boolean().default(false),
   viewAllActions: z.boolean().default(false),
-  canEditUser: z.boolean().default(false), // New permission
-  canEditAction: z.boolean().default(false), // New permission
+  canEditUser: z.boolean().default(false),
+  canEditAction: z.boolean().default(false),
   companyIds: z.array(z.string()).min(1, "Selecione pelo menos uma empresa"),
 });
 
@@ -78,37 +79,71 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: editUser?.name || '',
-      cpf: editUser?.cpf || '',
-      role: editUser?.role || 'user',
-      canCreate: editUser?.permissions?.[0]?.canCreate || false,
-      canEdit: editUser?.permissions?.[0]?.canEdit || false, 
-      canDelete: editUser?.permissions?.[0]?.canDelete || false,
-      canMarkComplete: editUser?.permissions?.[0]?.canMarkComplete || true,
-      canMarkDelayed: editUser?.permissions?.[0]?.canMarkDelayed || true,
-      canAddNotes: editUser?.permissions?.[0]?.canAddNotes || true,
-      canViewReports: editUser?.permissions?.[0]?.canViewReports || false,
-      viewAllActions: editUser?.permissions?.[0]?.viewAllActions || false,
-      canEditUser: editUser?.permissions?.[0]?.canEditUser || false, // New permission
-      canEditAction: editUser?.permissions?.[0]?.canEditAction || false, // New permission
-      companyIds: editUser?.companyIds || [company?.id || ''],
+      name: '',
+      cpf: '',
+      email: '',
+      role: 'user',
+      canCreate: false,
+      canEdit: false, 
+      canDelete: false,
+      canMarkComplete: true,
+      canMarkDelayed: true,
+      canAddNotes: true,
+      canViewReports: false,
+      viewAllActions: false,
+      canEditUser: false,
+      canEditAction: false,
+      companyIds: [company?.id || ''],
     },
   });
 
-  const roleValue = form.watch('role');
-
-  // Initialize company selection
+  // Initialize form values when editing a user
   useEffect(() => {
-    if (company) {
-      if (editUser?.companyIds) {
-        setSelectedCompanies(editUser.companyIds);
-        form.setValue('companyIds', editUser.companyIds);
-      } else {
-        setSelectedCompanies([company.id]);
-        form.setValue('companyIds', [company.id]);
-      }
+    if (editUser) {
+      form.reset({
+        name: editUser.name,
+        cpf: editUser.cpf,
+        email: editUser.email || `${editUser.cpf}@example.com`,
+        role: editUser.role || 'user',
+        canCreate: editUser.permissions?.[0]?.canCreate || false,
+        canEdit: editUser.permissions?.[0]?.canEdit || false, 
+        canDelete: editUser.permissions?.[0]?.canDelete || false,
+        canMarkComplete: editUser.permissions?.[0]?.canMarkComplete || true,
+        canMarkDelayed: editUser.permissions?.[0]?.canMarkDelayed || true,
+        canAddNotes: editUser.permissions?.[0]?.canAddNotes || true,
+        canViewReports: editUser.permissions?.[0]?.canViewReports || false,
+        viewAllActions: editUser.permissions?.[0]?.viewAllActions || false,
+        canEditUser: editUser.permissions?.[0]?.canEditUser || false,
+        canEditAction: editUser.permissions?.[0]?.canEditAction || false,
+        companyIds: editUser.companyIds || [company?.id || ''],
+      });
+      
+      setSelectedCompanies(editUser.companyIds || [company?.id || '']);
+    } else {
+      // Default values for new user
+      form.reset({
+        name: '',
+        cpf: '',
+        email: '',
+        role: 'user',
+        canCreate: false,
+        canEdit: false, 
+        canDelete: false,
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: false,
+        viewAllActions: false,
+        canEditUser: false,
+        canEditAction: false,
+        companyIds: company ? [company.id] : [],
+      });
+      
+      setSelectedCompanies(company ? [company.id] : []);
     }
-  }, [company, editUser, form]);
+  }, [editUser, company, form]);
+
+  const roleValue = form.watch('role');
 
   // Update permissions when role changes
   useEffect(() => {
@@ -143,6 +178,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           id: editUser.id,
           name: values.name,
           cpf: values.cpf,
+          email: values.email,
           role: values.role,
           companyIds: values.companyIds,
           permissions: {
@@ -168,6 +204,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         await addUser({
           name: values.name,
           cpf: values.cpf,
+          email: values.email,
           role: values.role,
           companyIds: values.companyIds,
           permissions: {
@@ -246,6 +283,27 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
 
             <FormField
               control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="Email do usuário" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    O email será usado para enviar notificações de ações
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="role"
               render={({ field }) => (
                 <FormItem>
@@ -253,6 +311,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                   <Select 
                     onValueChange={field.onChange} 
                     defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>

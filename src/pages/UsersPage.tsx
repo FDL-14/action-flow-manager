@@ -1,26 +1,39 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, RefreshCw } from 'lucide-react';
+import { Plus, Edit, RefreshCw, Key } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import UserForm from '@/components/UserForm';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { User } from '@/lib/types';
 
 const UsersPage = () => {
   const { company } = useCompany();
   const { users, resetUserPassword, user } = useAuth();
   const [showUserForm, setShowUserForm] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setShowUserForm(true);
   };
 
+  const handleChangePassword = (userId: string) => {
+    setSelectedUserId(userId);
+    setShowPasswordForm(true);
+  };
+
   const handleCloseForm = () => {
     setShowUserForm(false);
     setEditingUser(undefined);
+  };
+
+  const handleClosePasswordForm = () => {
+    setShowPasswordForm(false);
+    setSelectedUserId('');
   };
 
   // Only show edit buttons for users the current user has permission to edit
@@ -30,13 +43,11 @@ const UsersPage = () => {
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <div className="flex items-center mb-4 sm:mb-0">
-          {company?.logo && (
-            <img 
-              src={company.logo} 
-              alt={`${company.name} Logo`} 
-              className="h-10 mr-3" 
-            />
-          )}
+          <img 
+            src="/lovable-uploads/e1cb7317-7a9e-4fee-bc52-391984a333ae.png" 
+            alt="Total Data Logo" 
+            className="h-10 mr-3 object-contain" 
+          />
           <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
         </div>
         {canEditUsers && (
@@ -59,16 +70,17 @@ const UsersPage = () => {
                   CPF
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Função
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Empresas
                 </th>
-                {canEditUsers && (
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                )}
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -81,6 +93,9 @@ const UsersPage = () => {
                     <div className="text-sm text-gray-500">{userItem.cpf}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{userItem.email || `${userItem.cpf}@example.com`}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{userItem.role === 'master' ? 'Administrador' : 'Usuário'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -88,17 +103,28 @@ const UsersPage = () => {
                       {userItem.companyIds?.length || 1} {userItem.companyIds?.length === 1 ? 'empresa' : 'empresas'}
                     </div>
                   </td>
-                  {canEditUsers && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-2">
+                    {canEditUsers && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleEditUser(userItem)}
-                        className="mr-2"
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
+                    )}
+                    {(canEditUsers || user?.id === userItem.id) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleChangePassword(userItem.id)}
+                      >
+                        <Key className="h-4 w-4 mr-1" />
+                        Alterar Senha
+                      </Button>
+                    )}
+                    {canEditUsers && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -107,8 +133,8 @@ const UsersPage = () => {
                         <RefreshCw className="h-4 w-4 mr-1" />
                         Resetar Senha
                       </Button>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -120,6 +146,12 @@ const UsersPage = () => {
         open={showUserForm}
         onOpenChange={handleCloseForm}
         editUser={editingUser}
+      />
+
+      <ChangePasswordForm
+        open={showPasswordForm}
+        onOpenChange={handleClosePasswordForm}
+        userId={selectedUserId}
       />
     </div>
   );

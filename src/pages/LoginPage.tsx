@@ -12,6 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,6 +96,9 @@ const LoginPage = () => {
                       <FormControl>
                         <Input type="password" placeholder="Digite sua senha" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        A senha padrão é @54321
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
