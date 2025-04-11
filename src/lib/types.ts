@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -7,6 +6,7 @@ export interface User {
   role: 'user' | 'master';
   companyIds?: string[]; // Companies user has access to
   permissions: Permission[];
+  password?: string; // Add optional password property
 }
 
 export interface Permission {
