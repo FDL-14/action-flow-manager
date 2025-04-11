@@ -8,14 +8,14 @@ interface SendEmailParams {
   content: string;
 }
 
-// Implementação usando a API Resend
+// Implementação usando a API MailJet
 export const useEmail = () => {
   const { toast } = useToast();
-  const RESEND_API_KEY = "re_Wam1nCv4_PbZdfrtTt9ig9B6f4YsVB294";
+  const MAILJET_API_KEY = "f623ce2a2d37c50777d898bf684a52fa";
 
   const sendEmail = async (params: SendEmailParams): Promise<boolean> => {
     try {
-      console.log("Enviando e-mail com Resend:", params);
+      console.log("Enviando e-mail com MailJet:", params);
       
       // Verificar se há destinatários
       if (!params.to || params.to.length === 0) {
@@ -27,24 +27,36 @@ export const useEmail = () => {
         return false;
       }
 
-      const response = await fetch("https://api.resend.com/emails", {
+      // Transformar os destinatários no formato esperado pelo MailJet
+      const recipients = params.to.map(email => ({
+        Email: email
+      }));
+
+      const response = await fetch("https://api.mailjet.com/v3.1/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${RESEND_API_KEY}`
+          "Authorization": `Basic ${btoa(`${MAILJET_API_KEY}:`)}`
         },
         body: JSON.stringify({
-          from: "onboarding@resend.dev", // Usando o endereço verificado do Resend
-          to: params.to,
-          subject: params.subject,
-          html: params.content
+          Messages: [
+            {
+              From: {
+                Email: "no-reply@totaldata.com.br",
+                Name: "Gerenciador de Ações - Total Data"
+              },
+              To: recipients,
+              Subject: params.subject,
+              HTMLPart: params.content
+            }
+          ]
         })
       });
 
       const data = await response.json();
       
       if (!response.ok) {
-        console.error("Erro na resposta da API Resend:", data);
+        console.error("Erro na resposta da API MailJet:", data);
         throw new Error(data.message || "Erro ao enviar email");
       }
 
@@ -61,7 +73,7 @@ export const useEmail = () => {
       console.error("Erro ao enviar email:", error);
       toast({
         title: "Erro ao enviar email",
-        description: `Não foi possível enviar o email. Verifique se a chave API está correta: ${RESEND_API_KEY}`,
+        description: "Não foi possível enviar o email. Tente novamente mais tarde.",
         variant: "destructive",
       });
       return false;
