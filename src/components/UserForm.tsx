@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,10 +32,19 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useCompany } from '@/contexts/CompanyContext';
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { User } from '@/lib/types';
 
 interface UserFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editUser?: User;
 }
 
 const formSchema = z.object({
@@ -51,35 +61,52 @@ const formSchema = z.object({
   canAddNotes: z.boolean().default(true),
   canViewReports: z.boolean().default(false),
   viewAllActions: z.boolean().default(false),
+  companyIds: z.array(z.string()).min(1, "Selecione pelo menos uma empresa"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
-  const { addUser } = useAuth();
+const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => {
+  const { addUser, updateUser } = useAuth();
   const { toast } = useToast();
+  const { company, clients } = useCompany();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
-      cpf: '',
-      role: 'user',
-      canCreate: false,
-      canEdit: false, 
-      canDelete: false,
-      canMarkComplete: true,
-      canMarkDelayed: true,
-      canAddNotes: true,
-      canViewReports: false,
-      viewAllActions: false,
+      name: editUser?.name || '',
+      cpf: editUser?.cpf || '',
+      role: editUser?.role || 'user',
+      canCreate: editUser?.permissions?.[0]?.canCreate || false,
+      canEdit: editUser?.permissions?.[0]?.canEdit || false, 
+      canDelete: editUser?.permissions?.[0]?.canDelete || false,
+      canMarkComplete: editUser?.permissions?.[0]?.canMarkComplete || true,
+      canMarkDelayed: editUser?.permissions?.[0]?.canMarkDelayed || true,
+      canAddNotes: editUser?.permissions?.[0]?.canAddNotes || true,
+      canViewReports: editUser?.permissions?.[0]?.canViewReports || false,
+      viewAllActions: editUser?.permissions?.[0]?.viewAllActions || false,
+      companyIds: editUser?.companyIds || [company?.id || ''],
     },
   });
 
   const roleValue = form.watch('role');
 
-  // Update permissions when role changes - now using useEffect
+  // Initialize company selection
+  useEffect(() => {
+    if (company) {
+      if (editUser?.companyIds) {
+        setSelectedCompanies(editUser.companyIds);
+        form.setValue('companyIds', editUser.companyIds);
+      } else {
+        setSelectedCompanies([company.id]);
+        form.setValue('companyIds', [company.id]);
+      }
+    }
+  }, [company, editUser, form]);
+
+  // Update permissions when role changes
   useEffect(() => {
     if (roleValue === 'master') {
       form.setValue('canCreate', true);
@@ -90,36 +117,76 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
     }
   }, [roleValue, form]);
 
+  const toggleCompany = (companyId: string) => {
+    setSelectedCompanies(prev => {
+      const isSelected = prev.includes(companyId);
+      const newSelection = isSelected
+        ? prev.filter(id => id !== companyId)
+        : [...prev, companyId];
+      
+      form.setValue('companyIds', newSelection);
+      return newSelection;
+    });
+  };
+
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     try {
-      await addUser({
-        name: values.name,
-        cpf: values.cpf,
-        role: values.role,
-        permissions: {
-          canCreate: values.canCreate,
-          canEdit: values.canEdit,
-          canDelete: values.canDelete,
-          canMarkComplete: values.canMarkComplete,
-          canMarkDelayed: values.canMarkDelayed,
-          canAddNotes: values.canAddNotes,
-          canViewReports: values.canViewReports,
-          viewAllActions: values.viewAllActions,
-        }
-      });
+      if (editUser) {
+        await updateUser({
+          id: editUser.id,
+          name: values.name,
+          cpf: values.cpf,
+          role: values.role,
+          companyIds: values.companyIds,
+          permissions: {
+            canCreate: values.canCreate,
+            canEdit: values.canEdit,
+            canDelete: values.canDelete,
+            canMarkComplete: values.canMarkComplete,
+            canMarkDelayed: values.canMarkDelayed,
+            canAddNotes: values.canAddNotes,
+            canViewReports: values.canViewReports,
+            viewAllActions: values.viewAllActions,
+          }
+        });
+        
+        toast({
+          title: "Usuário atualizado",
+          description: "O usuário foi atualizado com sucesso.",
+          variant: "default",
+        });
+      } else {
+        await addUser({
+          name: values.name,
+          cpf: values.cpf,
+          role: values.role,
+          companyIds: values.companyIds,
+          permissions: {
+            canCreate: values.canCreate,
+            canEdit: values.canEdit,
+            canDelete: values.canDelete,
+            canMarkComplete: values.canMarkComplete,
+            canMarkDelayed: values.canMarkDelayed,
+            canAddNotes: values.canAddNotes,
+            canViewReports: values.canViewReports,
+            viewAllActions: values.viewAllActions,
+          }
+        });
+        
+        toast({
+          title: "Usuário criado",
+          description: "O usuário foi criado com sucesso. A senha padrão é @54321",
+          variant: "default",
+        });
+      }
       
       form.reset();
       onOpenChange(false);
-      toast({
-        title: "Usuário criado",
-        description: "O usuário foi criado com sucesso. A senha padrão é @54321",
-        variant: "default",
-      });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao criar o usuário",
+        description: "Ocorreu um erro ao salvar o usuário",
         variant: "destructive",
       });
     } finally {
@@ -129,11 +196,11 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Usuário</DialogTitle>
+          <DialogTitle>{editUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
           <DialogDescription>
-            Crie um novo usuário para acessar o sistema.
+            {editUser ? 'Edite as informações do usuário.' : 'Crie um novo usuário para acessar o sistema.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -192,186 +259,245 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange }) => {
               )}
             />
 
-            <div className="border rounded-md p-4">
-              <h3 className="text-md font-medium mb-3">Permissões</h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="canCreate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Criar ações</FormLabel>
-                        <FormDescription>
-                          Pode criar novas ações
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+            <Accordion type="single" collapsible className="w-full border rounded-md">
+              <AccordionItem value="companies">
+                <AccordionTrigger className="px-4 font-medium">
+                  Empresas Associadas
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <FormField
+                    control={form.control}
+                    name="companyIds"
+                    render={() => (
+                      <FormItem>
+                        <div className="mb-4">
+                          <FormDescription>
+                            Selecione as empresas que este usuário terá acesso
+                          </FormDescription>
+                          <FormMessage />
+                        </div>
+                        <div className="space-y-2">
+                          {company && (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`company-${company.id}`}
+                                checked={selectedCompanies.includes(company.id)}
+                                onCheckedChange={() => toggleCompany(company.id)}
+                              />
+                              <label 
+                                htmlFor={`company-${company.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {company.name} (Principal)
+                              </label>
+                            </div>
+                          )}
+                          {clients.map(client => (
+                            <div key={client.id} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`company-${client.id}`}
+                                checked={selectedCompanies.includes(client.id)}
+                                onCheckedChange={() => toggleCompany(client.id)}
+                              />
+                              <label 
+                                htmlFor={`company-${client.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {client.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </AccordionContent>
+              </AccordionItem>
 
-                <FormField
-                  control={form.control}
-                  name="canEdit"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Editar ações</FormLabel>
-                        <FormDescription>
-                          Pode editar ações existentes
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+              <AccordionItem value="permissions">
+                <AccordionTrigger className="px-4 font-medium">
+                  Permissões
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="viewAllActions"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Ver todas as ações</FormLabel>
+                            <FormDescription>
+                              Pode ver ações de outros usuários
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="canCreate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Criar ações</FormLabel>
+                            <FormDescription>
+                              Pode criar novas ações
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="canDelete"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Excluir ações</FormLabel>
-                        <FormDescription>
-                          Pode excluir ações
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="canEdit"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Editar ações</FormLabel>
+                            <FormDescription>
+                              Pode editar ações existentes
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="canMarkComplete"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Concluir ações</FormLabel>
-                        <FormDescription>
-                          Pode marcar ações como concluídas
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="canDelete"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Excluir ações</FormLabel>
+                            <FormDescription>
+                              Pode excluir ações
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="canMarkDelayed"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Marcar atrasos</FormLabel>
-                        <FormDescription>
-                          Pode marcar ações como atrasadas
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="canMarkComplete"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Concluir ações</FormLabel>
+                            <FormDescription>
+                              Pode marcar ações como concluídas
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="canAddNotes"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Adicionar anotações</FormLabel>
-                        <FormDescription>
-                          Pode adicionar anotações às ações
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="canMarkDelayed"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Marcar atrasos</FormLabel>
+                            <FormDescription>
+                              Pode marcar ações como atrasadas
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="canViewReports"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Ver relatórios</FormLabel>
-                        <FormDescription>
-                          Pode visualizar relatórios
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="canAddNotes"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Adicionar anotações</FormLabel>
+                            <FormDescription>
+                              Pode adicionar anotações às ações
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="viewAllActions"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Ver todas as ações</FormLabel>
-                        <FormDescription>
-                          Pode ver ações de outros usuários
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
+                    <FormField
+                      control={form.control}
+                      name="canViewReports"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Ver relatórios</FormLabel>
+                            <FormDescription>
+                              Pode visualizar relatórios
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Criando..." : "Criar Usuário"}
+                {isLoading ? (editUser ? "Atualizando..." : "Criando...") : (editUser ? "Atualizar Usuário" : "Criar Usuário")}
               </Button>
             </DialogFooter>
           </form>

@@ -14,6 +14,24 @@ interface AuthContextType {
     name: string; 
     cpf: string; 
     role: 'user' | 'master'; 
+    companyIds?: string[];
+    permissions?: {
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+      canMarkComplete: boolean;
+      canMarkDelayed: boolean;
+      canAddNotes: boolean;
+      canViewReports: boolean;
+      viewAllActions: boolean;
+    }
+  }) => Promise<boolean>;
+  updateUser: (userData: { 
+    id: string;
+    name: string; 
+    cpf: string; 
+    role: 'user' | 'master';
+    companyIds?: string[];
     permissions?: {
       canCreate: boolean;
       canEdit: boolean;
@@ -35,6 +53,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => false,
   logout: () => {},
   addUser: async () => false,
+  updateUser: async () => false,
   resetUserPassword: () => {},
 });
 
@@ -68,8 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error parsing users from localStorage:', error);
       }
     } else {
-      setUsers([defaultMasterUser]);
-      localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
+      // Add company ID to the default master user
+      const updatedMasterUser = {
+        ...defaultMasterUser,
+        companyIds: ['1']  // Default company ID
+      };
+      setUsers([updatedMasterUser]);
+      localStorage.setItem('users', JSON.stringify([updatedMasterUser]));
     }
   }, []);
 
@@ -111,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string; 
     cpf: string; 
     role: 'user' | 'master';
+    companyIds?: string[];
     permissions?: {
       canCreate: boolean;
       canEdit: boolean;
@@ -149,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cpf: userData.cpf,
       email: `${userData.cpf}@example.com`,
       role: userData.role,
+      companyIds: userData.companyIds || ['1'], // Default company ID
       permissions: [
         {
           id: "default",
@@ -171,6 +197,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const updateUser = async (userData: { 
+    id: string;
+    name: string; 
+    cpf: string; 
+    role: 'user' | 'master';
+    companyIds?: string[];
+    permissions?: {
+      canCreate: boolean;
+      canEdit: boolean;
+      canDelete: boolean;
+      canMarkComplete: boolean;
+      canMarkDelayed: boolean;
+      canAddNotes: boolean;
+      canViewReports: boolean;
+      viewAllActions: boolean;
+    }
+  }): Promise<boolean> => {
+    // Check if trying to update to a CPF that already exists in another user
+    if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
+      toast({
+        title: "Erro",
+        description: "Já existe outro usuário com este CPF",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const updatedUsers = users.map(user => {
+      if (user.id === userData.id) {
+        // Default permissions if not provided
+        const defaultPermissions = {
+          canCreate: userData.role === 'master',
+          canEdit: userData.role === 'master',
+          canDelete: userData.role === 'master',
+          canMarkComplete: true,
+          canMarkDelayed: true,
+          canAddNotes: true,
+          canViewReports: userData.role === 'master',
+          viewAllActions: userData.role === 'master',
+        };
+
+        return {
+          ...user,
+          name: userData.name,
+          cpf: userData.cpf,
+          role: userData.role,
+          companyIds: userData.companyIds || user.companyIds || ['1'],
+          permissions: [
+            {
+              id: "default",
+              name: "Default Permissions",
+              description: "Default user permissions",
+              ...userData.permissions || defaultPermissions
+            }
+          ]
+        };
+      }
+      return user;
+    });
+
+    setUsers(updatedUsers);
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    
+    // Update current user if editing the logged-in user
+    if (user && user.id === userData.id) {
+      const updatedUser = updatedUsers.find(u => u.id === userData.id);
+      if (updatedUser) {
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    }
+    
+    toast({
+      title: "Usuário atualizado",
+      description: "As informações do usuário foram atualizadas com sucesso",
+      variant: "default",
+    });
+    return true;
+  };
+
   const resetUserPassword = (userId: string) => {
     toast({
       title: "Senha redefinida",
@@ -187,6 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       logout,
       addUser,
+      updateUser,
       resetUserPassword
     }}>
       {children}

@@ -14,8 +14,10 @@ import DashboardPage from "./pages/DashboardPage";
 import ActionsPage from "./pages/ActionsPage";
 import ClientsPage from "./pages/ClientsPage";
 import ResponsiblesPage from "./pages/ResponsiblesPage";
+import RequestersPage from "./pages/RequestersPage";
 import CompanyPage from "./pages/CompanyPage";
 import UsersPage from "./pages/UsersPage";
+import WorkflowPage from "./pages/WorkflowPage";
 import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
@@ -43,6 +45,12 @@ const App = () => (
                   </AuthLayout>
                 } />
                 
+                <Route path="/workflow" element={
+                  <AuthLayout>
+                    <WorkflowPage />
+                  </AuthLayout>
+                } />
+                
                 <Route path="/clients" element={
                   <AuthLayout>
                     <ClientsPage />
@@ -52,6 +60,12 @@ const App = () => (
                 <Route path="/responsibles" element={
                   <AuthLayout>
                     <ResponsiblesPage />
+                  </AuthLayout>
+                } />
+                
+                <Route path="/requesters" element={
+                  <AuthLayout>
+                    <RequestersPage />
                   </AuthLayout>
                 } />
                 

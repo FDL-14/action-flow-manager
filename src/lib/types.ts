@@ -1,12 +1,11 @@
-
 export interface User {
   id: string;
-  cpf: string;
   name: string;
+  cpf: string;
   email: string;
-  role: 'master' | 'admin' | 'user';
+  role: 'user' | 'master';
+  companyIds?: string[]; // Companies user has access to
   permissions: Permission[];
-  accessibleCompanies?: string[]; // IDs of companies the user can access
 }
 
 export interface Permission {

@@ -12,12 +12,22 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Check, Paperclip, FileText, AlertTriangle, Mail } from 'lucide-react';
+import { 
+  MoreVertical, 
+  Check, 
+  Paperclip, 
+  FileText, 
+  AlertTriangle, 
+  Mail, 
+  FileImage,
+  Download
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import ActionNotes from './ActionNotes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ActionCardProps {
   action: Action;
@@ -28,6 +38,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   const { updateActionStatus } = useActions();
   const [showNotes, setShowNotes] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const responsible = responsibles.find(r => r.id === action.responsibleId);
   const client = action.clientId ? clients.find(c => c.id === action.clientId) : null;
@@ -67,6 +78,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
 
   const handleCompleteAction = () => {
     updateActionStatus(action.id, 'concluido', new Date());
+    setShowNotes(false); // Close the notes dialog after completion
     toast({
       title: "Ação concluída",
       description: "A ação foi marcada como concluída com sucesso.",
@@ -102,6 +114,37 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
 
   const toggleNotes = () => setShowNotes(!showNotes);
   const closeNotes = () => setShowNotes(false);
+
+  // Check if user has permission to manage this action
+  const canManageAction = () => {
+    if (!user) return false;
+    
+    // Masters can manage all actions
+    if (user.role === 'master') return true;
+    
+    // Check if this action belongs to the current user
+    if (action.responsibleId === user.id) return true;
+    
+    // Check if user has viewAllActions permission
+    const hasViewAllPermission = user.permissions?.some(p => p.viewAllActions);
+    
+    return hasViewAllPermission || false;
+  };
+
+  // Get latest attachment preview
+  const getLatestAttachment = () => {
+    if (!action.attachments || action.attachments.length === 0) return null;
+    
+    const latestAttachment = action.attachments[action.attachments.length - 1];
+    return latestAttachment;
+  };
+
+  // Check if attachment is an image
+  const isImageAttachment = (url: string) => {
+    return url.match(/\.(jpeg|jpg|gif|png)$/i) !== null;
+  };
+
+  const latestAttachment = getLatestAttachment();
 
   return (
     <Card className={`mb-4 border-l-4 ${getStatusColor()}`}>
@@ -162,18 +205,18 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {action.status !== 'concluido' && (
+                {canManageAction() && action.status !== 'concluido' && (
                   <DropdownMenuItem onClick={handleMarkComplete}>
                     <Check className="mr-2 h-4 w-4 text-green-600" />
                     Marcar como concluído
                   </DropdownMenuItem>
                 )}
-                {action.status === 'concluido' && (
+                {canManageAction() && action.status === 'concluido' && (
                   <DropdownMenuItem onClick={handleMarkIncomplete}>
                     Marcar como pendente
                   </DropdownMenuItem>
                 )}
-                {action.status !== 'atrasado' && (
+                {canManageAction() && action.status !== 'atrasado' && (
                   <DropdownMenuItem onClick={handleMarkDelayed}>
                     <AlertTriangle className="mr-2 h-4 w-4 text-red-600" />
                     Marcar como atrasado
@@ -194,10 +237,41 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
         
         {(action.attachments && action.attachments.length > 0) && (
           <div className="mt-3 pt-3 border-t">
-            <div className="flex items-center text-sm text-gray-600">
+            <div className="flex items-center mb-2 text-sm text-gray-600">
               <Paperclip className="h-4 w-4 mr-1" />
               <span>{action.attachments.length} anexo(s)</span>
             </div>
+            
+            {latestAttachment && (
+              <div className="border rounded-md p-2 flex items-center justify-between">
+                <div className="flex items-center">
+                  {isImageAttachment(latestAttachment) ? (
+                    <div className="flex items-center">
+                      <FileImage className="h-5 w-5 mr-2 text-blue-500" />
+                      <span className="text-sm mr-2">Imagem anexada</span>
+                      <img 
+                        src={latestAttachment} 
+                        alt="Anexo" 
+                        className="h-10 w-10 object-cover rounded" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <FileText className="h-5 w-5 mr-2 text-gray-500" />
+                      <span className="text-sm">Documento anexado</span>
+                    </div>
+                  )}
+                </div>
+                <a 
+                  href={latestAttachment} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <Download className="h-5 w-5" />
+                </a>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
@@ -214,6 +288,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
           <ActionNotes 
             action={action} 
             onClose={closeNotes} 
+            onComplete={handleCompleteAction}
           />
           {action.status !== 'concluido' && (
             <div className="flex justify-end mt-4">

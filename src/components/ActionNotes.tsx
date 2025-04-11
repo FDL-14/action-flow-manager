@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash, Upload, X, Paperclip } from 'lucide-react';
+import { Trash, Upload, X, Paperclip, FileImage, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -14,9 +14,10 @@ import { Label } from '@/components/ui/label';
 interface ActionNotesProps {
   action: Action;
   onClose?: () => void;
+  onComplete?: () => void;
 }
 
-const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose }) => {
+const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }) => {
   const { user } = useAuth();
   const { addActionNote, deleteActionNote, addAttachment } = useActions();
   const [newNote, setNewNote] = useState('');
@@ -24,6 +25,18 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose }) => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Fix to prevent UI freezing - clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any resources when component unmounts
+      attachmentUrls.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [attachmentUrls]);
 
   const handleAddNote = () => {
     if (!newNote.trim() && attachmentUrls.length === 0) {
@@ -54,6 +67,13 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose }) => {
       description: "A anotação foi adicionada com sucesso.",
       variant: "default",
     });
+
+    // If this is completing an action, call the onComplete callback
+    if (action.status !== 'concluido' && onComplete) {
+      onComplete();
+      // Close the dialog after completion
+      if (onClose) onClose();
+    }
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -90,6 +110,17 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose }) => {
     setAttachmentUrls(newAttachments);
   };
 
+  // Get file icon based on file type
+  const getFileIcon = (file: File) => {
+    const fileType = file.type.split('/')[0];
+    switch (fileType) {
+      case 'image':
+        return <FileImage className="h-4 w-4 mr-2 text-blue-500" />;
+      default:
+        return <FileText className="h-4 w-4 mr-2 text-gray-500" />;
+    }
+  };
+
   // Filter out deleted notes
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
 
@@ -124,6 +155,36 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose }) => {
               <div className="mt-1 whitespace-pre-line">{note.content}</div>
             </div>
           ))
+        )}
+
+        {/* Display action attachments */}
+        {action.attachments && action.attachments.length > 0 && (
+          <div className="mt-4 border-t pt-3">
+            <h4 className="text-sm font-semibold mb-2">Anexos:</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {action.attachments.map((url, index) => (
+                <div key={index} className="border rounded-md p-2 flex flex-col items-center">
+                  {url.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                    <img 
+                      src={url} 
+                      alt={`Anexo ${index + 1}`} 
+                      className="max-h-32 object-contain mb-1" 
+                    />
+                  ) : (
+                    <FileText className="h-12 w-12 text-blue-500 mb-1" />
+                  )}
+                  <a 
+                    href={url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-xs text-blue-500 hover:underline truncate max-w-full"
+                  >
+                    Ver anexo {index + 1}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -163,7 +224,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose }) => {
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
                   <div className="flex items-center">
-                    <Paperclip className="h-4 w-4 mr-2 text-gray-500" />
+                    {getFileIcon(file)}
                     <span className="text-sm truncate max-w-[80%]">{file.name}</span>
                   </div>
                   <Button
