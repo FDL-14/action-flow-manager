@@ -1,0 +1,231 @@
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Action, ActionNote, ActionSummary } from '@/lib/types';
+import { mockActions } from '@/lib/mock-data';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './AuthContext';
+
+interface ActionContextType {
+  actions: Action[];
+  getActionsByStatus: (status: 'pendente' | 'concluido' | 'atrasado' | 'all') => Action[];
+  getActionsByResponsible: (responsibleId: string) => Action[];
+  getActionsByClient: (clientId: string) => Action[];
+  addAction: (action: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>) => void;
+  updateActionStatus: (id: string, status: 'pendente' | 'concluido' | 'atrasado', completedAt?: Date) => void;
+  addActionNote: (actionId: string, content: string) => void;
+  deleteActionNote: (actionNoteId: string, actionId: string) => void;
+  addAttachment: (actionId: string, attachment: string) => void;
+  getActionSummary: () => ActionSummary;
+}
+
+const ActionContext = createContext<ActionContextType>({
+  actions: [],
+  getActionsByStatus: () => [],
+  getActionsByResponsible: () => [],
+  getActionsByClient: () => [],
+  addAction: () => {},
+  updateActionStatus: () => {},
+  addActionNote: () => {},
+  deleteActionNote: () => {},
+  addAttachment: () => {},
+  getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 })
+});
+
+export const useActions = () => useContext(ActionContext);
+
+export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [actions, setActions] = useState<Action[]>([]);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // Load from localStorage if available or use mock data
+    const savedActions = localStorage.getItem('actions');
+    
+    if (savedActions) {
+      try {
+        // Convert string dates back to Date objects
+        const parsedActions = JSON.parse(savedActions, (key, value) => {
+          const dateKeys = ['startDate', 'endDate', 'completedAt', 'createdAt', 'updatedAt'];
+          if (dateKeys.includes(key) && value) {
+            return new Date(value);
+          }
+          return value;
+        });
+        setActions(parsedActions);
+      } catch (error) {
+        console.error('Error parsing actions data:', error);
+        setActions(mockActions);
+      }
+    } else {
+      setActions(mockActions);
+    }
+  }, []);
+
+  // Save actions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('actions', JSON.stringify(actions));
+  }, [actions]);
+
+  const getActionsByStatus = (status: 'pendente' | 'concluido' | 'atrasado' | 'all') => {
+    if (status === 'all') return actions;
+    return actions.filter(action => action.status === status);
+  };
+
+  const getActionsByResponsible = (responsibleId: string) => {
+    return actions.filter(action => action.responsibleId === responsibleId);
+  };
+
+  const getActionsByClient = (clientId: string) => {
+    return actions.filter(action => action.clientId === clientId);
+  };
+
+  const addAction = (actionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date();
+    const newAction: Action = {
+      id: (actions.length + 1).toString(),
+      ...actionData,
+      status: 'pendente',
+      notes: [],
+      createdAt: now,
+      updatedAt: now
+    };
+
+    setActions(prevActions => [...prevActions, newAction]);
+    
+    toast({
+      title: "Ação adicionada",
+      description: "A nova ação foi adicionada com sucesso.",
+      variant: "default",
+    });
+  };
+
+  const updateActionStatus = (id: string, status: 'pendente' | 'concluido' | 'atrasado', completedAt?: Date) => {
+    setActions(prevActions => 
+      prevActions.map(action => 
+        action.id === id 
+          ? { 
+              ...action, 
+              status, 
+              completedAt: status === 'concluido' ? completedAt || new Date() : action.completedAt,
+              updatedAt: new Date()
+            } 
+          : action
+      )
+    );
+
+    toast({
+      title: "Status atualizado",
+      description: `O status da ação foi atualizado para ${status}.`,
+      variant: "default",
+    });
+  };
+
+  const addActionNote = (actionId: string, content: string) => {
+    if (!user) return;
+    
+    const newNote: ActionNote = {
+      id: Date.now().toString(),
+      actionId,
+      content,
+      createdBy: user.id,
+      createdAt: new Date(),
+      isDeleted: false
+    };
+
+    setActions(prevActions => 
+      prevActions.map(action => 
+        action.id === actionId 
+          ? { 
+              ...action, 
+              notes: [...action.notes, newNote],
+              updatedAt: new Date()
+            } 
+          : action
+      )
+    );
+
+    toast({
+      title: "Anotação adicionada",
+      description: "A anotação foi adicionada com sucesso.",
+      variant: "default",
+    });
+  };
+
+  const deleteActionNote = (actionNoteId: string, actionId: string) => {
+    setActions(prevActions => 
+      prevActions.map(action => 
+        action.id === actionId 
+          ? { 
+              ...action, 
+              notes: action.notes.map(note => 
+                note.id === actionNoteId 
+                  ? { ...note, isDeleted: true } 
+                  : note
+              ),
+              updatedAt: new Date()
+            } 
+          : action
+      )
+    );
+
+    toast({
+      title: "Anotação removida",
+      description: "A anotação foi removida com sucesso.",
+      variant: "destructive",
+    });
+  };
+
+  const addAttachment = (actionId: string, attachment: string) => {
+    setActions(prevActions => 
+      prevActions.map(action => 
+        action.id === actionId 
+          ? { 
+              ...action, 
+              attachments: [...(action.attachments || []), attachment],
+              updatedAt: new Date()
+            } 
+          : action
+      )
+    );
+
+    toast({
+      title: "Anexo adicionado",
+      description: "O arquivo foi anexado com sucesso.",
+      variant: "default",
+    });
+  };
+
+  const getActionSummary = (): ActionSummary => {
+    const completed = actions.filter(a => a.status === 'concluido').length;
+    const delayed = actions.filter(a => a.status === 'atrasado').length;
+    const pending = actions.filter(a => a.status === 'pendente').length;
+    const total = actions.length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      completed,
+      delayed,
+      pending,
+      total,
+      completionRate
+    };
+  };
+
+  return (
+    <ActionContext.Provider value={{
+      actions,
+      getActionsByStatus,
+      getActionsByResponsible,
+      getActionsByClient,
+      addAction,
+      updateActionStatus,
+      addActionNote,
+      deleteActionNote,
+      addAttachment,
+      getActionSummary
+    }}>
+      {children}
+    </ActionContext.Provider>
+  );
+};
