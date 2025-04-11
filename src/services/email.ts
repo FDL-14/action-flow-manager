@@ -24,7 +24,7 @@ export const useEmail = () => {
           "Authorization": `Bearer ${RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: "fabiano@totalseguranca.net", // Endereço do remetente
+          from: "onboarding@resend.dev", // Usando o endereço verificado do Resend
           to: params.to,
           subject: params.subject,
           html: params.content
@@ -36,6 +36,9 @@ export const useEmail = () => {
         console.error("Erro na resposta da API Resend:", errorData);
         throw new Error(errorData.message || "Erro ao enviar email");
       }
+
+      const data = await response.json();
+      console.log("Email enviado com sucesso:", data);
 
       toast({
         title: "Email enviado",
