@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Building2, Lock } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
 const formSchema = z.object({
   cpf: z.string().min(11, 'CPF deve ter pelo menos 11 dígitos').max(14, 'CPF não pode ter mais que 14 caracteres'),
@@ -26,6 +27,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const LoginPage = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<FormValues>({
@@ -40,7 +42,9 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       const success = await login(values.cpf, values.password);
-      if (!success) {
+      if (success) {
+        navigate('/dashboard');
+      } else {
         form.setError('root', {
           type: 'manual',
           message: 'CPF ou senha incorretos',

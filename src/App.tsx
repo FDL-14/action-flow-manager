@@ -15,7 +15,7 @@ import ActionsPage from "./pages/ActionsPage";
 import ClientsPage from "./pages/ClientsPage";
 import ResponsiblesPage from "./pages/ResponsiblesPage";
 import CompanyPage from "./pages/CompanyPage";
-import { useAuth } from "./contexts/AuthContext";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +28,7 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<Index />} />
                 
                 <Route path="/dashboard" element={
                   <AuthLayout>
