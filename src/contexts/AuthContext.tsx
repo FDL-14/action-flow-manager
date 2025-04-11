@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -33,7 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check localStorage for saved user session
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
@@ -46,7 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Load users from localStorage
     const savedUsers = localStorage.getItem('users');
     if (savedUsers) {
       try {
@@ -56,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error parsing users from localStorage:', error);
       }
     } else {
-      // Initialize with default master user
       setUsers([defaultMasterUser]);
       localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
     }
@@ -97,7 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addUser = async (userData: { name: string; cpf: string; role: 'user' | 'master' }): Promise<boolean> => {
-    // Check if user with this CPF already exists
     if (users.some(u => u.cpf === userData.cpf)) {
       toast({
         title: "Erro",
@@ -111,7 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: Date.now().toString(),
       name: userData.name,
       cpf: userData.cpf,
+      email: `${userData.cpf}@example.com`,
       role: userData.role,
+      permissions: []
     };
 
     const updatedUsers = [...users, newUser];
@@ -127,8 +124,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetUserPassword = (userId: string) => {
-    // In a real app, this would reset the password in a database
-    // For now, we just show a toast since we're using a hardcoded password
     toast({
       title: "Senha redefinida",
       description: "A senha foi redefinida para @54321",

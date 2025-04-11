@@ -20,12 +20,12 @@ import {
   Menu,
   Building2,
 } from 'lucide-react';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   
   const navItems = [
