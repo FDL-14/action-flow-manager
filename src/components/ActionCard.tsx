@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -75,14 +74,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   };
 
   const handleMarkComplete = () => {
-    // When marking as complete, first show the notes dialog to require a note/attachment
     setShowNotes(true);
-    // We'll actually complete the action after they add a note
   };
 
   const handleCompleteAction = () => {
     updateActionStatus(action.id, 'concluido', new Date());
-    setShowNotes(false); // Close the notes dialog after completion
+    setShowNotes(false);
     toast({
       title: "Ação concluída",
       description: "A ação foi marcada como concluída com sucesso.",
@@ -119,36 +116,28 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   const toggleNotes = () => setShowNotes(!showNotes);
   const closeNotes = () => setShowNotes(false);
 
-  // Check if user has permission to manage this action
   const canManageAction = () => {
     if (!user) return false;
     
-    // Masters can manage all actions
     if (user.role === 'master') return true;
     
-    // Check if this action belongs to the current user
     if (action.responsibleId === user.id) return true;
     
-    // Check if user has viewAllActions permission
     const hasViewAllPermission = user.permissions?.some(p => p.viewAllActions);
     
     return hasViewAllPermission || false;
   };
 
-  // Check if user has permission to edit actions
   const canEditAction = () => {
     if (!user) return false;
     
-    // Masters can edit all actions
     if (user.role === 'master') return true;
     
-    // Check if user has editAction permission
     const hasEditPermission = user.permissions?.some(p => p.canEditAction);
     
     return hasEditPermission || false;
   };
 
-  // Get latest attachment preview
   const getLatestAttachment = () => {
     if (!action.attachments || action.attachments.length === 0) return null;
     
@@ -156,7 +145,6 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
     return latestAttachment;
   };
 
-  // Check if attachment is an image
   const isImageAttachment = (url: string) => {
     return url.match(/\.(jpeg|jpg|gif|png)$/i) !== null;
   };
@@ -337,7 +325,6 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
         </Dialog>
       )}
 
-      {/* Edit Action Dialog */}
       {showEditForm && (
         <EditActionForm 
           open={showEditForm}

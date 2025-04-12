@@ -134,7 +134,7 @@ const Workflow: React.FC = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Workflow de Ações</h2>
       
-      <div className="flex mb-6 space-x-2">
+      <div className="flex mb-6 space-x-2 overflow-x-auto pb-2">
         <Button 
           variant={filterStatus === 'all' ? 'default' : 'outline'} 
           onClick={() => setFilterStatus('all')}

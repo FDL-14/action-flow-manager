@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -29,10 +28,8 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Fix to prevent UI freezing - clean up on unmount
   useEffect(() => {
     return () => {
-      // Clean up any resources when component unmounts
       attachmentUrls.forEach(url => {
         if (url.startsWith('blob:')) {
           URL.revokeObjectURL(url);
@@ -41,7 +38,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     };
   }, [attachmentUrls]);
 
-  // If user initiates a complete action, show a message requiring notes/attachments
   useEffect(() => {
     if (isCompleting && (newNote.trim().length === 0 && attachmentUrls.length === 0)) {
       toast({
@@ -63,10 +59,8 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
 
     try {
-      // Add the note
       addActionNote(action.id, newNote);
       
-      // Add all attachments - com melhorias para garantir persistência
       attachmentUrls.forEach(url => {
         try {
           addAttachment(action.id, url);
@@ -80,23 +74,19 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         }
       });
       
-      // Reset form
       setNewNote('');
       setUploadedFiles([]);
       setAttachmentUrls([]);
 
-      // Show success message
       toast({
         title: "Anotação adicionada",
         description: "A anotação foi adicionada com sucesso.",
         variant: "default",
       });
 
-      // If this is completing an action and onComplete is provided, call it
       if (isCompleting && onComplete) {
         setIsCompleting(false);
         
-        // Close the dialog after adding the note
         if (onClose) {
           onClose();
         }
@@ -114,7 +104,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const handleCompleteAction = () => {
     setIsCompleting(true);
     
-    // If we already have notes or attachments, add them 
     if (newNote.trim() || attachmentUrls.length > 0) {
       handleAddNote();
     }
@@ -140,9 +129,8 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       try {
         const newFiles = Array.from(e.target.files);
         
-        // Verificar tamanho total antes de processar
         const totalSize = newFiles.reduce((acc, file) => acc + file.size, 0);
-        if (totalSize > 5 * 1024 * 1024) { // 5MB limit
+        if (totalSize > 5 * 1024 * 1024) {
           toast({
             title: "Arquivos muito grandes",
             description: "O tamanho total dos arquivos excede 5MB. Escolha arquivos menores.",
@@ -153,7 +141,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         
         setUploadedFiles(prev => [...prev, ...newFiles]);
         
-        // Create URLs for the file previews
         const newAttachments = newFiles.map(file => 
           URL.createObjectURL(file)
         );
@@ -181,7 +168,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       const newFiles = [...uploadedFiles];
       const newAttachments = [...attachmentUrls];
       
-      // Revoke object URL to avoid memory leaks
       URL.revokeObjectURL(newAttachments[index]);
       
       newFiles.splice(index, 1);
@@ -194,7 +180,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
   };
 
-  // Get file icon based on file type
   const getFileIcon = (file: File) => {
     const fileType = file.type.split('/')[0];
     switch (fileType) {
@@ -205,7 +190,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
   };
 
-  // Filter out deleted notes
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
 
   const hasNoteOrAttachment = newNote.trim().length > 0 || attachmentUrls.length > 0;
@@ -241,7 +225,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
           ))
         )}
 
-        {/* Display action attachments */}
         {action.attachments && action.attachments.length > 0 && (
           <div className="mt-4 border-t pt-3">
             <h4 className="text-sm font-semibold mb-2">Anexos:</h4>
@@ -254,7 +237,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                       alt={`Anexo ${index + 1}`} 
                       className="max-h-32 object-contain mb-1" 
                       onError={(e) => {
-                        // Fallback para imagens que não carregam
                         (e.target as HTMLImageElement).src = '/placeholder.svg';
                       }}
                     />
@@ -266,6 +248,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                     target="_blank" 
                     rel="noopener noreferrer" 
                     className="text-xs text-blue-500 hover:underline truncate max-w-full"
+                    download
                   >
                     Ver anexo {index + 1}
                   </a>
@@ -366,6 +349,14 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             >
               Adicionar Anotação
             </Button>
+            {action.status !== 'concluido' && (
+              <Button 
+                onClick={handleCompleteAction}
+                variant="default"
+              >
+                Concluir Ação
+              </Button>
+            )}
           </div>
         </div>
       </div>
