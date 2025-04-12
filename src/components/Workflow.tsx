@@ -5,7 +5,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, ArrowRight, UserRound } from 'lucide-react';
+import { Check, Clock, AlertTriangle, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -189,6 +190,35 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         return <FileText className="h-4 w-4 mr-2 text-gray-500" />;
     }
   };
+  
+  const handleDownload = (url: string, filename: string = 'arquivo') => {
+    try {
+      // Criar um elemento <a> invisível
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpar depois de um breve intervalo para garantir que o download seja iniciado
+      setTimeout(() => {
+        document.body.removeChild(a);
+      }, 100);
+      
+      toast({
+        title: "Download iniciado",
+        description: "O download do arquivo foi iniciado.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Erro ao fazer download:", error);
+      toast({
+        title: "Erro no download",
+        description: "Não foi possível baixar o arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
 
@@ -243,15 +273,14 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                   ) : (
                     <FileText className="h-12 w-12 text-blue-500 mb-1" />
                   )}
-                  <a 
-                    href={url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-xs text-blue-500 hover:underline truncate max-w-full"
-                    download
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => handleDownload(url, `anexo-${index+1}`)}
+                    className="text-xs text-blue-500 hover:underline"
                   >
-                    Ver anexo {index + 1}
-                  </a>
+                    Baixar anexo {index + 1}
+                  </Button>
                 </div>
               ))}
             </div>
@@ -306,7 +335,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             id="camera-capture"
             ref={cameraInputRef}
             className="hidden"
-            capture="user"
+            capture="environment"
             accept="image/*"
             onChange={handleFileChange}
           />

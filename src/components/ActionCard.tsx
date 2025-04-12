@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -148,6 +149,35 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   const isImageAttachment = (url: string) => {
     return url.match(/\.(jpeg|jpg|gif|png)$/i) !== null;
   };
+  
+  const handleDownload = (url: string, filename: string = 'arquivo') => {
+    try {
+      // Criar um elemento <a> invisível
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpar depois de um breve intervalo para garantir que o download seja iniciado
+      setTimeout(() => {
+        document.body.removeChild(a);
+      }, 100);
+      
+      toast({
+        title: "Download iniciado",
+        description: "O download do arquivo foi iniciado.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Erro ao fazer download:", error);
+      toast({
+        title: "Erro no download",
+        description: "Não foi possível baixar o arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const latestAttachment = getLatestAttachment();
 
@@ -291,15 +321,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                     </div>
                   )}
                 </div>
-                <a 
-                  href={latestAttachment} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-blue-500 hover:text-blue-700"
-                  download
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleDownload(latestAttachment, `anexo-${action.id}`)}
                 >
-                  <Download className="h-5 w-5" />
-                </a>
+                  <Download className="h-5 w-5 text-blue-500 hover:text-blue-700" />
+                </Button>
               </div>
             )}
           </div>
