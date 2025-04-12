@@ -62,7 +62,17 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
   });
 
   const onSubmit = (data: FormData) => {
-    updateAction(action.id, data);
+    // Ensure all required fields are passed to updateAction
+    updateAction(action.id, {
+      subject: data.subject,
+      description: data.description,
+      responsibleId: data.responsibleId,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      companyId: data.companyId,
+      clientId: data.clientId || undefined,
+      requesterId: data.requesterId || undefined
+    });
     onOpenChange(false);
     form.reset();
   };
