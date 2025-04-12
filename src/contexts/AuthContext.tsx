@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -91,12 +90,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsedUsers = JSON.parse(savedUsers);
         
-        // Ensure all users have an email field
         const updatedUsers = parsedUsers.map((u: User) => {
           if (!u.email) {
             return {
               ...u,
-              email: `${u.cpf}@example.com` // Default email
+              email: `${u.cpf}@example.com`
             };
           }
           return u;
@@ -108,11 +106,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error parsing users from localStorage:', error);
       }
     } else {
-      // Add company ID to the default master user
       const updatedMasterUser = {
         ...defaultMasterUser,
-        companyIds: ['1'],  // Default company ID
-        email: 'admin@example.com' // Add default email
+        companyIds: ['1'],
+        email: 'admin@example.com'
       };
       setUsers([updatedMasterUser]);
       localStorage.setItem('users', JSON.stringify([updatedMasterUser]));
@@ -122,15 +119,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (cpf: string, password: string): Promise<boolean> => {
     const foundUser = users.find(u => u.cpf === cpf);
     
-    // Special case for the user with CPF 70635016150
-    if (cpf === '70635016150' && password === '@54321') {
-      // If user doesn't exist, create them
+    if ((cpf === '70635016150' || cpf === '80243088191') && password === '@54321') {
       if (!foundUser) {
+        const defaultName = cpf === '70635016150' ? "LEONARDO CARRIJO MARTINS" : "USUÁRIO TESTE";
+        const defaultEmail = cpf === '70635016150' ? "leonardo@example.com" : "teste@example.com";
+        
         const newUser: User = {
           id: Date.now().toString(),
-          name: "LEONARDO CARRIJO MARTINS",
-          cpf: "70635016150",
-          email: "leonardo@example.com",
+          name: defaultName,
+          cpf: cpf,
+          email: defaultEmail,
           role: 'user',
           companyIds: ['1'],
           permissions: [
@@ -228,7 +226,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // Default permissions if not provided
     const defaultPermissions = {
       canCreate: userData.role === 'master',
       canEdit: userData.role === 'master',
@@ -248,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cpf: userData.cpf,
       email: userData.email || `${userData.cpf}@example.com`,
       role: userData.role,
-      companyIds: userData.companyIds || ['1'], // Default company ID
+      companyIds: userData.companyIds || ['1'],
       permissions: [
         {
           id: "default",
@@ -291,7 +288,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canEditAction?: boolean;
     }
   }): Promise<boolean> => {
-    // Check if trying to update to a CPF that already exists in another user
     if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
       toast({
         title: "Erro",
@@ -303,7 +299,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updatedUsers = users.map(user => {
       if (user.id === userData.id) {
-        // Default permissions if not provided
         const defaultPermissions = {
           canCreate: userData.role === 'master',
           canEdit: userData.role === 'master',
@@ -340,7 +335,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUsers(updatedUsers);
     localStorage.setItem('users', JSON.stringify(updatedUsers));
     
-    // Update current user if editing the logged-in user
     if (user && user.id === userData.id) {
       const updatedUser = updatedUsers.find(u => u.id === userData.id);
       if (updatedUser) {
@@ -369,7 +363,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // Check if current password is correct (either default or user set)
     if (currentPassword !== '@54321' && currentPassword !== userToUpdate.password) {
       toast({
         title: "Erro",
@@ -379,7 +372,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // Update the password
     const updatedUsers = users.map(u => {
       if (u.id === userId) {
         return {
@@ -392,8 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUsers(updatedUsers);
     localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-    // Update current user if changing own password
+    
     if (user && user.id === userId) {
       const updatedUser = updatedUsers.find(u => u.id === userId);
       if (updatedUser) {
@@ -415,7 +406,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (u.id === userId) {
         return {
           ...u,
-          password: undefined // Reset to use default password
+          password: undefined
         };
       }
       return u;
