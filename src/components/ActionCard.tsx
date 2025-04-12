@@ -196,15 +196,15 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
             <p className="text-sm text-gray-700 mb-3">{action.description}</p>
             <div className="grid grid-cols-2 gap-x-4 text-xs text-gray-500">
               <div>
-                <span className="font-medium">Início:</span> {action.startDate.toLocaleDateString()}
+                <span className="font-medium">Início:</span> {new Date(action.startDate).toLocaleDateString()}
               </div>
               <div>
-                <span className="font-medium">Término:</span> {action.endDate.toLocaleDateString()}
+                <span className="font-medium">Término:</span> {new Date(action.endDate).toLocaleDateString()}
               </div>
               {action.completedAt && (
                 <div className="col-span-2 mt-1">
-                  <span className="font-medium">Concluído em:</span> {action.completedAt.toLocaleDateString()} 
-                  ({formatDistanceToNow(action.completedAt, { addSuffix: true, locale: ptBR })})
+                  <span className="font-medium">Concluído em:</span> {new Date(action.completedAt).toLocaleDateString()} 
+                  ({formatDistanceToNow(new Date(action.completedAt), { addSuffix: true, locale: ptBR })})
                 </div>
               )}
             </div>
@@ -308,6 +308,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-blue-500 hover:text-blue-700"
+                  download
                 >
                   <Download className="h-5 w-5" />
                 </a>

@@ -92,10 +92,10 @@ const Workflow: React.FC = () => {
               <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                 <div><span className="font-medium">Responsável:</span> {getResponsibleName(action.responsibleId)}</div>
                 <div><span className="font-medium">Início:</span> {format(new Date(action.startDate), "dd/MM/yyyy", { locale: ptBR })}</div>
-                <div><span className="font-medium">ID:</span> #{action.id}</div>
+                <div><span className="font-medium">ID:</span> #{action.id.substring(0, 8)}</div>
                 <div><span className="font-medium">Término:</span> {format(new Date(action.endDate), "dd/MM/yyyy", { locale: ptBR })}</div>
                 {action.createdByName && (
-                  <div className="col-span-2 flex items-center">
+                  <div className="col-span-2 flex items-center mt-1">
                     <UserRound className="h-3 w-3 mr-1" />
                     <span className="font-medium">Criado por:</span> {action.createdByName}
                   </div>
@@ -115,6 +115,12 @@ const Workflow: React.FC = () => {
               {action.notes && action.notes.length > 0 && (
                 <div className="mt-2 text-xs">
                   <span className="font-medium text-gray-500">{action.notes.filter(n => !n.isDeleted).length} anotações</span>
+                </div>
+              )}
+              
+              {action.attachments && action.attachments.length > 0 && (
+                <div className="mt-1 text-xs">
+                  <span className="font-medium text-gray-500">{action.attachments.length} anexos</span>
                 </div>
               )}
             </CardContent>

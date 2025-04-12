@@ -323,7 +323,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             id="camera-capture"
             ref={cameraInputRef}
             className="hidden"
-            capture="environment"
+            capture="user"
             accept="image/*"
             onChange={handleFileChange}
           />
