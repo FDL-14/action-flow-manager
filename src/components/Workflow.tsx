@@ -5,7 +5,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Check, Clock, AlertTriangle, ArrowRight, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -94,6 +94,12 @@ const Workflow: React.FC = () => {
                 <div><span className="font-medium">Início:</span> {format(new Date(action.startDate), "dd/MM/yyyy", { locale: ptBR })}</div>
                 <div><span className="font-medium">ID:</span> #{action.id}</div>
                 <div><span className="font-medium">Término:</span> {format(new Date(action.endDate), "dd/MM/yyyy", { locale: ptBR })}</div>
+                {action.createdByName && (
+                  <div className="col-span-2 flex items-center">
+                    <UserRound className="h-3 w-3 mr-1" />
+                    <span className="font-medium">Criado por:</span> {action.createdByName}
+                  </div>
+                )}
               </div>
               
               {action.completedAt && (

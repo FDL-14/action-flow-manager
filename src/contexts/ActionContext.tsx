@@ -190,7 +190,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       status: 'pendente',
       notes: [],
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      createdBy: user?.id, // Add creator's ID
+      createdByName: user?.name // Add creator's name
     };
 
     const updatedActions = [...actions, newAction];

@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -88,6 +89,8 @@ export interface Action {
   notes: ActionNote[];
   createdAt: Date;
   updatedAt: Date;
+  createdBy?: string; // ID of the user who created the action
+  createdByName?: string; // Name of the user who created the action
 }
 
 export interface ActionSummary {

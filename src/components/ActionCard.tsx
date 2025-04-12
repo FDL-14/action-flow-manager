@@ -21,7 +21,8 @@ import {
   Mail, 
   FileImage,
   Download,
-  Edit
+  Edit,
+  UserRound
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -184,8 +185,14 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
               </div>
             )}
             {requester && (
-              <div className="text-sm text-gray-600 mb-2">
+              <div className="text-sm text-gray-600 mb-1">
                 Solicitante: {requester.name}
+              </div>
+            )}
+            {action.createdByName && (
+              <div className="text-sm text-gray-600 mb-2 flex items-center">
+                <UserRound className="h-3 w-3 mr-1" />
+                Criado por: {action.createdByName}
               </div>
             )}
             <p className="text-sm text-gray-700 mb-3">{action.description}</p>
