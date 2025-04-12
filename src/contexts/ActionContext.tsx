@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -13,6 +12,7 @@ interface ActionContextType {
   getActionsByResponsible: (responsibleId: string) => Action[];
   getActionsByClient: (clientId: string) => Action[];
   addAction: (action: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>) => void;
+  updateAction: (id: string, actionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdByName'>) => void;
   updateActionStatus: (id: string, status: 'pendente' | 'concluido' | 'atrasado', completedAt?: Date) => void;
   addActionNote: (actionId: string, content: string) => void;
   deleteActionNote: (actionNoteId: string, actionId: string) => void;
@@ -27,6 +27,7 @@ const ActionContext = createContext<ActionContextType>({
   getActionsByResponsible: () => [],
   getActionsByClient: () => [],
   addAction: () => {},
+  updateAction: () => {},
   updateActionStatus: () => {},
   addActionNote: () => {},
   deleteActionNote: () => {},
@@ -44,10 +45,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { sendActionNotification } = useEmail();
   const { responsibles } = useCompany();
 
-  // Função para ajudar a realizar backup automático
   const backupActionsToLocalStorage = (actionsData: Action[]) => {
     try {
-      // Criar uma versão simplificada para backup (sem objetos complexos)
       const simplifiedActions = JSON.parse(JSON.stringify(actionsData));
       localStorage.setItem('actions_backup', JSON.stringify(simplifiedActions));
       console.log("Backup de ações criado com sucesso.");
@@ -61,7 +60,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       let dataToUse: Action[] = [];
       let useBackup = false;
       
-      // Tentar carregar os dados principais
       const savedActions = localStorage.getItem('actions');
       
       if (savedActions) {
@@ -90,7 +88,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         useBackup = true;
       }
       
-      // Se precisar usar o backup
       if (useBackup) {
         const actionsBackup = localStorage.getItem('actions_backup');
         if (actionsBackup) {
@@ -125,10 +122,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
-      // Definir os dados a serem usados
       setActions(dataToUse);
       
-      // Salvar no localStorage e criar backup se forem os dados mock
       if (dataToUse === mockActions) {
         localStorage.setItem('actions', JSON.stringify(mockActions));
         backupActionsToLocalStorage(mockActions);
@@ -146,17 +141,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [toast]);
 
-  // Salvar ações no localStorage sempre que forem alteradas
   useEffect(() => {
     try {
       if (actions && actions.length > 0) {
         console.log("Salvando ações no localStorage:", actions.length);
         
-        // Criar uma versão simplificada para localStorage
         const actionsToSave = JSON.parse(JSON.stringify(actions));
         localStorage.setItem('actions', JSON.stringify(actionsToSave));
         
-        // Criar backup a cada alteração
         backupActionsToLocalStorage(actions);
       }
     } catch (error) {
@@ -191,14 +183,13 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       notes: [],
       createdAt: now,
       updatedAt: now,
-      createdBy: user?.id, // Add creator's ID
-      createdByName: user?.name // Add creator's name
+      createdBy: user?.id,
+      createdByName: user?.name
     };
 
     const updatedActions = [...actions, newAction];
     setActions(updatedActions);
     
-    // Salvar imediatamente para garantir persistência
     try {
       localStorage.setItem('actions', JSON.stringify(updatedActions));
       backupActionsToLocalStorage(updatedActions);
@@ -209,6 +200,34 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     toast({
       title: "Ação adicionada",
       description: "A nova ação foi adicionada com sucesso.",
+      variant: "default",
+    });
+  };
+
+  const updateAction = (id: string, actionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdByName'>) => {
+    const updatedActions = actions.map(action => {
+      if (action.id === id) {
+        return {
+          ...action,
+          ...actionData,
+          updatedAt: new Date()
+        };
+      }
+      return action;
+    });
+    
+    setActions(updatedActions);
+    
+    try {
+      localStorage.setItem('actions', JSON.stringify(updatedActions));
+      backupActionsToLocalStorage(updatedActions);
+    } catch (saveError) {
+      console.error("Erro ao salvar atualização de ação:", saveError);
+    }
+
+    toast({
+      title: "Ação atualizada",
+      description: "A ação foi atualizada com sucesso.",
       variant: "default",
     });
   };
@@ -227,7 +246,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setActions(updatedActions);
 
-    // Salvar imediatamente para garantir persistência
     try {
       localStorage.setItem('actions', JSON.stringify(updatedActions));
       backupActionsToLocalStorage(updatedActions);
@@ -266,7 +284,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setActions(updatedActions);
 
-    // Salvar imediatamente para garantir persistência
     try {
       localStorage.setItem('actions', JSON.stringify(updatedActions));
       backupActionsToLocalStorage(updatedActions);
@@ -388,6 +405,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       getActionsByResponsible,
       getActionsByClient,
       addAction,
+      updateAction,
       updateActionStatus,
       addActionNote,
       deleteActionNote,

@@ -30,6 +30,7 @@ import ActionNotes from './ActionNotes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import EditActionForm from './EditActionForm';
 
 interface ActionCardProps {
   action: Action;
@@ -39,6 +40,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   const { responsibles, clients } = useCompany();
   const { updateActionStatus, sendActionEmail } = useActions();
   const [showNotes, setShowNotes] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -111,11 +113,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   };
 
   const handleEditAction = () => {
-    toast({
-      title: "Editar ação",
-      description: "Função de editar ação será implementada em breve.",
-      variant: "default",
-    });
+    setShowEditForm(true);
   };
 
   const toggleNotes = () => setShowNotes(!showNotes);
@@ -336,6 +334,15 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Edit Action Dialog */}
+      {showEditForm && (
+        <EditActionForm 
+          open={showEditForm}
+          onOpenChange={setShowEditForm}
+          action={action}
+        />
       )}
     </Card>
   );
