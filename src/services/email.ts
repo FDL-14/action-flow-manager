@@ -1,6 +1,6 @@
-
 import { Responsible } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import emailjs from 'emailjs-com';
 
 interface SendEmailParams {
   to: string[];
@@ -8,15 +8,19 @@ interface SendEmailParams {
   content: string;
 }
 
-// Implementação usando a API MailJet
+// Implementação usando EmailJS que funciona no browser sem problemas de CORS
 export const useEmail = () => {
   const { toast } = useToast();
-  const MAILJET_API_KEY = "f623ce2a2d37c50777d898bf684a52fa";
-  const MAILJET_SECRET_KEY = ""; // Segundo parâmetro vazio, pois estamos usando apenas a API key
+  const EMAILJS_SERVICE_ID = "service_3ydh0yd"; // EmailJS service ID
+  const EMAILJS_TEMPLATE_ID = "template_8v9pz9l"; // EmailJS template ID  
+  const EMAILJS_USER_ID = "f623ce2a2d37c50777d898bf684a52fa"; // EmailJS public key
+
+  // Inicializar EmailJS
+  emailjs.init(EMAILJS_USER_ID);
 
   const sendEmail = async (params: SendEmailParams): Promise<boolean> => {
     try {
-      console.log("Enviando e-mail com MailJet:", params);
+      console.log("Enviando e-mail com EmailJS:", params);
       
       // Verificar se há destinatários
       if (!params.to || params.to.length === 0) {
@@ -28,48 +32,23 @@ export const useEmail = () => {
         return false;
       }
 
-      // Transformar os destinatários no formato esperado pelo MailJet
-      const recipients = params.to.map(email => ({
-        Email: email
-      }));
+      // Preparar os parâmetros para o EmailJS
+      const templateParams = {
+        to_email: params.to.join(","),
+        subject: params.subject,
+        message_html: params.content,
+        from_name: "Gerenciador de Ações - Total Data",
+        from_email: "no-reply@totaldata.com.br"
+      };
 
-      // Usando uma API proxy que não tenha bloqueios CORS
-      // Como o MailJet tem bloqueios CORS no browser, usamos o serviço EmailJS como alternativa
-      // para o ambiente de desenvolvimento/teste
-      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          service_id: "default_service",
-          template_id: "template_default",
-          user_id: MAILJET_API_KEY,
-          template_params: {
-            to_email: params.to.join(","),
-            subject: params.subject,
-            message_html: params.content,
-            from_name: "Gerenciador de Ações - Total Data",
-            from_email: "no-reply@totaldata.com.br"
-          }
-        })
-      });
+      // Enviar e-mail usando EmailJS
+      const response = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams
+      );
 
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        let errorMessage = "Erro ao enviar email";
-        try {
-          const errorData = await response.text();
-          console.error("Erro na resposta da API de email:", errorData);
-          errorMessage = `Erro: ${errorData || response.statusText}`;
-        } catch (e) {
-          console.error("Erro ao processar resposta de erro:", e);
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      console.log("Email enviado com sucesso!");
+      console.log("Email enviado com sucesso:", response);
 
       toast({
         title: "Email enviado",

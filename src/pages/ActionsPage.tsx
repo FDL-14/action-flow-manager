@@ -7,11 +7,13 @@ import ActionForm from '@/components/ActionForm';
 import ActionFilter from '@/components/ActionFilter';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ActionsPage = () => {
   const { company } = useCompany();
   const { actions } = useActions();
   const [showActionForm, setShowActionForm] = useState(false);
+  const isMobile = useIsMobile();
   const [filters, setFilters] = useState({
     status: 'all',
     responsibleId: 'all',
@@ -38,26 +40,28 @@ const ActionsPage = () => {
   });
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 px-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Ações</h1>
-        <Button onClick={() => setShowActionForm(true)}>
+        <Button onClick={() => setShowActionForm(true)} className="mt-2 sm:mt-0">
           <Plus className="h-4 w-4 mr-2" />
           Nova Ação
         </Button>
       </div>
 
-      <div className="flex justify-between items-center mb-4">
+      <div className={`flex ${isMobile ? 'flex-col' : 'justify-between'} items-start sm:items-center mb-4`}>
         <div>
           <h2 className="text-xl font-semibold">Lista de Ações</h2>
           <p className="text-sm text-gray-500">
             {filteredActions.length} {filteredActions.length === 1 ? 'ação encontrada' : 'ações encontradas'}
           </p>
         </div>
-        <ActionFilter 
-          onFilterChange={setFilters}
-          activeFilters={filters}
-        />
+        <div className={isMobile ? 'mt-3 w-full' : ''}>
+          <ActionFilter 
+            onFilterChange={setFilters}
+            activeFilters={filters}
+          />
+        </div>
       </div>
 
       <div className="space-y-4">
