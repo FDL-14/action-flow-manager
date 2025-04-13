@@ -41,6 +41,23 @@ interface UserFormProps {
   editUser?: User;
 }
 
+// Define default permissions structure to avoid empty objects
+const defaultPermissions = {
+  canCreate: false,
+  canEdit: false,
+  canDelete: false,
+  canMarkComplete: true,
+  canMarkDelayed: true,
+  canAddNotes: true,
+  canViewReports: false,
+  viewAllActions: false,
+  canEditUser: false,
+  canEditAction: false,
+  canEditClient: false,
+  canDeleteClient: false,
+  viewOnlyAssignedActions: true,
+};
+
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   cpf: z.string().min(11, 'CPF deve ter 11 dígitos'),
@@ -83,27 +100,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       role: 'user' as const,
       companyIds: [],
       clientIds: [],
-      permissions: {
-        canCreate: false,
-        canEdit: false,
-        canDelete: false,
-        canMarkComplete: true,
-        canMarkDelayed: true,
-        canAddNotes: true,
-        canViewReports: false,
-        viewAllActions: false,
-        canEditUser: false,
-        canEditAction: false,
-        canEditClient: false,
-        canDeleteClient: false,
-        viewOnlyAssignedActions: true,
-      }
+      permissions: defaultPermissions
     },
   });
 
   useEffect(() => {
     if (editUser) {
-      const permissions = editUser.permissions[0] || {};
+      // Ensure permissions is never an empty object
+      const permissions = editUser.permissions[0] || defaultPermissions;
       
       form.reset({
         name: editUser.name,
@@ -139,21 +143,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         role: 'user',
         companyIds: [],
         clientIds: [],
-        permissions: {
-          canCreate: false,
-          canEdit: false,
-          canDelete: false,
-          canMarkComplete: true,
-          canMarkDelayed: true,
-          canAddNotes: true,
-          canViewReports: false,
-          viewAllActions: false,
-          canEditUser: false,
-          canEditAction: false,
-          canEditClient: false,
-          canDeleteClient: false,
-          viewOnlyAssignedActions: true,
-        }
+        permissions: defaultPermissions
       });
       setSelectedCompanies([]);
       setSelectedClients([]);
@@ -163,16 +153,36 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
   const onSubmit = async (data: FormValues) => {
     try {
       if (editUser) {
-        const success = await updateUser({
+        // Make sure all required fields are passed
+        const updatedUser = {
           id: editUser.id,
-          ...data
-        });
+          name: data.name,
+          cpf: data.cpf,
+          email: data.email,
+          role: data.role,
+          companyIds: data.companyIds,
+          clientIds: data.clientIds,
+          permissions: data.permissions
+        };
+        
+        const success = await updateUser(updatedUser);
         
         if (success) {
           onOpenChange(false);
         }
       } else {
-        const success = await addUser(data);
+        // Make sure all required fields are passed
+        const newUser = {
+          name: data.name,
+          cpf: data.cpf,
+          email: data.email,
+          role: data.role,
+          companyIds: data.companyIds,
+          clientIds: data.clientIds,
+          permissions: data.permissions
+        };
+        
+        const success = await addUser(newUser);
         
         if (success) {
           onOpenChange(false);
