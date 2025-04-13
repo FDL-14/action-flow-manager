@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { defaultCompany, mockClients, mockResponsibles } from '@/lib/mock-data';
@@ -15,7 +14,7 @@ interface CompanyContextType {
   addCompany: (company: Omit<Company, 'id'>) => void;
   updateCompany: (company: Company) => void;
   deleteCompany: (id: string) => void;
-  addClient: (client: Omit<Client, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
+  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateClient: (client: Client) => void;
   deleteClient: (id: string) => void;
   addResponsible: (responsible: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
@@ -303,12 +302,12 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     toast.success("Empresa excluída com sucesso");
   };
 
-  const addClient = (clientData: Omit<Client, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
+  const addClient = (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!company) return;
     
     const newClient: Client = {
       id: Date.now().toString(),
-      companyId: company.id,
+      companyId: clientData.companyId || company.id,
       createdAt: new Date(),
       updatedAt: new Date(),
       ...clientData

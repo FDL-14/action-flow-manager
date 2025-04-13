@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 interface ClientFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData?: Client | null;
+  editClient?: Client | null;
 }
 
 const formSchema = z.object({
@@ -51,7 +50,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, initialData }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient }) => {
   const { addClient, updateClient, companies, company } = useCompany();
   const { toast } = useToast();
 
@@ -68,14 +67,14 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, initialData
   });
 
   useEffect(() => {
-    if (initialData) {
+    if (editClient) {
       form.reset({
-        name: initialData.name,
-        email: initialData.email || '',
-        phone: initialData.phone || '',
-        address: initialData.address || '',
-        cnpj: initialData.cnpj || '',
-        companyId: initialData.companyId,
+        name: editClient.name,
+        email: editClient.email || '',
+        phone: editClient.phone || '',
+        address: editClient.address || '',
+        cnpj: editClient.cnpj || '',
+        companyId: editClient.companyId,
       });
     } else {
       form.reset({
@@ -87,14 +86,14 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, initialData
         companyId: company?.id || '',
       });
     }
-  }, [initialData, form, company]);
+  }, [editClient, form, company]);
 
   const onSubmit = (values: FormValues) => {
     try {
-      if (initialData) {
+      if (editClient) {
         // Update existing client
         updateClient({
-          ...initialData,
+          ...editClient,
           name: values.name,
           email: values.email || undefined,
           phone: values.phone || undefined,
@@ -117,7 +116,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, initialData
           phone: values.phone || undefined,
           address: values.address || undefined,
           cnpj: values.cnpj || undefined,
-          companyId: values.companyId,
         });
         
         toast({
@@ -142,9 +140,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, initialData
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{initialData ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+          <DialogTitle>{editClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
           <DialogDescription>
-            {initialData 
+            {editClient 
               ? 'Edite as informações do cliente abaixo.' 
               : 'Preencha os detalhes do novo cliente.'}
           </DialogDescription>
@@ -257,7 +255,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, initialData
                 Cancelar
               </Button>
               <Button type="submit">
-                {initialData ? 'Atualizar Cliente' : 'Adicionar Cliente'}
+                {editClient ? 'Atualizar Cliente' : 'Adicionar Cliente'}
               </Button>
             </DialogFooter>
           </form>
