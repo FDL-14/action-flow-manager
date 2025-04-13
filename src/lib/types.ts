@@ -27,8 +27,8 @@ export interface Permission {
   canEditAction: boolean;
   canEditClient: boolean;
   canDeleteClient: boolean;
-  canEditCompany?: boolean;
-  canDeleteCompany?: boolean;
+  canEditCompany: boolean;
+  canDeleteCompany: boolean;
   viewOnlyAssignedActions: boolean;
 }
 
