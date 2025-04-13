@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -116,6 +117,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           phone: values.phone || undefined,
           address: values.address || undefined,
           cnpj: values.cnpj || undefined,
+          companyId: values.companyId, // Include companyId to fix the TypeScript error
         });
         
         toast({
