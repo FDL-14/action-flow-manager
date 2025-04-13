@@ -193,14 +193,14 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Criar um elemento <a> invisível
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = filename || 'download';
       document.body.appendChild(a);
       a.click();
       
-      // Limpar depois de um breve intervalo para garantir que o download seja iniciado
+      // Remover o elemento depois do download iniciar
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);

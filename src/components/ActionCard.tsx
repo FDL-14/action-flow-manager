@@ -152,14 +152,14 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
   
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Criar um elemento <a> invisível
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = filename || 'download';
       document.body.appendChild(a);
       a.click();
       
-      // Limpar depois de um breve intervalo para garantir que o download seja iniciado
+      // Remover o elemento depois do download iniciar
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);
@@ -208,7 +208,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
             {action.createdByName && (
               <div className="text-sm text-gray-600 mb-2 flex items-center">
                 <UserRound className="h-3 w-3 mr-1" />
-                Criado por: {action.createdByName}
+                <span>Criado por: {action.createdByName}</span>
               </div>
             )}
             <p className="text-sm text-gray-700 mb-3">{action.description}</p>

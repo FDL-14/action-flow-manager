@@ -97,7 +97,7 @@ const Workflow: React.FC = () => {
                 {action.createdByName && (
                   <div className="col-span-2 flex items-center mt-1">
                     <UserRound className="h-3 w-3 mr-1" />
-                    <span className="font-medium">Criado por:</span> {action.createdByName}
+                    <span className="font-medium mr-1">Criado por:</span> {action.createdByName}
                   </div>
                 )}
               </div>
