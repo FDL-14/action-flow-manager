@@ -30,12 +30,154 @@ export const defaultMasterUser: User = {
   ]
 };
 
+// Usuários adicionais para garantir acesso
+export const additionalUsers: User[] = [
+  {
+    id: '2',
+    cpf: '70635016150',
+    name: 'LEONARDO CARRIJO MARTINS',
+    email: 'leonardo@example.com',
+    role: 'user',
+    companyIds: ['1'],
+    clientIds: [],
+    permissions: [
+      {
+        id: "default",
+        name: "Default Permissions",
+        description: "Default user permissions",
+        canCreate: true,
+        canEdit: true,
+        canDelete: false,
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: false,
+        viewAllActions: false,
+        canEditUser: false,
+        canEditAction: true,
+        canEditClient: false,
+        canDeleteClient: false,
+        viewOnlyAssignedActions: true
+      }
+    ]
+  },
+  {
+    id: '3',
+    cpf: '26722272842',
+    name: 'OUTRO USUÁRIO',
+    email: 'outro@example.com',
+    role: 'user',
+    companyIds: ['1'],
+    clientIds: [],
+    permissions: [
+      {
+        id: "default",
+        name: "Default Permissions",
+        description: "Default user permissions",
+        canCreate: true,
+        canEdit: true,
+        canDelete: false,
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: false,
+        viewAllActions: false,
+        canEditUser: false,
+        canEditAction: true,
+        canEditClient: false,
+        canDeleteClient: false,
+        viewOnlyAssignedActions: true
+      }
+    ]
+  },
+  {
+    id: '4',
+    cpf: '01938414101',
+    name: 'FULANO TESTE',
+    email: 'fulano@example.com',
+    role: 'user',
+    companyIds: ['1'],
+    clientIds: [],
+    permissions: [
+      {
+        id: "default",
+        name: "Default Permissions",
+        description: "Default user permissions",
+        canCreate: true,
+        canEdit: true,
+        canDelete: false,
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: false,
+        viewAllActions: false,
+        canEditUser: false,
+        canEditAction: true,
+        canEditClient: false,
+        canDeleteClient: false,
+        viewOnlyAssignedActions: true
+      }
+    ]
+  },
+  {
+    id: '5',
+    cpf: '24908676879',
+    name: 'FUNCIONÁRIO TESTE',
+    email: 'funcionario@example.com',
+    role: 'user',
+    companyIds: ['1'],
+    clientIds: [],
+    permissions: [
+      {
+        id: "default",
+        name: "Default Permissions",
+        description: "Default user permissions",
+        canCreate: true,
+        canEdit: true,
+        canDelete: false,
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: false,
+        viewAllActions: false,
+        canEditUser: false,
+        canEditAction: true,
+        canEditClient: false,
+        canDeleteClient: false,
+        viewOnlyAssignedActions: true
+      }
+    ]
+  }
+];
+
 export const defaultCompany: Company = {
   id: '1',
   name: 'Minha Empresa',
   createdAt: new Date(),
   updatedAt: new Date()
 };
+
+// Empresas adicionais para testes
+export const additionalCompanies: Company[] = [
+  {
+    id: '2',
+    name: 'Empresa Secundária', 
+    address: 'Rua das Flores, 123',
+    cnpj: '12.345.678/0001-90',
+    phone: '(11) 98765-4321',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '3',
+    name: 'Terceira Empresa',
+    address: 'Avenida Principal, 456',
+    cnpj: '98.765.432/0001-10',
+    phone: '(11) 12345-6789',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
 
 export const mockResponsibles: Responsible[] = [
   {

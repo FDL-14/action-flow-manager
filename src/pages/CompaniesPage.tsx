@@ -62,6 +62,9 @@ const CompaniesPage = () => {
 
   const canDelete = user?.role === 'master';
 
+  // Para diagnóstico
+  console.log("Empresas disponíveis:", companies);
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -72,74 +75,80 @@ const CompaniesPage = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {companies.map((companyItem) => (
-          <Card key={companyItem.id} className="overflow-hidden">
-            <CardHeader className="bg-gray-50">
-              <div className="flex justify-between items-start">
-                <CardTitle>{companyItem.name}</CardTitle>
-                <div className="flex space-x-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  {canDelete && companyItem.id !== company?.id && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDeleteCompany(companyItem.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
+      {companies.length === 0 ? (
+        <div className="bg-gray-50 p-6 rounded-lg text-center">
+          <p className="text-gray-500">Nenhuma empresa encontrada. Clique em "Nova Empresa" para adicionar.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {companies.map((companyItem) => (
+            <Card key={companyItem.id} className="overflow-hidden">
+              <CardHeader className="bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <CardTitle>{companyItem.name}</CardTitle>
+                  <div className="flex space-x-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
+                      <Edit className="h-4 w-4" />
                     </Button>
-                  )}
-                </div>
-              </div>
-              <CardDescription>
-                {companyItem.id === company?.id ? 'Empresa Principal' : 'Empresa'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                {companyItem.logo && (
-                  <div className="mb-4 flex justify-center">
-                    <img 
-                      src={companyItem.logo} 
-                      alt={`${companyItem.name} Logo`} 
-                      className="h-16 object-contain" 
-                    />
+                    {canDelete && companyItem.id !== company?.id && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDeleteCompany(companyItem.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                )}
-                <div className="flex items-start">
-                  <Building className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
+                </div>
+                <CardDescription>
+                  {companyItem.id === company?.id ? 'Empresa Principal' : 'Empresa'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-2">
+                  {companyItem.logo && (
+                    <div className="mb-4 flex justify-center">
+                      <img 
+                        src={companyItem.logo} 
+                        alt={`${companyItem.name} Logo`} 
+                        className="h-16 object-contain" 
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-start">
+                    <Building className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold">Endereço</p>
+                      <p className="text-sm text-gray-600">
+                        {companyItem.address || 'Não informado'}
+                      </p>
+                    </div>
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold">Endereço</p>
+                    <p className="text-sm font-semibold">CNPJ</p>
                     <p className="text-sm text-gray-600">
-                      {companyItem.address || 'Não informado'}
+                      {companyItem.cnpj || 'Não informado'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Telefone</p>
+                    <p className="text-sm text-gray-600">
+                      {companyItem.phone || 'Não informado'}
                     </p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">CNPJ</p>
-                  <p className="text-sm text-gray-600">
-                    {companyItem.cnpj || 'Não informado'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Telefone</p>
-                  <p className="text-sm text-gray-600">
-                    {companyItem.phone || 'Não informado'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-gray-50 flex justify-between">
-              <p className="text-xs text-gray-500">
-                Cadastrado em: {new Date(companyItem.createdAt).toLocaleDateString()}
-              </p>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+              <CardFooter className="bg-gray-50 flex justify-between">
+                <p className="text-xs text-gray-500">
+                  Cadastrado em: {new Date(companyItem.createdAt).toLocaleDateString()}
+                </p>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <CompanyForm
         open={showCompanyForm}

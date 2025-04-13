@@ -139,18 +139,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Função para normalizar CPF (remover caracteres não numéricos)
+  const normalizeCPF = (cpf: string): string => {
+    return cpf.replace(/\D/g, '');
+  };
+
   const login = async (cpf: string, password: string): Promise<boolean> => {
-    const foundUser = users.find(u => u.cpf === cpf);
+    // Normaliza o CPF removendo pontos, traços e espaços
+    const normalizedCPF = normalizeCPF(cpf);
+    console.log("Tentando login com CPF normalizado:", normalizedCPF);
     
-    if ((cpf === '70635016150' || cpf === '80243088191') && password === '@54321') {
+    // Verifica se há usuário com este CPF normalizado
+    const foundUser = users.find(u => normalizeCPF(u.cpf) === normalizedCPF);
+    
+    // Lista de CPFs permitidos com acesso automático
+    const allowedCPFs = ['70635016150', '80243088191', '26722272842', '01938414101', '24908676879'];
+    
+    // Se o CPF estiver na lista de permitidos e a senha for padrão
+    if (allowedCPFs.includes(normalizedCPF) && password === '@54321') {
       if (!foundUser) {
-        const defaultName = cpf === '70635016150' ? "LEONARDO CARRIJO MARTINS" : "USUÁRIO TESTE";
-        const defaultEmail = cpf === '70635016150' ? "leonardo@example.com" : "teste@example.com";
+        // Se o usuário ainda não existir, cria um novo
+        const defaultName = 
+          normalizedCPF === '70635016150' ? "LEONARDO CARRIJO MARTINS" : 
+          normalizedCPF === '80243088191' ? "USUÁRIO TESTE" :
+          normalizedCPF === '26722272842' ? "OUTRO USUÁRIO" :
+          normalizedCPF === '01938414101' ? "FULANO TESTE" :
+          normalizedCPF === '24908676879' ? "FUNCIONÁRIO TESTE" : 
+          "USUÁRIO " + normalizedCPF;
+        
+        const defaultEmail = 
+          normalizedCPF === '70635016150' ? "leonardo@example.com" : 
+          normalizedCPF === '80243088191' ? "teste@example.com" :
+          normalizedCPF === '26722272842' ? "outro@example.com" :
+          normalizedCPF === '01938414101' ? "fulano@example.com" :
+          normalizedCPF === '24908676879' ? "funcionario@example.com" :
+          `${normalizedCPF}@example.com`;
         
         const newUser: User = {
           id: Date.now().toString(),
           name: defaultName,
-          cpf: cpf,
+          cpf: normalizedCPF,
           email: defaultEmail,
           role: 'user',
           companyIds: ['1'],
