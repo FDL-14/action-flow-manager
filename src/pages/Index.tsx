@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { additionalCompanies, additionalUsers } from '@/lib/mock-data';
+import { additionalCompanies, additionalUsers, defaultMasterUser } from '@/lib/mock-data';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -16,7 +16,8 @@ const Index = () => {
     const initializeDefaultData = async () => {
       try {
         // Verificar e adicionar empresas adicionais
-        if (companies && additionalCompanies) {
+        if (companies) {
+          // Verificar cada empresa adicional
           for (const company of additionalCompanies) {
             if (!companies.some(c => c.id === company.id)) {
               console.log(`Adicionando empresa ${company.name} ao localStorage`);
@@ -32,8 +33,23 @@ const Index = () => {
           }
         }
 
-        // Verificar e adicionar usuários adicionais
-        if (users && additionalUsers) {
+        // Verificar e adicionar usuário master padrão se não existir
+        if (users) {
+          const normalizedMasterCPF = defaultMasterUser.cpf.replace(/\D/g, '');
+          
+          if (!users.some(u => u.cpf.replace(/\D/g, '') === normalizedMasterCPF)) {
+            console.log(`Adicionando usuário master ${defaultMasterUser.name} ao localStorage`);
+            await addUser({
+              name: defaultMasterUser.name,
+              cpf: defaultMasterUser.cpf,
+              email: defaultMasterUser.email,
+              role: defaultMasterUser.role,
+              companyIds: defaultMasterUser.companyIds,
+              permissions: defaultMasterUser.permissions[0]
+            });
+          }
+          
+          // Verificar e adicionar usuários adicionais
           for (const userToAdd of additionalUsers) {
             // Normaliza CPFs para comparação
             const normalizedCPFs = users.map(u => u.cpf.replace(/\D/g, ''));

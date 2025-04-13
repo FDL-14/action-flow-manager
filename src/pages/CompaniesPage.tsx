@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,15 @@ const CompaniesPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
   const { toast } = useToast();
+  const [companiesList, setCompaniesList] = useState<Company[]>([]);
+
+  // Ensure companies are properly loaded
+  useEffect(() => {
+    if (companies && companies.length > 0) {
+      console.log("Companies loaded:", companies.length);
+      setCompaniesList(companies);
+    }
+  }, [companies]);
 
   const handleAddCompany = () => {
     setEditingCompany(null);
@@ -76,13 +85,13 @@ const CompaniesPage = () => {
         )}
       </div>
 
-      {companies.length === 0 ? (
+      {companiesList.length === 0 ? (
         <div className="bg-gray-50 p-6 rounded-lg text-center">
           <p className="text-gray-500">Nenhuma empresa encontrada. Clique em "Nova Empresa" para adicionar.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {companies.map((companyItem) => (
+          {companiesList.map((companyItem) => (
             <Card key={companyItem.id} className="overflow-hidden">
               <CardHeader className="bg-gray-50">
                 <div className="flex justify-between items-start">

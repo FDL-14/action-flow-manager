@@ -29,8 +29,8 @@ interface AuthContextType {
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
-      canEditCompany?: boolean;
-      canDeleteCompany?: boolean;
+      canEditCompany: boolean;
+      canDeleteCompany: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
@@ -55,8 +55,8 @@ interface AuthContextType {
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
-      canEditCompany?: boolean;
-      canDeleteCompany?: boolean;
+      canEditCompany: boolean;
+      canDeleteCompany: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
@@ -122,6 +122,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             companyIds: u.companyIds || ['1'],
             clientIds: u.clientIds || []
           };
+          
+          // Ensure all users have the required permission properties
+          if (updatedUser.permissions && updatedUser.permissions.length > 0) {
+            updatedUser.permissions = updatedUser.permissions.map(permission => ({
+              ...permission,
+              canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (u.role === 'master'),
+              canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (u.role === 'master')
+            }));
+          }
+          
           return updatedUser;
         });
         
@@ -131,14 +141,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error parsing users from localStorage:', error);
       }
     } else {
-      const updatedMasterUser = {
-        ...defaultMasterUser,
-        companyIds: ['1'],
-        clientIds: [],
-        email: 'admin@example.com'
-      };
-      setUsers([updatedMasterUser]);
-      localStorage.setItem('users', JSON.stringify([updatedMasterUser]));
+      // Initialize with default master user
+      setUsers([defaultMasterUser]);
+      localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
     }
   }, []);
 
@@ -156,12 +161,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundUser = users.find(u => normalizeCPF(u.cpf) === normalizedCPF);
     
     if (foundUser && (password === '@54321' || password === foundUser.password)) {
-      setUser(foundUser);
+      // Ensure user has all required permission properties before login
+      const updatedUser = {
+        ...foundUser,
+        permissions: foundUser.permissions.map(permission => ({
+          ...permission,
+          canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (foundUser.role === 'master'),
+          canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (foundUser.role === 'master')
+        }))
+      };
+      
+      setUser(updatedUser);
       setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       toast({
         title: "Login realizado com sucesso",
-        description: `Bem-vindo, ${foundUser.name}!`,
+        description: `Bem-vindo, ${updatedUser.name}!`,
         variant: "default",
       });
       return true;
@@ -211,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
-    if (users.some(u => u.cpf === userData.cpf)) {
+    if (users.some(u => normalizeCPF(u.cpf) === normalizeCPF(userData.cpf))) {
       toast({
         title: "Erro",
         description: "Já existe um usuário com este CPF",
