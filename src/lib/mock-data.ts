@@ -9,7 +9,24 @@ export const defaultMasterUser: User = {
   role: 'master',
   companyIds: ['1'], // Adding the companyIds property with default company
   permissions: [
-    { id: '1', name: 'all', description: 'Acesso total ao sistema' }
+    { 
+      id: '1', 
+      name: 'all', 
+      description: 'Acesso total ao sistema',
+      canCreate: true,
+      canEdit: true,
+      canDelete: true,
+      canMarkComplete: true,
+      canMarkDelayed: true,
+      canAddNotes: true,
+      canViewReports: true,
+      viewAllActions: true,
+      canEditUser: true,
+      canEditAction: true,
+      canEditClient: true,
+      canDeleteClient: true,
+      viewOnlyAssignedActions: false
+    }
   ]
 };
 

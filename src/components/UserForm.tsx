@@ -117,19 +117,19 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         companyIds: editUser.companyIds || [],
         clientIds: editUser.clientIds || [],
         permissions: {
-          canCreate: permissions.canCreate || false,
-          canEdit: permissions.canEdit || false, 
-          canDelete: permissions.canDelete || false,
-          canMarkComplete: permissions.canMarkComplete || true,
-          canMarkDelayed: permissions.canMarkDelayed || true,
-          canAddNotes: permissions.canAddNotes || true,
-          canViewReports: permissions.canViewReports || false,
-          viewAllActions: permissions.viewAllActions || false,
-          canEditUser: permissions.canEditUser || false,
-          canEditAction: permissions.canEditAction || false,
-          canEditClient: permissions.canEditClient || false,
-          canDeleteClient: permissions.canDeleteClient || false,
-          viewOnlyAssignedActions: permissions.viewOnlyAssignedActions || true,
+          canCreate: permissions.canCreate,
+          canEdit: permissions.canEdit, 
+          canDelete: permissions.canDelete,
+          canMarkComplete: permissions.canMarkComplete,
+          canMarkDelayed: permissions.canMarkDelayed,
+          canAddNotes: permissions.canAddNotes,
+          canViewReports: permissions.canViewReports,
+          viewAllActions: permissions.viewAllActions,
+          canEditUser: permissions.canEditUser,
+          canEditAction: permissions.canEditAction,
+          canEditClient: permissions.canEditClient,
+          canDeleteClient: permissions.canDeleteClient,
+          viewOnlyAssignedActions: permissions.viewOnlyAssignedActions
         }
       });
       
@@ -162,7 +162,21 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           role: data.role,
           companyIds: data.companyIds,
           clientIds: data.clientIds,
-          permissions: data.permissions
+          permissions: {
+            canCreate: data.permissions.canCreate,
+            canEdit: data.permissions.canEdit,
+            canDelete: data.permissions.canDelete,
+            canMarkComplete: data.permissions.canMarkComplete,
+            canMarkDelayed: data.permissions.canMarkDelayed,
+            canAddNotes: data.permissions.canAddNotes,
+            canViewReports: data.permissions.canViewReports,
+            viewAllActions: data.permissions.viewAllActions,
+            canEditUser: data.permissions.canEditUser,
+            canEditAction: data.permissions.canEditAction,
+            canEditClient: data.permissions.canEditClient,
+            canDeleteClient: data.permissions.canDeleteClient,
+            viewOnlyAssignedActions: data.permissions.viewOnlyAssignedActions
+          }
         };
         
         const success = await updateUser(updatedUser);
@@ -179,7 +193,21 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           role: data.role,
           companyIds: data.companyIds,
           clientIds: data.clientIds,
-          permissions: data.permissions
+          permissions: {
+            canCreate: data.permissions.canCreate,
+            canEdit: data.permissions.canEdit,
+            canDelete: data.permissions.canDelete,
+            canMarkComplete: data.permissions.canMarkComplete,
+            canMarkDelayed: data.permissions.canMarkDelayed,
+            canAddNotes: data.permissions.canAddNotes,
+            canViewReports: data.permissions.canViewReports,
+            viewAllActions: data.permissions.viewAllActions,
+            canEditUser: data.permissions.canEditUser,
+            canEditAction: data.permissions.canEditAction,
+            canEditClient: data.permissions.canEditClient,
+            canDeleteClient: data.permissions.canDeleteClient,
+            viewOnlyAssignedActions: data.permissions.viewOnlyAssignedActions
+          }
         };
         
         const success = await addUser(newUser);

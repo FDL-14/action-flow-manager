@@ -26,11 +26,11 @@ interface AuthContextType {
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
-      canEditUser?: boolean;
-      canEditAction?: boolean;
-      canEditClient?: boolean;
-      canDeleteClient?: boolean;
-      viewOnlyAssignedActions?: boolean;
+      canEditUser: boolean;
+      canEditAction: boolean;
+      canEditClient: boolean;
+      canDeleteClient: boolean;
+      viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
   updateUser: (userData: { 
@@ -50,11 +50,11 @@ interface AuthContextType {
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
-      canEditUser?: boolean;
-      canEditAction?: boolean;
-      canEditClient?: boolean;
-      canDeleteClient?: boolean;
-      viewOnlyAssignedActions?: boolean;
+      canEditUser: boolean;
+      canEditAction: boolean;
+      canEditClient: boolean;
+      canDeleteClient: boolean;
+      viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -169,7 +169,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               canViewReports: false,
               viewAllActions: false,
               canEditUser: false,
-              canEditAction: true
+              canEditAction: true,
+              canEditClient: false,
+              canDeleteClient: false,
+              viewOnlyAssignedActions: true
             }
           ]
         };
@@ -238,11 +241,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
-      canEditUser?: boolean;
-      canEditAction?: boolean;
-      canEditClient?: boolean;
-      canDeleteClient?: boolean;
-      viewOnlyAssignedActions?: boolean;
+      canEditUser: boolean;
+      canEditAction: boolean;
+      canEditClient: boolean;
+      canDeleteClient: boolean;
+      viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
     if (users.some(u => u.cpf === userData.cpf)) {
@@ -317,11 +320,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canAddNotes: boolean;
       canViewReports: boolean;
       viewAllActions: boolean;
-      canEditUser?: boolean;
-      canEditAction?: boolean;
-      canEditClient?: boolean;
-      canDeleteClient?: boolean;
-      viewOnlyAssignedActions?: boolean;
+      canEditUser: boolean;
+      canEditAction: boolean;
+      canEditClient: boolean;
+      canDeleteClient: boolean;
+      viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
     if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
