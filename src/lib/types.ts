@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -26,6 +27,8 @@ export interface Permission {
   canEditAction: boolean;
   canEditClient: boolean;
   canDeleteClient: boolean;
+  canEditCompany?: boolean;
+  canDeleteCompany?: boolean;
   viewOnlyAssignedActions: boolean;
 }
 

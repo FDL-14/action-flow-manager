@@ -5,9 +5,9 @@ export const defaultMasterUser: User = {
   id: '1',
   cpf: '80243088191',
   name: 'Administrador Master',
-  email: 'admin@gestaodeacoes.com',
+  email: 'fabiano@totalseguranca.net',
   role: 'master',
-  companyIds: ['1'], // Adding the companyIds property with default company
+  companyIds: ['1'],
   permissions: [
     { 
       id: '1', 
@@ -30,13 +30,13 @@ export const defaultMasterUser: User = {
   ]
 };
 
-// Usuários adicionais para garantir acesso
+// Usuários reais conforme a imagem
 export const additionalUsers: User[] = [
   {
     id: '2',
     cpf: '70635016150',
     name: 'LEONARDO CARRIJO MARTINS',
-    email: 'leonardo@example.com',
+    email: '9999999999@example.com',
     role: 'user',
     companyIds: ['1'],
     clientIds: [],
@@ -64,8 +64,8 @@ export const additionalUsers: User[] = [
   {
     id: '3',
     cpf: '26722272842',
-    name: 'OUTRO USUÁRIO',
-    email: 'outro@example.com',
+    name: 'Fernanda Malta',
+    email: '26722272842@example.com',
     role: 'user',
     companyIds: ['1'],
     clientIds: [],
@@ -93,9 +93,9 @@ export const additionalUsers: User[] = [
   {
     id: '4',
     cpf: '01938414101',
-    name: 'FULANO TESTE',
-    email: 'fulano@example.com',
-    role: 'user',
+    name: 'Cleber Cardoso Pereira',
+    email: 'cleber@analysisconsultora.com',
+    role: 'master',
     companyIds: ['1'],
     clientIds: [],
     permissions: [
@@ -105,26 +105,26 @@ export const additionalUsers: User[] = [
         description: "Default user permissions",
         canCreate: true,
         canEdit: true,
-        canDelete: false,
+        canDelete: true,
         canMarkComplete: true,
         canMarkDelayed: true,
         canAddNotes: true,
-        canViewReports: false,
-        viewAllActions: false,
-        canEditUser: false,
+        canViewReports: true,
+        viewAllActions: true,
+        canEditUser: true,
         canEditAction: true,
-        canEditClient: false,
-        canDeleteClient: false,
-        viewOnlyAssignedActions: true
+        canEditClient: true,
+        canDeleteClient: true,
+        viewOnlyAssignedActions: false
       }
     ]
   },
   {
     id: '5',
     cpf: '24908676879',
-    name: 'FUNCIONÁRIO TESTE',
-    email: 'funcionario@example.com',
-    role: 'user',
+    name: 'Flávia de Sousa Magalhães Luciano',
+    email: 'flamagalhaes_3@hotmail.com',
+    role: 'master',
     companyIds: ['1'],
     clientIds: [],
     permissions: [
@@ -134,17 +134,17 @@ export const additionalUsers: User[] = [
         description: "Default user permissions",
         canCreate: true,
         canEdit: true,
-        canDelete: false,
+        canDelete: true,
         canMarkComplete: true,
         canMarkDelayed: true,
         canAddNotes: true,
-        canViewReports: false,
-        viewAllActions: false,
-        canEditUser: false,
+        canViewReports: true,
+        viewAllActions: true,
+        canEditUser: true,
         canEditAction: true,
-        canEditClient: false,
-        canDeleteClient: false,
-        viewOnlyAssignedActions: true
+        canEditClient: true,
+        canDeleteClient: true,
+        viewOnlyAssignedActions: false
       }
     ]
   }
@@ -153,27 +153,30 @@ export const additionalUsers: User[] = [
 export const defaultCompany: Company = {
   id: '1',
   name: 'Minha Empresa',
-  createdAt: new Date(),
-  updatedAt: new Date()
+  address: 'Segunda Avenida Nº 98 Centro',
+  cnpj: '12345678000190',
+  phone: '6436612454',
+  createdAt: new Date('2025-04-11'),
+  updatedAt: new Date('2025-04-11')
 };
 
 // Empresas adicionais para testes
 export const additionalCompanies: Company[] = [
   {
     id: '2',
-    name: 'Empresa Secundária', 
+    name: 'Total Segurança', 
     address: 'Rua das Flores, 123',
     cnpj: '12.345.678/0001-90',
-    phone: '(11) 98765-4321',
+    phone: '6436617626',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
     id: '3',
-    name: 'Terceira Empresa',
+    name: 'Total Data',
     address: 'Avenida Principal, 456',
     cnpj: '98.765.432/0001-10',
-    phone: '(11) 12345-6789',
+    phone: '6436612454',
     createdAt: new Date(),
     updatedAt: new Date()
   }

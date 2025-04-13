@@ -60,19 +60,20 @@ const CompaniesPage = () => {
     }
   };
 
-  const canDelete = user?.role === 'master';
-
-  // Para diagnóstico
-  console.log("Empresas disponíveis:", companies);
+  // Verify permissions for company editing and deletion
+  const canEditCompany = user?.role === 'master' || user?.permissions.some(p => p.canEditCompany);
+  const canDeleteCompany = user?.role === 'master' || user?.permissions.some(p => p.canDeleteCompany);
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Empresas</h1>
-        <Button onClick={handleAddCompany} className="mt-4 md:mt-0">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Empresa
-        </Button>
+        {canEditCompany && (
+          <Button onClick={handleAddCompany} className="mt-4 md:mt-0">
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Empresa
+          </Button>
+        )}
       </div>
 
       {companies.length === 0 ? (
@@ -87,10 +88,12 @@ const CompaniesPage = () => {
                 <div className="flex justify-between items-start">
                   <CardTitle>{companyItem.name}</CardTitle>
                   <div className="flex space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    {canDelete && companyItem.id !== company?.id && (
+                    {canEditCompany && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeleteCompany && companyItem.id !== company?.id && (
                       <Button 
                         variant="ghost" 
                         size="icon" 

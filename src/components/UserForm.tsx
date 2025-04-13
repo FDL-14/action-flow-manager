@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +40,6 @@ interface UserFormProps {
   editUser?: User;
 }
 
-// Define default permissions structure with required fields
 const defaultPermissions = {
   canCreate: false,
   canEdit: false,
@@ -78,6 +76,8 @@ const formSchema = z.object({
     canEditAction: z.boolean().default(false),
     canEditClient: z.boolean().default(false),
     canDeleteClient: z.boolean().default(false),
+    canEditCompany: z.boolean().default(false),
+    canDeleteCompany: z.boolean().default(false),
     viewOnlyAssignedActions: z.boolean().default(true),
   })
 });
@@ -106,7 +106,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
 
   useEffect(() => {
     if (editUser) {
-      // Ensure permissions is never an empty object
       const permissions = editUser.permissions[0] || defaultPermissions;
       
       form.reset({
@@ -129,6 +128,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           canEditAction: permissions.canEditAction,
           canEditClient: permissions.canEditClient,
           canDeleteClient: permissions.canDeleteClient,
+          canEditCompany: permissions.canEditCompany || false,
+          canDeleteCompany: permissions.canDeleteCompany || false,
           viewOnlyAssignedActions: permissions.viewOnlyAssignedActions
         }
       });
@@ -143,7 +144,11 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         role: 'user',
         companyIds: [],
         clientIds: [],
-        permissions: defaultPermissions
+        permissions: {
+          ...defaultPermissions,
+          canEditCompany: false,
+          canDeleteCompany: false
+        }
       });
       setSelectedCompanies([]);
       setSelectedClients([]);
@@ -153,7 +158,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
   const onSubmit = async (data: FormValues) => {
     try {
       if (editUser) {
-        // Make sure all required fields are passed with non-optional permissions
         const updatedUser = {
           id: editUser.id,
           name: data.name,
@@ -175,6 +179,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
             canEditAction: data.permissions.canEditAction,
             canEditClient: data.permissions.canEditClient,
             canDeleteClient: data.permissions.canDeleteClient,
+            canEditCompany: data.permissions.canEditCompany,
+            canDeleteCompany: data.permissions.canDeleteCompany,
             viewOnlyAssignedActions: data.permissions.viewOnlyAssignedActions
           }
         };
@@ -185,7 +191,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           onOpenChange(false);
         }
       } else {
-        // Make sure all required fields are passed with non-optional permissions
         const newUser = {
           name: data.name,
           cpf: data.cpf,
@@ -206,6 +211,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
             canEditAction: data.permissions.canEditAction,
             canEditClient: data.permissions.canEditClient,
             canDeleteClient: data.permissions.canDeleteClient,
+            canEditCompany: data.permissions.canEditCompany,
+            canDeleteCompany: data.permissions.canDeleteCompany,
             viewOnlyAssignedActions: data.permissions.viewOnlyAssignedActions
           }
         };
@@ -666,6 +673,48 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                         <FormLabel>Excluir Clientes</FormLabel>
                         <p className="text-sm text-gray-500">
                           Permissão para excluir clientes
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="permissions.canEditCompany"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Editar Empresas</FormLabel>
+                        <p className="text-sm text-gray-500">
+                          Permissão para editar empresas
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="permissions.canDeleteCompany"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Excluir Empresas</FormLabel>
+                        <p className="text-sm text-gray-500">
+                          Permissão para excluir empresas
                         </p>
                       </div>
                     </FormItem>

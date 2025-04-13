@@ -17,7 +17,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { additionalUsers } from '@/lib/mock-data';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -53,9 +52,6 @@ const LoginPage = () => {
   if (isAuthenticated) {
     return <Navigate to="/" />;
   }
-
-  // Listar CPFs disponíveis para facilitar o teste
-  const availableCPFs = ['80243088191', ...additionalUsers.map(user => user.cpf)];
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -112,15 +108,6 @@ const LoginPage = () => {
                 </Button>
               </form>
             </Form>
-            
-            <div className="mt-4 p-3 bg-blue-50 text-xs rounded-md">
-              <p className="font-medium mb-1">CPFs disponíveis para teste:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                {availableCPFs.map((cpf, index) => (
-                  <li key={index}>{cpf}</li>
-                ))}
-              </ul>
-            </div>
           </CardContent>
           <CardFooter className="flex flex-col">
             <div className="text-center text-xs text-gray-500 mt-4">

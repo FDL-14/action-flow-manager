@@ -69,14 +69,8 @@ const Index = () => {
         console.log("Usuário autenticado, redirecionando para o dashboard");
         navigate('/dashboard');
       } else {
-        // Para acesso público, permitir entrada com aviso de visitante
-        console.log("Acesso como visitante, redirecionando para o dashboard");
-        toast.info("Acesso como visitante", {
-          description: "Você está acessando o sistema como visitante. Algumas funcionalidades podem ser limitadas.",
-          duration: 5000,
-        });
-        
-        // Redireciona para o login em vez do dashboard quando não autenticado
+        // Para acesso não autenticado, redirecionar para login
+        console.log("Usuário não autenticado, redirecionando para o login");
         navigate('/login');
       }
     };

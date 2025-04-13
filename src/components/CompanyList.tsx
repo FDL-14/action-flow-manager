@@ -8,7 +8,7 @@ import CompanyForm from './CompanyForm';
 import { Company } from '@/lib/types';
 
 const CompanyList = () => {
-  const { company, clients, addClient } = useCompany();
+  const { companies, addCompany } = useCompany();
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 
@@ -22,9 +22,6 @@ const CompanyList = () => {
     setShowCompanyForm(true);
   };
 
-  // Treat clients as additional companies
-  const allCompanies = company ? [company, ...clients] : [...clients];
-
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
@@ -36,7 +33,7 @@ const CompanyList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {allCompanies.map((companyItem) => (
+        {companies.map((companyItem) => (
           <Card key={companyItem.id} className="overflow-hidden">
             <CardHeader className="bg-gray-50">
               <div className="flex justify-between items-start">
@@ -46,7 +43,7 @@ const CompanyList = () => {
                 </Button>
               </div>
               <CardDescription>
-                {companyItem.id === company?.id ? 'Empresa Principal' : 'Cliente/Filial'}
+                {companyItem.id === companies[0]?.id ? 'Empresa Principal' : 'Cliente/Filial'}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">

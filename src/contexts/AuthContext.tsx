@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -30,6 +29,8 @@ interface AuthContextType {
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
+      canEditCompany?: boolean;
+      canDeleteCompany?: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
@@ -54,6 +55,8 @@ interface AuthContextType {
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
+      canEditCompany?: boolean;
+      canDeleteCompany?: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
@@ -152,76 +155,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Verifica se há usuário com este CPF normalizado
     const foundUser = users.find(u => normalizeCPF(u.cpf) === normalizedCPF);
     
-    // Lista de CPFs permitidos com acesso automático
-    const allowedCPFs = ['70635016150', '80243088191', '26722272842', '01938414101', '24908676879'];
-    
-    // Se o CPF estiver na lista de permitidos e a senha for padrão
-    if (allowedCPFs.includes(normalizedCPF) && password === '@54321') {
-      if (!foundUser) {
-        // Se o usuário ainda não existir, cria um novo
-        const defaultName = 
-          normalizedCPF === '70635016150' ? "LEONARDO CARRIJO MARTINS" : 
-          normalizedCPF === '80243088191' ? "USUÁRIO TESTE" :
-          normalizedCPF === '26722272842' ? "OUTRO USUÁRIO" :
-          normalizedCPF === '01938414101' ? "FULANO TESTE" :
-          normalizedCPF === '24908676879' ? "FUNCIONÁRIO TESTE" : 
-          "USUÁRIO " + normalizedCPF;
-        
-        const defaultEmail = 
-          normalizedCPF === '70635016150' ? "leonardo@example.com" : 
-          normalizedCPF === '80243088191' ? "teste@example.com" :
-          normalizedCPF === '26722272842' ? "outro@example.com" :
-          normalizedCPF === '01938414101' ? "fulano@example.com" :
-          normalizedCPF === '24908676879' ? "funcionario@example.com" :
-          `${normalizedCPF}@example.com`;
-        
-        const newUser: User = {
-          id: Date.now().toString(),
-          name: defaultName,
-          cpf: normalizedCPF,
-          email: defaultEmail,
-          role: 'user',
-          companyIds: ['1'],
-          clientIds: [],
-          permissions: [
-            {
-              id: "default",
-              name: "Default Permissions",
-              description: "Default user permissions",
-              canCreate: true,
-              canEdit: true,
-              canDelete: false,
-              canMarkComplete: true,
-              canMarkDelayed: true,
-              canAddNotes: true,
-              canViewReports: false,
-              viewAllActions: false,
-              canEditUser: false,
-              canEditAction: true,
-              canEditClient: false,
-              canDeleteClient: false,
-              viewOnlyAssignedActions: true
-            }
-          ]
-        };
-        
-        const updatedUsers = [...users, newUser];
-        setUsers(updatedUsers);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-        
-        setUser(newUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        
-        toast({
-          title: "Login realizado com sucesso",
-          description: `Bem-vindo, ${newUser.name}!`,
-          variant: "default",
-        });
-        return true;
-      }
-    }
-    
     if (foundUser && (password === '@54321' || password === foundUser.password)) {
       setUser(foundUser);
       setIsAuthenticated(true);
@@ -273,6 +206,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
+      canEditCompany?: boolean;
+      canDeleteCompany?: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
@@ -298,6 +233,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canEditAction: userData.role === 'master',
       canEditClient: userData.role === 'master',
       canDeleteClient: userData.role === 'master',
+      canEditCompany: userData.role === 'master',
+      canDeleteCompany: userData.role === 'master',
       viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
     };
 
@@ -352,6 +289,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
+      canEditCompany?: boolean;
+      canDeleteCompany?: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
@@ -379,6 +318,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           canEditAction: userData.role === 'master',
           canEditClient: userData.role === 'master',
           canDeleteClient: userData.role === 'master',
+          canEditCompany: userData.role === 'master',
+          canDeleteCompany: userData.role === 'master',
           viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
         };
 
