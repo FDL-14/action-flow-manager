@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash, Upload, X, Paperclip, FileImage, FileText, Camera, FilePdf, FileSpreadsheet, FileWord, Eye, Download } from 'lucide-react';
+import { Trash, Upload, X, Paperclip, Image, FileText, Camera, FileIcon, Table, File, Eye, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -188,18 +187,18 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     
     if (fileType === 'image') {
-      return <FileImage className="h-4 w-4 mr-2 text-blue-500" />;
+      return <Image className="h-4 w-4 mr-2 text-blue-500" />;
     } else if (fileExtension === 'pdf') {
-      return <FilePdf className="h-4 w-4 mr-2 text-red-500" />;
+      return <FileIcon className="h-4 w-4 mr-2 text-red-500" />;
     } else if (['xls', 'xlsx', 'csv'].includes(fileExtension || '')) {
-      return <FileSpreadsheet className="h-4 w-4 mr-2 text-green-500" />;
+      return <Table className="h-4 w-4 mr-2 text-green-500" />;
     } else if (['doc', 'docx'].includes(fileExtension || '')) {
-      return <FileWord className="h-4 w-4 mr-2 text-blue-700" />;
+      return <FileText className="h-4 w-4 mr-2 text-blue-700" />;
     } else {
       return <FileText className="h-4 w-4 mr-2 text-gray-500" />;
     }
   };
-  
+
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
       const a = document.createElement('a');
@@ -250,13 +249,13 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     
     switch (fileType) {
       case 'image':
-        return <FileImage className="h-6 w-6 text-blue-500" />;
+        return <Image className="h-6 w-6 text-blue-500" />;
       case 'pdf':
-        return <FilePdf className="h-6 w-6 text-red-500" />;
+        return <FileIcon className="h-6 w-6 text-red-500" />;
       case 'excel':
-        return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
+        return <Table className="h-6 w-6 text-green-500" />;
       case 'word':
-        return <FileWord className="h-6 w-6 text-blue-700" />;
+        return <FileText className="h-6 w-6 text-blue-700" />;
       default:
         return <FileText className="h-6 w-6 text-gray-500" />;
     }

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -19,15 +18,17 @@ import {
   FileText, 
   AlertTriangle, 
   Mail, 
-  FileImage,
+  Image,
   Download,
   Edit,
   UserRound,
   Eye,
   Trash2,
-  FilePdf,
-  FileSpreadsheet,
-  FileWord
+  FileIcon,
+  X,
+  File,
+  Table, 
+  FileType
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -194,15 +195,15 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
     
     switch (fileType) {
       case 'image':
-        return <FileImage className="h-6 w-6 text-blue-500" />;
+        return <Image className="h-6 w-6 text-blue-500" />;
       case 'pdf':
-        return <FilePdf className="h-6 w-6 text-red-500" />;
+        return <FileIcon className="h-6 w-6 text-red-500" />;
       case 'excel':
-        return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
+        return <Table className="h-6 w-6 text-green-500" />;
       case 'word':
-        return <FileWord className="h-6 w-6 text-blue-700" />;
+        return <FileText className="h-6 w-6 text-blue-700" />;
       default:
-        return <FileText className="h-6 w-6 text-gray-500" />;
+        return <FileType className="h-6 w-6 text-gray-500" />;
     }
   };
 
@@ -418,7 +419,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                 <div className="flex items-center">
                   {getAttachmentFileType(latestAttachment) === 'image' ? (
                     <div className="flex items-center">
-                      <FileImage className="h-5 w-5 mr-2 text-blue-500" />
+                      <Image className="h-5 w-5 mr-2 text-blue-500" />
                       <span className="text-sm mr-2">Imagem anexada</span>
                       <img 
                         src={latestAttachment} 
