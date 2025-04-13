@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const CompaniesPage = () => {
-  const { company, companies, addCompany, updateCompany, deleteCompany } = useCompany();
+  const { company, companies, deleteCompany } = useCompany();
   const { user } = useAuth();
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -66,12 +66,10 @@ const CompaniesPage = () => {
     <div className="container mx-auto py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Empresas</h1>
-        {user?.role === 'master' && (
-          <Button onClick={handleAddCompany}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Empresa
-          </Button>
-        )}
+        <Button onClick={handleAddCompany} className="mt-4 md:mt-0">
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Empresa
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -81,11 +79,9 @@ const CompaniesPage = () => {
               <div className="flex justify-between items-start">
                 <CardTitle>{companyItem.name}</CardTitle>
                 <div className="flex space-x-2">
-                  {user?.role === 'master' && (
-                    <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
                   {canDelete && companyItem.id !== company?.id && (
                     <Button 
                       variant="ghost" 

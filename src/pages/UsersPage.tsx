@@ -36,10 +36,14 @@ const UsersPage = () => {
     setSelectedUserId('');
   };
 
-  // Get company names for display
-  const getCompanyName = (companyId: string) => {
-    const company = companies.find(c => c.id === companyId);
-    return company?.name || 'Não encontrada';
+  // Get company names for display - fixed to not show duplicates
+  const getCompanyNames = (companyIds: string[]) => {
+    if (!companyIds || companyIds.length === 0) return 'Nenhuma empresa associada';
+    
+    return companyIds.map(companyId => {
+      const company = companies.find(c => c.id === companyId);
+      return company?.name || 'Não encontrada';
+    }).join(', ');
   };
 
   // Only show edit buttons for users the current user has permission to edit
@@ -50,7 +54,7 @@ const UsersPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
         {canEditUsers && (
-          <Button onClick={() => { setEditingUser(undefined); setShowUserForm(true); }}>
+          <Button onClick={() => { setEditingUser(undefined); setShowUserForm(true); }} className="mt-4 sm:mt-0">
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
           </Button>
@@ -58,7 +62,7 @@ const UsersPage = () => {
       </div>
 
       <div className="mt-6">
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -99,7 +103,7 @@ const UsersPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">
-                      {userItem.companyIds?.map(companyId => getCompanyName(companyId)).join(', ')}
+                      {getCompanyNames(userItem.companyIds || [])}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-2">

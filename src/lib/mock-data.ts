@@ -7,6 +7,7 @@ export const defaultMasterUser: User = {
   name: 'Administrador Master',
   email: 'admin@gestaodeacoes.com',
   role: 'master',
+  companyIds: ['1'], // Adding the companyIds property with default company
   permissions: [
     { id: '1', name: 'all', description: 'Acesso total ao sistema' }
   ]
