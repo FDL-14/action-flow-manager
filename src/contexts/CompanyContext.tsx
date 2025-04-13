@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { defaultCompany, mockClients, mockResponsibles } from '@/lib/mock-data';
@@ -7,9 +8,13 @@ import { useAuth } from './AuthContext';
 
 interface CompanyContextType {
   company: Company | null;
+  companies: Company[];
   clients: Client[];
   responsibles: Responsible[];
   setCompany: (company: Company) => void;
+  addCompany: (company: Omit<Company, 'id'>) => void;
+  updateCompany: (company: Company) => void;
+  deleteCompany: (id: string) => void;
   addClient: (client: Omit<Client, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
   updateClient: (client: Client) => void;
   deleteClient: (id: string) => void;
@@ -17,26 +22,33 @@ interface CompanyContextType {
   updateResponsible: (responsible: Responsible) => void;
   deleteResponsible: (id: string) => void;
   updateCompanyLogo: (logoUrl: string) => void;
+  getClientsByCompanyId: (companyId: string) => Client[];
 }
 
 const CompanyContext = createContext<CompanyContextType>({
   company: null,
+  companies: [],
   clients: [],
   responsibles: [],
   setCompany: () => {},
+  addCompany: () => {},
+  updateCompany: () => {},
+  deleteCompany: () => {},
   addClient: () => {},
   updateClient: () => {},
   deleteClient: () => {},
   addResponsible: () => {},
   updateResponsible: () => {},
   deleteResponsible: () => {},
-  updateCompanyLogo: () => {}
+  updateCompanyLogo: () => {},
+  getClientsByCompanyId: () => [],
 });
 
 export const useCompany = () => useContext(CompanyContext);
 
 export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [company, setCompanyState] = useState<Company | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [responsibles, setResponsibles] = useState<Responsible[]>([]);
   const { toast: toastUI } = useToast();
@@ -44,22 +56,46 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     try {
-      const savedCompany = localStorage.getItem('company');
-      if (savedCompany) {
-        const parsedCompany = JSON.parse(savedCompany);
-        if (parsedCompany && parsedCompany.id) {
-          console.log("Carregando empresa do localStorage");
-          setCompanyState(parsedCompany);
-        } else {
-          console.log("Dados de empresa inválidos no localStorage, usando dados padrão");
-          setCompanyState(defaultCompany);
-          localStorage.setItem('company', JSON.stringify(defaultCompany));
+      let mainCompany: Company | null = null;
+      let savedCompanies: Company[] = [];
+      
+      const savedCompaniesData = localStorage.getItem('companies');
+      if (savedCompaniesData) {
+        const parsedCompanies = JSON.parse(savedCompaniesData);
+        if (Array.isArray(parsedCompanies) && parsedCompanies.length > 0) {
+          console.log("Carregando empresas do localStorage:", parsedCompanies.length);
+          savedCompanies = parsedCompanies;
+          
+          // Find the main company (usually the first one)
+          mainCompany = savedCompanies[0];
         }
-      } else {
-        console.log("Nenhuma empresa encontrada no localStorage, usando dados padrão");
-        setCompanyState(defaultCompany);
+      }
+      
+      const savedMainCompany = localStorage.getItem('company');
+      if (savedMainCompany) {
+        const parsedCompany = JSON.parse(savedMainCompany);
+        if (parsedCompany && parsedCompany.id) {
+          console.log("Carregando empresa principal do localStorage");
+          mainCompany = parsedCompany;
+          
+          // Make sure the main company is also in the companies array
+          if (!savedCompanies.some(c => c.id === mainCompany!.id)) {
+            savedCompanies = [mainCompany, ...savedCompanies];
+          }
+        }
+      }
+      
+      if (!mainCompany) {
+        console.log("Nenhuma empresa principal encontrada, usando dados padrão");
+        mainCompany = defaultCompany;
+        savedCompanies = [defaultCompany];
+        
         localStorage.setItem('company', JSON.stringify(defaultCompany));
       }
+      
+      setCompanyState(mainCompany);
+      setCompanies(savedCompanies);
+      localStorage.setItem('companies', JSON.stringify(savedCompanies));
 
       const savedClients = localStorage.getItem('clients');
       if (savedClients) {
@@ -114,14 +150,32 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       
       setCompanyState(defaultCompany);
+      setCompanies([defaultCompany]);
       setClients(mockClients);
       setResponsibles(mockResponsibles);
       
       localStorage.setItem('company', JSON.stringify(defaultCompany));
+      localStorage.setItem('companies', JSON.stringify([defaultCompany]));
       localStorage.setItem('clients', JSON.stringify(mockClients));
       localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
     }
   }, [toastUI]);
+
+  useEffect(() => {
+    try {
+      if (companies && companies.length > 0) {
+        console.log("Salvando empresas no localStorage:", companies.length);
+        localStorage.setItem('companies', JSON.stringify(companies));
+      }
+    } catch (error) {
+      console.error("Erro ao salvar empresas no localStorage:", error);
+      toastUI({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as empresas localmente.",
+        variant: "destructive",
+      });
+    }
+  }, [companies, toastUI]);
 
   useEffect(() => {
     try {
@@ -166,11 +220,87 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setCompany = (newCompany: Company) => {
     setCompanyState(newCompany);
     localStorage.setItem('company', JSON.stringify(newCompany));
+    
+    // Also update the company in the companies array
+    const updatedCompanies = companies.map(c => c.id === newCompany.id ? newCompany : c);
+    setCompanies(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies));
+    
     toastUI({
       title: "Empresa atualizada",
       description: `As informações da empresa foram atualizadas com sucesso.`,
       variant: "default",
     });
+  };
+  
+  const addCompany = (companyData: Omit<Company, 'id'>) => {
+    const newCompany: Company = {
+      id: Date.now().toString(),
+      ...companyData
+    };
+    
+    const updatedCompanies = [...companies, newCompany];
+    setCompanies(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies));
+    
+    toastUI({
+      title: "Empresa adicionada",
+      description: `A empresa ${companyData.name} foi adicionada com sucesso.`,
+      variant: "default",
+    });
+    
+    return newCompany;
+  };
+  
+  const updateCompany = (updatedCompany: Company) => {
+    const updatedCompanies = companies.map(c => 
+      c.id === updatedCompany.id ? { ...updatedCompany, updatedAt: new Date() } : c
+    );
+    
+    setCompanies(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies));
+    
+    // If this is the main company, also update that state
+    if (company && company.id === updatedCompany.id) {
+      setCompanyState({ ...updatedCompany, updatedAt: new Date() });
+      localStorage.setItem('company', JSON.stringify({ ...updatedCompany, updatedAt: new Date() }));
+    }
+    
+    toastUI({
+      title: "Empresa atualizada",
+      description: `As informações da empresa ${updatedCompany.name} foram atualizadas com sucesso.`,
+      variant: "default",
+    });
+  };
+  
+  const deleteCompany = (id: string) => {
+    // Check if it's the main company
+    if (company && company.id === id) {
+      toast.error("Não é possível excluir a empresa principal");
+      return;
+    }
+    
+    const updatedCompanies = companies.filter(c => c.id !== id);
+    setCompanies(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies));
+    
+    // Handle clients associated with this company
+    const clientsToDelete = clients.filter(c => c.companyId === id);
+    if (clientsToDelete.length > 0) {
+      const updatedClients = clients.filter(c => c.companyId !== id);
+      setClients(updatedClients);
+      localStorage.setItem('clients', JSON.stringify(updatedClients));
+    }
+    
+    // Handle responsibles associated with this company
+    const responsibleToDelete = responsibles.filter(r => r.companyId === id);
+    if (responsibleToDelete.length > 0) {
+      const updatedResponsibles = responsibles.filter(r => r.companyId !== id);
+      setResponsibles(updatedResponsibles);
+      localStorage.setItem('responsibles', JSON.stringify(updatedResponsibles));
+    }
+    
+    toast.success("Empresa excluída com sucesso");
   };
 
   const addClient = (clientData: Omit<Client, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
@@ -305,6 +435,11 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCompanyState(updatedCompany);
     localStorage.setItem('company', JSON.stringify(updatedCompany));
     
+    // Also update the company in the companies array
+    const updatedCompanies = companies.map(c => c.id === company.id ? updatedCompany : c);
+    setCompanies(updatedCompanies);
+    localStorage.setItem('companies', JSON.stringify(updatedCompanies));
+    
     toastUI({
       title: "Logo atualizada",
       description: "A logo da empresa foi atualizada com sucesso.",
@@ -312,20 +447,29 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
+  const getClientsByCompanyId = (companyId: string): Client[] => {
+    return clients.filter(client => client.companyId === companyId);
+  };
+
   return (
     <CompanyContext.Provider 
       value={{ 
         company, 
+        companies,
         clients, 
         responsibles, 
-        setCompany, 
+        setCompany,
+        addCompany,
+        updateCompany,
+        deleteCompany,
         addClient,
         updateClient,
         deleteClient, 
         addResponsible,
         updateResponsible,
         deleteResponsible,
-        updateCompanyLogo
+        updateCompanyLogo,
+        getClientsByCompanyId
       }}
     >
       {children}

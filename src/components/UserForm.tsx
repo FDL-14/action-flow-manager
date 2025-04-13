@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -31,8 +32,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
-import { User } from '@/lib/types';
-import { useEffect } from 'react';
+import { useCompany } from '@/contexts/CompanyContext';
+import { User, Client } from '@/lib/types';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface UserFormProps {
   open: boolean;
@@ -53,6 +56,11 @@ const formSchema = z.object({
   role: z.enum(["user", "master"], {
     required_error: "Selecione um papel",
   }),
+  // Company fields
+  companyIds: z.array(z.string()).min(1, {
+    message: "Selecione pelo menos uma empresa",
+  }),
+  clientIds: z.array(z.string()).optional(),
   // Permissões básicas
   canCreate: z.boolean().default(false),
   canEdit: z.boolean().default(false),
@@ -64,10 +72,8 @@ const formSchema = z.object({
   viewAllActions: z.boolean().default(false),
   canEditUser: z.boolean().default(false),
   canEditAction: z.boolean().default(false),
-  // Novas permissões para clientes
   canEditClient: z.boolean().default(false),
   canDeleteClient: z.boolean().default(false),
-  // Nova permissão para visualização de ações
   viewOnlyAssignedActions: z.boolean().default(false),
 });
 
@@ -75,8 +81,11 @@ type FormValues = z.infer<typeof formSchema>;
 
 const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => {
   const { addUser, updateUser } = useAuth();
+  const { companies, clients: allClients } = useCompany();
   const { toast } = useToast();
-
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -84,6 +93,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       cpf: "",
       email: "",
       role: "user",
+      companyIds: [],
+      clientIds: [],
       canCreate: false,
       canEdit: false,
       canDelete: false,
@@ -107,6 +118,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         cpf: editUser.cpf,
         email: editUser.email,
         role: editUser.role,
+        companyIds: editUser.companyIds || [],
+        clientIds: editUser.clientIds || [],
         canCreate: editUser.permissions[0]?.canCreate || false,
         canEdit: editUser.permissions[0]?.canEdit || false,
         canDelete: editUser.permissions[0]?.canDelete || false,
@@ -121,8 +134,70 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         canDeleteClient: editUser.permissions[0]?.canDeleteClient || false,
         viewOnlyAssignedActions: editUser.permissions[0]?.viewOnlyAssignedActions || false,
       });
+      
+      setSelectedCompanies(editUser.companyIds || []);
+    } else {
+      form.reset({
+        name: "",
+        cpf: "",
+        email: "",
+        role: "user",
+        companyIds: [],
+        clientIds: [],
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: false,
+        viewAllActions: false,
+        canEditUser: false,
+        canEditAction: false,
+        canEditClient: false,
+        canDeleteClient: false,
+        viewOnlyAssignedActions: false,
+      });
+      
+      setSelectedCompanies([]);
     }
   }, [editUser, form]);
+
+  useEffect(() => {
+    // Filter clients based on selected companies
+    if (selectedCompanies.length > 0) {
+      const filtered = allClients.filter(client => 
+        selectedCompanies.includes(client.companyId)
+      );
+      setFilteredClients(filtered);
+    } else {
+      setFilteredClients([]);
+    }
+    
+    // Clear selected clients that don't belong to selected companies
+    const currentClientIds = form.getValues("clientIds") || [];
+    if (currentClientIds.length > 0) {
+      const validClientIds = currentClientIds.filter(clientId => {
+        const client = allClients.find(c => c.id === clientId);
+        return client && selectedCompanies.includes(client.companyId);
+      });
+      
+      if (validClientIds.length !== currentClientIds.length) {
+        form.setValue("clientIds", validClientIds);
+      }
+    }
+  }, [selectedCompanies, allClients, form]);
+
+  // Update selected companies when companyIds changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "companyIds") {
+        setSelectedCompanies(value.companyIds as string[] || []);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   async function onSubmit(values: FormValues) {
     try {
@@ -150,6 +225,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           cpf: values.cpf,
           email: values.email,
           role: values.role,
+          companyIds: values.companyIds,
+          clientIds: values.clientIds,
           permissions
         });
       } else {
@@ -158,6 +235,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           cpf: values.cpf,
           email: values.email,
           role: values.role,
+          companyIds: values.companyIds,
+          clientIds: values.clientIds,
           permissions
         });
       }
@@ -178,7 +257,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
           <DialogDescription>
@@ -253,6 +332,112 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-medium text-lg">Associação a Empresas e Clientes</h3>
+
+              <FormField
+                control={form.control}
+                name="companyIds"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Empresas</FormLabel>
+                    <FormDescription>
+                      Selecione as empresas às quais este usuário terá acesso
+                    </FormDescription>
+                    <div className="mt-2 space-y-2">
+                      <ScrollArea className="h-[100px] border rounded-md p-2">
+                        {companies.map((company) => (
+                          <FormField
+                            key={company.id}
+                            control={form.control}
+                            name="companyIds"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={company.id}
+                                  className="flex flex-row items-start space-x-3 space-y-0 py-1"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(company.id)}
+                                      onCheckedChange={(checked) => {
+                                        const updatedCompanies = checked
+                                          ? [...field.value, company.id]
+                                          : field.value?.filter(
+                                              (value) => value !== company.id
+                                            );
+                                        field.onChange(updatedCompanies);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    {company.name}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </ScrollArea>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {filteredClients.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="clientIds"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Clientes</FormLabel>
+                      <FormDescription>
+                        Selecione os clientes aos quais este usuário terá acesso
+                      </FormDescription>
+                      <div className="mt-2 space-y-2">
+                        <ScrollArea className="h-[100px] border rounded-md p-2">
+                          {filteredClients.map((client) => (
+                            <FormField
+                              key={client.id}
+                              control={form.control}
+                              name="clientIds"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={client.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0 py-1"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(client.id)}
+                                        onCheckedChange={(checked) => {
+                                          const updatedClients = checked
+                                            ? [...(field.value || []), client.id]
+                                            : (field.value || [])?.filter(
+                                                (value) => value !== client.id
+                                              );
+                                          field.onChange(updatedClients);
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal cursor-pointer">
+                                      {client.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                        </ScrollArea>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <div className="space-y-4">

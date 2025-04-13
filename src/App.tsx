@@ -1,7 +1,7 @@
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@radix-ui/react-tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -16,6 +16,7 @@ import ClientsPage from "./pages/ClientsPage";
 import ResponsiblesPage from "./pages/ResponsiblesPage";
 import RequestersPage from "./pages/RequestersPage";
 import CompanyPage from "./pages/CompanyPage";
+import CompaniesPage from "./pages/CompaniesPage";
 import UsersPage from "./pages/UsersPage";
 import WorkflowPage from "./pages/WorkflowPage";
 import Index from "./pages/Index";
@@ -72,6 +73,12 @@ const App = () => (
                 <Route path="/company" element={
                   <AuthLayout>
                     <CompanyPage />
+                  </AuthLayout>
+                } />
+                
+                <Route path="/companies" element={
+                  <AuthLayout>
+                    <CompaniesPage />
                   </AuthLayout>
                 } />
                 

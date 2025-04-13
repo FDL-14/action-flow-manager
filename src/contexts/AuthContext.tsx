@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -14,7 +15,8 @@ interface AuthContextType {
     cpf: string; 
     email: string;
     role: 'user' | 'master'; 
-    companyIds?: string[];
+    companyIds: string[];
+    clientIds?: string[];
     permissions?: {
       canCreate: boolean;
       canEdit: boolean;
@@ -26,6 +28,9 @@ interface AuthContextType {
       viewAllActions: boolean;
       canEditUser?: boolean;
       canEditAction?: boolean;
+      canEditClient?: boolean;
+      canDeleteClient?: boolean;
+      viewOnlyAssignedActions?: boolean;
     }
   }) => Promise<boolean>;
   updateUser: (userData: { 
@@ -34,7 +39,8 @@ interface AuthContextType {
     cpf: string; 
     email: string;
     role: 'user' | 'master';
-    companyIds?: string[];
+    companyIds: string[];
+    clientIds?: string[];
     permissions?: {
       canCreate: boolean;
       canEdit: boolean;
@@ -46,12 +52,19 @@ interface AuthContextType {
       viewAllActions: boolean;
       canEditUser?: boolean;
       canEditAction?: boolean;
+      canEditClient?: boolean;
+      canDeleteClient?: boolean;
+      viewOnlyAssignedActions?: boolean;
     }
   }) => Promise<boolean>;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   resetUserPassword: (userId: string) => void;
   canUserEditResponsibles: () => boolean;
   canUserDeleteResponsibles: () => boolean;
+  getUserCompanyIds: () => string[];
+  getUserClientIds: () => string[];
+  canViewAllActions: () => boolean;
+  shouldViewOnlyAssignedActions: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -66,6 +79,10 @@ const AuthContext = createContext<AuthContextType>({
   resetUserPassword: () => {},
   canUserEditResponsibles: () => false,
   canUserDeleteResponsibles: () => false,
+  getUserCompanyIds: () => [],
+  getUserClientIds: () => [],
+  canViewAllActions: () => false,
+  shouldViewOnlyAssignedActions: () => false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -95,13 +112,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUsers = JSON.parse(savedUsers);
         
         const updatedUsers = parsedUsers.map((u: User) => {
-          if (!u.email) {
-            return {
-              ...u,
-              email: `${u.cpf}@example.com`
-            };
-          }
-          return u;
+          // Ensure users have proper email, companyIds, clientIds
+          const updatedUser = {
+            ...u,
+            email: u.email || `${u.cpf}@example.com`,
+            companyIds: u.companyIds || ['1'],
+            clientIds: u.clientIds || []
+          };
+          return updatedUser;
         });
         
         setUsers(updatedUsers);
@@ -113,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedMasterUser = {
         ...defaultMasterUser,
         companyIds: ['1'],
+        clientIds: [],
         email: 'admin@example.com'
       };
       setUsers([updatedMasterUser]);
@@ -135,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: defaultEmail,
           role: 'user',
           companyIds: ['1'],
+          clientIds: [],
           permissions: [
             {
               id: "default",
@@ -207,7 +227,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cpf: string; 
     email: string;
     role: 'user' | 'master';
-    companyIds?: string[];
+    companyIds: string[];
+    clientIds?: string[];
     permissions?: {
       canCreate: boolean;
       canEdit: boolean;
@@ -219,6 +240,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewAllActions: boolean;
       canEditUser?: boolean;
       canEditAction?: boolean;
+      canEditClient?: boolean;
+      canDeleteClient?: boolean;
+      viewOnlyAssignedActions?: boolean;
     }
   }): Promise<boolean> => {
     if (users.some(u => u.cpf === userData.cpf)) {
@@ -241,6 +265,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewAllActions: userData.role === 'master',
       canEditUser: userData.role === 'master',
       canEditAction: userData.role === 'master',
+      canEditClient: userData.role === 'master',
+      canDeleteClient: userData.role === 'master',
+      viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
     };
 
     const newUser: User = {
@@ -249,7 +276,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cpf: userData.cpf,
       email: userData.email || `${userData.cpf}@example.com`,
       role: userData.role,
-      companyIds: userData.companyIds || ['1'],
+      companyIds: userData.companyIds,
+      clientIds: userData.clientIds || [],
       permissions: [
         {
           id: "default",
@@ -278,7 +306,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cpf: string; 
     email: string;
     role: 'user' | 'master';
-    companyIds?: string[];
+    companyIds: string[];
+    clientIds?: string[];
     permissions?: {
       canCreate: boolean;
       canEdit: boolean;
@@ -290,6 +319,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewAllActions: boolean;
       canEditUser?: boolean;
       canEditAction?: boolean;
+      canEditClient?: boolean;
+      canDeleteClient?: boolean;
+      viewOnlyAssignedActions?: boolean;
     }
   }): Promise<boolean> => {
     if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
@@ -314,6 +346,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           viewAllActions: userData.role === 'master',
           canEditUser: userData.role === 'master',
           canEditAction: userData.role === 'master',
+          canEditClient: userData.role === 'master',
+          canDeleteClient: userData.role === 'master',
+          viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
         };
 
         return {
@@ -322,7 +357,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           cpf: userData.cpf,
           email: userData.email || user.email,
           role: userData.role,
-          companyIds: userData.companyIds || user.companyIds || ['1'],
+          companyIds: userData.companyIds,
+          clientIds: userData.clientIds || user.clientIds || [],
           permissions: [
             {
               id: "default",
@@ -443,6 +479,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return user.role === 'master';
   };
 
+  const getUserCompanyIds = () => {
+    if (!user) return [];
+    return user.companyIds || ['1'];
+  };
+
+  const getUserClientIds = () => {
+    if (!user) return [];
+    return user.clientIds || [];
+  };
+
+  const canViewAllActions = () => {
+    if (!user) return false;
+    if (user.role === 'master') return true;
+    return user.permissions.some(p => p.viewAllActions);
+  };
+
+  const shouldViewOnlyAssignedActions = () => {
+    if (!user) return false;
+    if (user.role === 'master') return false;
+    return user.permissions.some(p => p.viewOnlyAssignedActions);
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -455,7 +513,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       changePassword,
       resetUserPassword,
       canUserEditResponsibles,
-      canUserDeleteResponsibles
+      canUserDeleteResponsibles,
+      getUserCompanyIds,
+      getUserClientIds,
+      canViewAllActions,
+      shouldViewOnlyAssignedActions
     }}>
       {children}
     </AuthContext.Provider>

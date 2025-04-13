@@ -30,6 +30,7 @@ interface CompanyFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialData?: Company | null;
+  isNewCompany?: boolean;
 }
 
 const formSchema = z.object({
@@ -41,8 +42,8 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialData }) => {
-  const { company, setCompany, updateCompanyLogo } = useCompany();
+const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialData, isNewCompany = false }) => {
+  const { company, setCompany, updateCompanyLogo, addCompany, updateCompany } = useCompany();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const { toast } = useToast();
@@ -58,7 +59,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
   });
 
   useEffect(() => {
-    const dataToUse = initialData || company;
+    const dataToUse = initialData || (isNewCompany ? null : company);
     
     if (dataToUse) {
       form.reset({
@@ -70,9 +71,19 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
       
       if (dataToUse.logo) {
         setLogoPreview(dataToUse.logo);
+      } else {
+        setLogoPreview(null);
       }
+    } else {
+      form.reset({
+        name: '',
+        address: '',
+        cnpj: '',
+        phone: '',
+      });
+      setLogoPreview(null);
     }
-  }, [initialData, company, form]);
+  }, [initialData, company, form, isNewCompany]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -89,12 +100,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
 
   const onSubmit = (values: FormValues) => {
     try {
-      const dataToUpdate = initialData || company;
-      
-      if (!dataToUpdate) {
+      if (isNewCompany) {
         // Create new company
-        const newCompany = {
-          id: '1',
+        const newCompany: Omit<Company, 'id'> = {
           name: values.name,
           address: values.address,
           cnpj: values.cnpj,
@@ -103,15 +111,28 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
           updatedAt: new Date(),
         };
         
-        setCompany(newCompany);
-        
-        if (logoPreview && logoFile) {
-          updateCompanyLogo(logoPreview);
+        if (logoPreview) {
+          newCompany.logo = logoPreview;
         }
-      } else {
-        // Update existing company
+        
+        addCompany(newCompany);
+      } else if (initialData) {
+        // Update existing company that's not the main company
         const updatedCompany = {
-          ...dataToUpdate,
+          ...initialData,
+          name: values.name,
+          address: values.address,
+          cnpj: values.cnpj,
+          phone: values.phone,
+          logo: logoPreview || undefined,
+          updatedAt: new Date(),
+        };
+        
+        updateCompany(updatedCompany);
+      } else {
+        // Update main company
+        const updatedCompany = {
+          ...company!,
           name: values.name,
           address: values.address,
           cnpj: values.cnpj,
@@ -121,7 +142,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
         
         setCompany(updatedCompany);
         
-        if (logoPreview !== dataToUpdate.logo) {
+        if (logoPreview !== company?.logo) {
           if (logoPreview) {
             updateCompanyLogo(logoPreview);
           } else {
@@ -138,15 +159,17 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
       onOpenChange(false);
       
       toast({
-        title: "Empresa atualizada",
-        description: "As informações da empresa foram atualizadas com sucesso!",
+        title: isNewCompany ? "Empresa criada" : "Empresa atualizada",
+        description: isNewCompany 
+          ? "A nova empresa foi criada com sucesso!" 
+          : "As informações da empresa foram atualizadas com sucesso!",
         variant: "default",
       });
     } catch (error) {
       console.error('Error updating company:', error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao atualizar a empresa",
+        description: `Ocorreu um erro ao ${isNewCompany ? 'criar' : 'atualizar'} a empresa`,
         variant: "destructive",
       });
     }
@@ -156,9 +179,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Configurar Empresa</DialogTitle>
+          <DialogTitle>{isNewCompany ? 'Nova Empresa' : 'Configurar Empresa'}</DialogTitle>
           <DialogDescription>
-            Configure as informações da sua empresa.
+            {isNewCompany ? 'Preencha os dados para criar uma nova empresa.' : 'Configure as informações da empresa.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -271,7 +294,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Empresa</Button>
+              <Button type="submit">{isNewCompany ? 'Criar Empresa' : 'Salvar Empresa'}</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -1,13 +1,13 @@
-
 export interface User {
   id: string;
   name: string;
   cpf: string;
   email: string;
   role: 'user' | 'master';
-  companyIds?: string[]; // Companies user has access to
+  companyIds: string[]; // Companies user has access to
+  clientIds?: string[]; // Clients user has access to
   permissions: Permission[];
-  password?: string; // Add optional password property
+  password?: string;
 }
 
 export interface Permission {
@@ -22,11 +22,11 @@ export interface Permission {
   canAddNotes?: boolean;
   canViewReports?: boolean;
   viewAllActions?: boolean;
-  canEditUser?: boolean; // Permissão para editar usuários
-  canEditAction?: boolean; // Permissão para editar ações
-  canEditClient?: boolean; // Nova permissão para editar clientes
-  canDeleteClient?: boolean; // Nova permissão para excluir clientes
-  viewOnlyAssignedActions?: boolean; // Nova permissão - visualizar apenas ações atribuídas ao usuário
+  canEditUser?: boolean;
+  canEditAction?: boolean;
+  canEditClient?: boolean;
+  canDeleteClient?: boolean;
+  viewOnlyAssignedActions?: boolean;
 }
 
 export interface Company {
@@ -57,12 +57,13 @@ export interface Responsible {
   id: string;
   name: string;
   email: string;
-  phone?: string; // Campo de telefone para SMS e WhatsApp
+  phone?: string;
   department: string;
   role: string;
   type?: 'responsible' | 'requester';
   companyId: string;
   companyName?: string;
+  clientIds?: string[]; // Clients this responsible is assigned to
   createdAt: Date;
   updatedAt: Date;
 }
@@ -92,8 +93,8 @@ export interface Action {
   notes: ActionNote[];
   createdAt: Date;
   updatedAt: Date;
-  createdBy?: string; // ID do usuário que criou a ação
-  createdByName?: string; // Nome do usuário que criou a ação
+  createdBy?: string;
+  createdByName?: string;
 }
 
 export interface ActionSummary {

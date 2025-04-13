@@ -9,7 +9,7 @@ import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { User } from '@/lib/types';
 
 const UsersPage = () => {
-  const { company } = useCompany();
+  const { companies } = useCompany();
   const { users, resetUserPassword, user } = useAuth();
   const [showUserForm, setShowUserForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -34,6 +34,12 @@ const UsersPage = () => {
   const handleClosePasswordForm = () => {
     setShowPasswordForm(false);
     setSelectedUserId('');
+  };
+
+  // Get company names for display
+  const getCompanyName = (companyId: string) => {
+    const company = companies.find(c => c.id === companyId);
+    return company?.name || 'Não encontrada';
   };
 
   // Only show edit buttons for users the current user has permission to edit
@@ -86,14 +92,14 @@ const UsersPage = () => {
                     <div className="text-sm text-gray-500">{userItem.cpf}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{userItem.email || `${userItem.cpf}@example.com`}</div>
+                    <div className="text-sm text-gray-500">{userItem.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{userItem.role === 'master' ? 'Administrador' : 'Usuário'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">
-                      {userItem.companyIds?.length || 1} {userItem.companyIds?.length === 1 ? 'empresa' : 'empresas'}
+                      {userItem.companyIds?.map(companyId => getCompanyName(companyId)).join(', ')}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-2">
