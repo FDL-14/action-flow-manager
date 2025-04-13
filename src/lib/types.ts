@@ -14,19 +14,19 @@ export interface Permission {
   id: string;
   name: string;
   description: string;
-  canCreate?: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
-  canMarkComplete?: boolean;
-  canMarkDelayed?: boolean;
-  canAddNotes?: boolean;
-  canViewReports?: boolean;
-  viewAllActions?: boolean;
-  canEditUser?: boolean;
-  canEditAction?: boolean;
-  canEditClient?: boolean;
-  canDeleteClient?: boolean;
-  viewOnlyAssignedActions?: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canMarkComplete: boolean;
+  canMarkDelayed: boolean;
+  canAddNotes: boolean;
+  canViewReports: boolean;
+  viewAllActions: boolean;
+  canEditUser: boolean;
+  canEditAction: boolean;
+  canEditClient: boolean;
+  canDeleteClient: boolean;
+  viewOnlyAssignedActions: boolean;
 }
 
 export interface Company {

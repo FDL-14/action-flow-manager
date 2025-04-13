@@ -41,7 +41,7 @@ interface UserFormProps {
   editUser?: User;
 }
 
-// Define default permissions structure to avoid empty objects
+// Define default permissions structure with required fields
 const defaultPermissions = {
   canCreate: false,
   canEdit: false,
@@ -69,16 +69,16 @@ const formSchema = z.object({
     canCreate: z.boolean().default(false),
     canEdit: z.boolean().default(false),
     canDelete: z.boolean().default(false),
-    canMarkComplete: z.boolean().default(false),
-    canMarkDelayed: z.boolean().default(false),
-    canAddNotes: z.boolean().default(false),
+    canMarkComplete: z.boolean().default(true),
+    canMarkDelayed: z.boolean().default(true),
+    canAddNotes: z.boolean().default(true),
     canViewReports: z.boolean().default(false),
     viewAllActions: z.boolean().default(false),
     canEditUser: z.boolean().default(false),
     canEditAction: z.boolean().default(false),
     canEditClient: z.boolean().default(false),
     canDeleteClient: z.boolean().default(false),
-    viewOnlyAssignedActions: z.boolean().default(false),
+    viewOnlyAssignedActions: z.boolean().default(true),
   })
 });
 
@@ -153,7 +153,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
   const onSubmit = async (data: FormValues) => {
     try {
       if (editUser) {
-        // Make sure all required fields are passed
+        // Make sure all required fields are passed with non-optional permissions
         const updatedUser = {
           id: editUser.id,
           name: data.name,
@@ -171,7 +171,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           onOpenChange(false);
         }
       } else {
-        // Make sure all required fields are passed
+        // Make sure all required fields are passed with non-optional permissions
         const newUser = {
           name: data.name,
           cpf: data.cpf,
