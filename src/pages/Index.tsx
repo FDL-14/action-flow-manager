@@ -5,10 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    // Redirect to dashboard if authenticated, login if not
+    // More flexible routing logic
     if (isAuthenticated) {
       navigate('/dashboard');
     } else {
@@ -20,3 +20,4 @@ const Index = () => {
 };
 
 export default Index;
+
