@@ -206,7 +206,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       case 'image':
         return <Image className="h-6 w-6 text-blue-500" />;
       case 'pdf':
-        return <FileIcon className="h-6 w-6 text-red-500" />;
+        return <FileText className="h-6 w-6 text-red-500" />;
       case 'excel':
         return <Table className="h-6 w-6 text-green-500" />;
       case 'word':

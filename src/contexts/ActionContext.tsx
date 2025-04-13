@@ -388,20 +388,32 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast({
           title: "Aviso",
           description: `O responsável não possui telefone cadastrado para envio de ${method === 'sms' ? 'SMS' : 'WhatsApp'}.`,
-          variant: "warning",
+          variant: "default",
         });
         return;
       }
 
       if (method === 'email') {
         await sendEmail(responsible, requester, action.subject, action.description);
-        toast.success("Email enviado com sucesso!");
+        toast({
+          title: "Email enviado",
+          description: "O email foi enviado com sucesso!",
+          variant: "default",
+        });
       } else if (method === 'sms') {
         await sendSMS(responsible.phone!, action.subject, responsible.name);
-        toast.success("SMS enviado com sucesso!");
+        toast({
+          title: "SMS enviado",
+          description: "O SMS foi enviado com sucesso!",
+          variant: "default",
+        });
       } else if (method === 'whatsapp') {
         await sendWhatsApp(responsible.phone!, action.subject, responsible.name, action.description);
-        toast.success("Mensagem de WhatsApp enviada com sucesso!");
+        toast({
+          title: "WhatsApp enviado",
+          description: "A mensagem de WhatsApp foi enviada com sucesso!",
+          variant: "default",
+        });
       } else {
         await sendActionNotification(
           responsible,
