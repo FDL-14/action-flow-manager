@@ -9,11 +9,12 @@ const Index = () => {
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    // Routing logic with better handling for remote access
+    // Consistent redirection logic for all access URLs
     if (isAuthenticated) {
+      // If authenticated, go to dashboard
       navigate('/dashboard');
     } else {
-      // Para acesso público, permitimos entrar sem login, mas com aviso
+      // For public access, allow entry with visitor warning
       toast.info("Acesso como visitante", {
         description: "Você está acessando o sistema como visitante. Algumas funcionalidades podem ser limitadas.",
         duration: 5000,

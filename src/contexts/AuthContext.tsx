@@ -50,6 +50,8 @@ interface AuthContextType {
   }) => Promise<boolean>;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   resetUserPassword: (userId: string) => void;
+  canUserEditResponsibles: () => boolean;
+  canUserDeleteResponsibles: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -62,6 +64,8 @@ const AuthContext = createContext<AuthContextType>({
   updateUser: async () => false,
   changePassword: async () => false,
   resetUserPassword: () => {},
+  canUserEditResponsibles: () => false,
+  canUserDeleteResponsibles: () => false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -422,6 +426,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const canUserEditResponsibles = () => {
+    if (!user) return false;
+    
+    // Admin or master can always edit
+    if (user.role === 'master') return true;
+    
+    // Check for specific permission
+    return user.permissions.some(p => p.canEdit);
+  };
+
+  const canUserDeleteResponsibles = () => {
+    if (!user) return false;
+    
+    // Only admin/master can delete
+    return user.role === 'master';
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -432,7 +453,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addUser,
       updateUser,
       changePassword,
-      resetUserPassword
+      resetUserPassword,
+      canUserEditResponsibles,
+      canUserDeleteResponsibles
     }}>
       {children}
     </AuthContext.Provider>

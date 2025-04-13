@@ -21,11 +21,14 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { Responsible } from '@/lib/types';
+import { useEffect } from 'react';
 
 interface ResponsibleFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editResponsible?: Responsible;
 }
 
 const formSchema = z.object({
@@ -38,10 +41,9 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange }) => {
-  const { addResponsible } = useCompany();
-  const { toast } = useToast();
-
+const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, editResponsible }) => {
+  const { addResponsible, updateResponsible } = useCompany();
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,31 +55,61 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange })
     },
   });
 
+  // Populate form when in edit mode
+  useEffect(() => {
+    if (editResponsible) {
+      form.reset({
+        name: editResponsible.name,
+        email: editResponsible.email,
+        phone: editResponsible.phone || '',
+        department: editResponsible.department,
+        role: editResponsible.role,
+      });
+    } else {
+      // Reset form when not in edit mode
+      form.reset({
+        name: '',
+        email: '',
+        phone: '',
+        department: '',
+        role: '',
+      });
+    }
+  }, [editResponsible, form, open]);
+
   const onSubmit = (values: FormValues) => {
     try {
-      addResponsible({
-        name: values.name,
-        email: values.email,
-        phone: values.phone,
-        department: values.department,
-        role: values.role,
-      });
+      if (editResponsible) {
+        // Update existing responsible
+        updateResponsible({
+          ...editResponsible,
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          department: values.department,
+          role: values.role,
+          updatedAt: new Date()
+        });
+
+        toast.success("Responsável atualizado com sucesso!");
+      } else {
+        // Add new responsible
+        addResponsible({
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          department: values.department,
+          role: values.role,
+        });
+        
+        toast.success("Responsável adicionado com sucesso!");
+      }
 
       form.reset();
       onOpenChange(false);
-      
-      toast({
-        title: "Responsável adicionado",
-        description: "O responsável foi adicionado com sucesso!",
-        variant: "default",
-      });
     } catch (error) {
-      console.error('Error adding responsible:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao adicionar o responsável",
-        variant: "destructive",
-      });
+      console.error('Error handling responsible:', error);
+      toast.error("Ocorreu um erro ao salvar o responsável");
     }
   };
 
@@ -85,9 +117,11 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange })
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Cadastrar Responsável</DialogTitle>
+          <DialogTitle>{editResponsible ? 'Editar Responsável' : 'Cadastrar Responsável'}</DialogTitle>
           <DialogDescription>
-            Adicione um novo responsável para atribuição de ações.
+            {editResponsible 
+              ? 'Edite as informações do responsável para atribuição de ações.'
+              : 'Adicione um novo responsável para atribuição de ações.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -181,7 +215,7 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange })
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Responsável</Button>
+              <Button type="submit">{editResponsible ? 'Atualizar' : 'Salvar Responsável'}</Button>
             </DialogFooter>
           </form>
         </Form>

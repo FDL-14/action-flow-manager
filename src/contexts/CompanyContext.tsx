@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { defaultCompany, mockClients, mockResponsibles } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface CompanyContextType {
   company: Company | null;
@@ -11,6 +11,8 @@ interface CompanyContextType {
   setCompany: (company: Company) => void;
   addClient: (client: Omit<Client, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
   addResponsible: (responsible: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
+  updateResponsible: (responsible: Responsible) => void;
+  deleteResponsible: (id: string) => void;
   updateCompanyLogo: (logoUrl: string) => void;
 }
 
@@ -21,6 +23,8 @@ const CompanyContext = createContext<CompanyContextType>({
   setCompany: () => {},
   addClient: () => {},
   addResponsible: () => {},
+  updateResponsible: () => {},
+  deleteResponsible: () => {},
   updateCompanyLogo: () => {}
 });
 
@@ -30,11 +34,10 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [company, setCompanyState] = useState<Company | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [responsibles, setResponsibles] = useState<Responsible[]>([]);
-  const { toast } = useToast();
+  const { toast: toastUI } = useToast();
 
   useEffect(() => {
     try {
-      // Carregar empresa do localStorage
       const savedCompany = localStorage.getItem('company');
       if (savedCompany) {
         const parsedCompany = JSON.parse(savedCompany);
@@ -52,7 +55,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.setItem('company', JSON.stringify(defaultCompany));
       }
 
-      // Carregar clientes do localStorage
       const savedClients = localStorage.getItem('clients');
       if (savedClients) {
         const parsedClients = JSON.parse(savedClients);
@@ -70,7 +72,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.setItem('clients', JSON.stringify(mockClients));
       }
 
-      // Carregar responsáveis do localStorage - MELHORADO para evitar sumir
       const savedResponsibles = localStorage.getItem('responsibles');
       if (savedResponsibles) {
         try {
@@ -87,7 +88,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           console.error("Erro ao analisar responsáveis do localStorage:", parseError);
           setResponsibles(mockResponsibles);
           localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
-          toast({
+          toastUI({
             title: "Erro de dados",
             description: "Dados de responsáveis corrompidos. Carregando dados padrão.",
             variant: "destructive",
@@ -100,25 +101,22 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch (error) {
       console.error("Erro ao carregar dados do localStorage:", error);
-      toast({
+      toastUI({
         title: "Erro de dados",
         description: "Houve um problema ao carregar os dados da empresa. Usando dados padrão.",
         variant: "destructive",
       });
       
-      // Usar dados padrão em caso de erro
       setCompanyState(defaultCompany);
       setClients(mockClients);
       setResponsibles(mockResponsibles);
       
-      // Salvar dados padrão no localStorage
       localStorage.setItem('company', JSON.stringify(defaultCompany));
       localStorage.setItem('clients', JSON.stringify(mockClients));
       localStorage.setItem('responsibles', JSON.stringify(mockResponsibles));
     }
-  }, [toast]);
+  }, [toastUI]);
 
-  // Salvar clientes no localStorage sempre que forem alterados
   useEffect(() => {
     try {
       if (clients && clients.length > 0) {
@@ -127,27 +125,23 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch (error) {
       console.error("Erro ao salvar clientes no localStorage:", error);
-      toast({
+      toastUI({
         title: "Erro ao salvar",
         description: "Não foi possível salvar os clientes localmente.",
         variant: "destructive",
       });
     }
-  }, [clients, toast]);
+  }, [clients, toastUI]);
 
-  // Salvar responsáveis no localStorage sempre que forem alterados - MELHORADO
   useEffect(() => {
     try {
       if (responsibles && responsibles.length > 0) {
         console.log("Salvando responsáveis no localStorage:", responsibles.length);
         
-        // Criar uma cópia dos dados para evitar problemas de referência circular
         const responsiblesData = JSON.parse(JSON.stringify(responsibles));
         
-        // Salvar em localStorage
         localStorage.setItem('responsibles', JSON.stringify(responsiblesData));
         
-        // Verificar se o salvamento foi bem-sucedido
         const savedData = localStorage.getItem('responsibles');
         if (!savedData) {
           throw new Error("Falha ao salvar responsáveis: não foi possível ler após salvar");
@@ -155,18 +149,18 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch (error) {
       console.error("Erro ao salvar responsáveis no localStorage:", error);
-      toast({
+      toastUI({
         title: "Erro ao salvar",
         description: "Não foi possível salvar os responsáveis localmente.",
         variant: "destructive",
       });
     }
-  }, [responsibles, toast]);
+  }, [responsibles, toastUI]);
 
   const setCompany = (newCompany: Company) => {
     setCompanyState(newCompany);
     localStorage.setItem('company', JSON.stringify(newCompany));
-    toast({
+    toastUI({
       title: "Empresa atualizada",
       description: `As informações da empresa foram atualizadas com sucesso.`,
       variant: "default",
@@ -177,7 +171,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!company) return;
     
     const newClient: Client = {
-      id: Date.now().toString(), // Usando timestamp como ID para evitar colisões
+      id: Date.now().toString(),
       companyId: company.id,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -188,7 +182,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setClients(updatedClients);
     localStorage.setItem('clients', JSON.stringify(updatedClients));
     
-    toast({
+    toastUI({
       title: "Cliente adicionado",
       description: `O cliente ${clientData.name} foi adicionado com sucesso.`,
       variant: "default",
@@ -199,7 +193,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!company) return;
     
     const newResponsible: Responsible = {
-      id: Date.now().toString(), // Usando timestamp como ID para evitar colisões
+      id: Date.now().toString(),
       companyId: company.id,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -210,19 +204,51 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setResponsibles(updatedResponsibles);
     
     try {
-      // Salvar imediatamente para garantir persistência
       localStorage.setItem('responsibles', JSON.stringify(updatedResponsibles));
-      
-      toast({
-        title: "Responsável adicionado",
-        description: `${responsibleData.name} foi adicionado(a) com sucesso como responsável.`,
-        variant: "default",
-      });
     } catch (error) {
       console.error("Erro ao salvar responsável:", error);
-      toast({
+      toastUI({
         title: "Erro ao salvar",
         description: "O responsável foi adicionado, mas houve um problema ao salvar localmente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateResponsible = (updatedResponsible: Responsible) => {
+    if (!company) return;
+    
+    const updatedResponsibles = responsibles.map(r => 
+      r.id === updatedResponsible.id ? { ...updatedResponsible, updatedAt: new Date() } : r
+    );
+    
+    setResponsibles(updatedResponsibles);
+    
+    try {
+      localStorage.setItem('responsibles', JSON.stringify(updatedResponsibles));
+    } catch (error) {
+      console.error("Erro ao atualizar responsável:", error);
+      toastUI({
+        title: "Erro ao salvar",
+        description: "O responsável foi atualizado, mas houve um problema ao salvar localmente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteResponsible = (id: string) => {
+    if (!company) return;
+    
+    const updatedResponsibles = responsibles.filter(r => r.id !== id);
+    setResponsibles(updatedResponsibles);
+    
+    try {
+      localStorage.setItem('responsibles', JSON.stringify(updatedResponsibles));
+    } catch (error) {
+      console.error("Erro ao excluir responsável:", error);
+      toastUI({
+        title: "Erro ao excluir",
+        description: "Houve um problema ao excluir o responsável.",
         variant: "destructive",
       });
     }
@@ -240,7 +266,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCompanyState(updatedCompany);
     localStorage.setItem('company', JSON.stringify(updatedCompany));
     
-    toast({
+    toastUI({
       title: "Logo atualizada",
       description: "A logo da empresa foi atualizada com sucesso.",
       variant: "default",
@@ -256,6 +282,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCompany, 
         addClient, 
         addResponsible,
+        updateResponsible,
+        deleteResponsible,
         updateCompanyLogo
       }}
     >

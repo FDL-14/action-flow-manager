@@ -23,23 +23,83 @@ import {
   Plus,
   CheckCircle2, 
   AlertTriangle,
-  Clock
+  Clock,
+  Pencil,
+  Trash2,
+  Phone
 } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ResponsibleForm from '@/components/ResponsibleForm';
 import { Badge } from '@/components/ui/badge';
+import { Responsible } from '@/lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from 'sonner';
 
 const ResponsiblesPage = () => {
-  const { company, responsibles } = useCompany();
+  const { company, responsibles, deleteResponsible } = useCompany();
   const { getActionsByResponsible } = useActions();
+  const { user, canUserEditResponsibles, canUserDeleteResponsibles } = useAuth();
+  
   const [showResponsibleForm, setShowResponsibleForm] = useState(false);
+  const [selectedResponsible, setSelectedResponsible] = useState<Responsible | undefined>(undefined);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [responsibleToDelete, setResponsibleToDelete] = useState<Responsible | undefined>(undefined);
+
+  const handleEdit = (responsible: Responsible) => {
+    if (!canUserEditResponsibles()) {
+      toast.error("Você não tem permissão para editar responsáveis.");
+      return;
+    }
+    setSelectedResponsible(responsible);
+    setShowResponsibleForm(true);
+  };
+
+  const handleDelete = (responsible: Responsible) => {
+    if (!canUserDeleteResponsibles()) {
+      toast.error("Você não tem permissão para excluir responsáveis.");
+      return;
+    }
+    
+    // Check if responsible has associated actions
+    const actions = getActionsByResponsible(responsible.id);
+    if (actions.length > 0) {
+      toast.error("Não é possível excluir um responsável que possui ações associadas.");
+      return;
+    }
+    
+    setResponsibleToDelete(responsible);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (responsibleToDelete) {
+      deleteResponsible(responsibleToDelete.id);
+      setShowDeleteDialog(false);
+      toast.success("Responsável excluído com sucesso!");
+    }
+  };
+
+  const handleAddNew = () => {
+    setSelectedResponsible(undefined);
+    setShowResponsibleForm(true);
+  };
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Responsáveis</h1>
-        <Button onClick={() => setShowResponsibleForm(true)}>
+        <Button onClick={handleAddNew}>
           <Plus className="h-4 w-4 mr-2" />
           Cadastrar Responsável
         </Button>
@@ -69,7 +129,8 @@ const ResponsiblesPage = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead>Departamento</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <TableHead>Ações Atribuídas</TableHead>
+                  <TableHead className="text-right">Gerenciar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -88,9 +149,17 @@ const ResponsiblesPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                          {responsible.email}
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center">
+                            <Mail className="h-4 w-4 mr-2 text-gray-400" />
+                            {responsible.email}
+                          </div>
+                          {responsible.phone && (
+                            <div className="flex items-center">
+                              <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                              {responsible.phone}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -121,6 +190,34 @@ const ResponsiblesPage = () => {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleEdit(responsible)}
+                            disabled={!canUserEditResponsibles()}
+                            title={canUserEditResponsibles() ? "Editar responsável" : "Você não tem permissão para editar"}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDelete(responsible)}
+                            disabled={!canUserDeleteResponsibles() || responsibleActions.length > 0}
+                            title={
+                              !canUserDeleteResponsibles() 
+                                ? "Você não tem permissão para excluir" 
+                                : responsibleActions.length > 0 
+                                  ? "Não é possível excluir responsáveis com ações atribuídas"
+                                  : "Excluir responsável"
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -133,7 +230,26 @@ const ResponsiblesPage = () => {
       <ResponsibleForm 
         open={showResponsibleForm}
         onOpenChange={setShowResponsibleForm}
+        editResponsible={selectedResponsible}
       />
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o responsável "{responsibleToDelete?.name}"? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
