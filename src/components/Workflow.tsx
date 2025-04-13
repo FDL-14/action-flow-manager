@@ -5,7 +5,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, UserRound } from 'lucide-react';
+import { Check, Clock, AlertTriangle, UserRound, FileText, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -112,17 +112,21 @@ const Workflow: React.FC = () => {
                 <p className="line-clamp-2">{action.description}</p>
               </div>
               
-              {action.notes && action.notes.length > 0 && (
-                <div className="mt-2 text-xs">
-                  <span className="font-medium text-gray-500">{action.notes.filter(n => !n.isDeleted).length} anotações</span>
-                </div>
-              )}
-              
-              {action.attachments && action.attachments.length > 0 && (
-                <div className="mt-1 text-xs">
-                  <span className="font-medium text-gray-500">{action.attachments.length} anexos</span>
-                </div>
-              )}
+              <div className="mt-2 flex items-center gap-4">
+                {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 && (
+                  <div className="text-xs flex items-center">
+                    <FileText className="h-3 w-3 mr-1 text-gray-500" />
+                    <span className="font-medium text-gray-500">{action.notes.filter(n => !n.isDeleted).length} anotações</span>
+                  </div>
+                )}
+                
+                {action.attachments && action.attachments.length > 0 && (
+                  <div className="text-xs flex items-center">
+                    <Paperclip className="h-3 w-3 mr-1 text-gray-500" />
+                    <span className="font-medium text-gray-500">{action.attachments.length} anexos</span>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

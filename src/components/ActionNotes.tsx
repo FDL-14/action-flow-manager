@@ -5,11 +5,12 @@ import { useActions } from '@/contexts/ActionContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash, Upload, X, Paperclip, FileImage, FileText, Camera } from 'lucide-react';
+import { Trash, Upload, X, Paperclip, FileImage, FileText, Camera, FilePdf, FileSpreadsheet, FileWord, Eye, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent } from './ui/dialog';
 
 interface ActionNotesProps {
   action: Action;
@@ -25,6 +26,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -131,10 +133,10 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         const newFiles = Array.from(e.target.files);
         
         const totalSize = newFiles.reduce((acc, file) => acc + file.size, 0);
-        if (totalSize > 5 * 1024 * 1024) {
+        if (totalSize > 10 * 1024 * 1024) {
           toast({
             title: "Arquivos muito grandes",
-            description: "O tamanho total dos arquivos excede 5MB. Escolha arquivos menores.",
+            description: "O tamanho total dos arquivos excede 10MB. Escolha arquivos menores.",
             variant: "destructive",
           });
           return;
@@ -183,11 +185,18 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
 
   const getFileIcon = (file: File) => {
     const fileType = file.type.split('/')[0];
-    switch (fileType) {
-      case 'image':
-        return <FileImage className="h-4 w-4 mr-2 text-blue-500" />;
-      default:
-        return <FileText className="h-4 w-4 mr-2 text-gray-500" />;
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    
+    if (fileType === 'image') {
+      return <FileImage className="h-4 w-4 mr-2 text-blue-500" />;
+    } else if (fileExtension === 'pdf') {
+      return <FilePdf className="h-4 w-4 mr-2 text-red-500" />;
+    } else if (['xls', 'xlsx', 'csv'].includes(fileExtension || '')) {
+      return <FileSpreadsheet className="h-4 w-4 mr-2 text-green-500" />;
+    } else if (['doc', 'docx'].includes(fileExtension || '')) {
+      return <FileWord className="h-4 w-4 mr-2 text-blue-700" />;
+    } else {
+      return <FileText className="h-4 w-4 mr-2 text-gray-500" />;
     }
   };
   
@@ -218,6 +227,52 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         variant: "destructive",
       });
     }
+  };
+
+  const getAttachmentFileType = (url: string) => {
+    const extension = url.split('.').pop()?.toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension || '')) {
+      return 'image';
+    } else if (extension === 'pdf') {
+      return 'pdf';
+    } else if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
+      return 'excel';
+    } else if (['doc', 'docx'].includes(extension || '')) {
+      return 'word';
+    } else {
+      return 'other';
+    }
+  };
+
+  const getAttachmentIcon = (url: string) => {
+    const fileType = getAttachmentFileType(url);
+    
+    switch (fileType) {
+      case 'image':
+        return <FileImage className="h-6 w-6 text-blue-500" />;
+      case 'pdf':
+        return <FilePdf className="h-6 w-6 text-red-500" />;
+      case 'excel':
+        return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
+      case 'word':
+        return <FileWord className="h-6 w-6 text-blue-700" />;
+      default:
+        return <FileText className="h-6 w-6 text-gray-500" />;
+    }
+  };
+
+  const viewAttachment = (url: string) => {
+    setViewingAttachment(url);
+  };
+
+  const closeAttachmentViewer = () => {
+    setViewingAttachment(null);
+  };
+
+  const canViewAttachment = (url: string) => {
+    const fileType = getAttachmentFileType(url);
+    return fileType === 'image' || fileType === 'pdf';
   };
 
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
@@ -261,26 +316,48 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {action.attachments.map((url, index) => (
                 <div key={index} className="border rounded-md p-2 flex flex-col items-center">
-                  {url.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                  <div className="w-full flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-500">Anexo {index + 1}</span>
+                  </div>
+                  
+                  {getAttachmentFileType(url) === 'image' ? (
                     <img 
                       src={url} 
                       alt={`Anexo ${index + 1}`} 
-                      className="max-h-32 object-contain mb-1" 
+                      className="max-h-32 object-contain mb-1 cursor-pointer"
+                      onClick={() => viewAttachment(url)}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder.svg';
                       }}
                     />
                   ) : (
-                    <FileText className="h-12 w-12 text-blue-500 mb-1" />
+                    <div className="h-32 flex items-center justify-center">
+                      {getAttachmentIcon(url)}
+                    </div>
                   )}
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => handleDownload(url, `anexo-${index+1}`)}
-                    className="text-xs text-blue-500 hover:underline"
-                  >
-                    Baixar anexo {index + 1}
-                  </Button>
+                  
+                  <div className="flex space-x-2 mt-2">
+                    {canViewAttachment(url) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => viewAttachment(url)}
+                        className="text-xs"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Visualizar
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(url, `anexo-${index+1}`)}
+                      className="text-xs"
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Baixar
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -327,7 +404,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             className="hidden"
             multiple
             onChange={handleFileChange}
-            accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx"
+            accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx,.doc,.xls,.csv"
           />
           
           <input
@@ -389,6 +466,47 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
           </div>
         </div>
       </div>
+
+      {viewingAttachment && (
+        <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="sm" onClick={closeAttachmentViewer}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {getAttachmentFileType(viewingAttachment) === 'image' ? (
+              <img 
+                src={viewingAttachment} 
+                alt="Visualização do anexo" 
+                className="max-w-full max-h-[70vh] object-contain mx-auto"
+              />
+            ) : getAttachmentFileType(viewingAttachment) === 'pdf' ? (
+              <iframe 
+                src={viewingAttachment} 
+                width="100%" 
+                height="500px" 
+                title="Visualização de PDF"
+                className="border-0"
+              />
+            ) : (
+              <div className="text-center py-10">
+                <FileText className="h-20 w-20 mx-auto text-gray-400 mb-4" />
+                <p>Este tipo de arquivo não pode ser visualizado diretamente.</p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleDownload(viewingAttachment)} 
+                  className="mt-4"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar Arquivo
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

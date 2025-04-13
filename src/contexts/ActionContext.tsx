@@ -19,6 +19,7 @@ interface ActionContextType {
   addAttachment: (actionId: string, attachment: string) => void;
   getActionSummary: () => ActionSummary;
   sendActionEmail: (actionId: string) => Promise<void>;
+  deleteAction: (id: string) => void;
 }
 
 const ActionContext = createContext<ActionContextType>({
@@ -34,6 +35,7 @@ const ActionContext = createContext<ActionContextType>({
   addAttachment: () => {},
   getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 }),
   sendActionEmail: async () => {},
+  deleteAction: () => {},
 });
 
 export const useActions = () => useContext(ActionContext);
@@ -398,6 +400,33 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const deleteAction = (id: string) => {
+    if (!user || user.role !== 'master') {
+      toast({
+        title: "Permissão negada",
+        description: "Apenas administradores podem excluir ações.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const updatedActions = actions.filter(action => action.id !== id);
+    setActions(updatedActions);
+    
+    try {
+      localStorage.setItem('actions', JSON.stringify(updatedActions));
+      backupActionsToLocalStorage(updatedActions);
+    } catch (saveError) {
+      console.error("Erro ao salvar após exclusão de ação:", saveError);
+    }
+
+    toast({
+      title: "Ação excluída",
+      description: "A ação foi excluída permanentemente.",
+      variant: "default",
+    });
+  };
+
   return (
     <ActionContext.Provider value={{
       actions,
@@ -411,7 +440,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       deleteActionNote,
       addAttachment,
       getActionSummary,
-      sendActionEmail
+      sendActionEmail,
+      deleteAction
     }}>
       {children}
     </ActionContext.Provider>

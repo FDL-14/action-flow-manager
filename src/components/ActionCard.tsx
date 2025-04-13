@@ -22,7 +22,12 @@ import {
   FileImage,
   Download,
   Edit,
-  UserRound
+  UserRound,
+  Eye,
+  Trash2,
+  FilePdf,
+  FileSpreadsheet,
+  FileWord
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -34,13 +39,16 @@ import EditActionForm from './EditActionForm';
 
 interface ActionCardProps {
   action: Action;
+  onDelete?: () => void;
 }
 
-const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
+const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
   const { responsibles, clients } = useCompany();
-  const { updateActionStatus, sendActionEmail } = useActions();
+  const { updateActionStatus, sendActionEmail, deleteAction } = useActions();
   const [showNotes, setShowNotes] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -114,8 +122,30 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
     setShowEditForm(true);
   };
 
+  const handleDeleteAction = () => {
+    if (window.confirm(`Tem certeza que deseja excluir a ação "${action.subject}"? Esta operação não pode ser desfeita.`)) {
+      try {
+        deleteAction(action.id);
+        if (onDelete) onDelete();
+        toast({
+          title: "Ação excluída",
+          description: "A ação foi excluída com sucesso.",
+          variant: "default",
+        });
+      } catch (error) {
+        console.error("Erro ao excluir ação:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir a ação. Tente novamente.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const toggleNotes = () => setShowNotes(!showNotes);
   const closeNotes = () => setShowNotes(false);
+  const toggleAttachments = () => setShowAttachments(!showAttachments);
 
   const canManageAction = () => {
     if (!user) return false;
@@ -139,15 +169,54 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
     return hasEditPermission || false;
   };
 
-  const getLatestAttachment = () => {
-    if (!action.attachments || action.attachments.length === 0) return null;
-    
-    const latestAttachment = action.attachments[action.attachments.length - 1];
-    return latestAttachment;
+  const canDeleteAction = () => {
+    return user?.role === 'master';
   };
 
-  const isImageAttachment = (url: string) => {
-    return url.match(/\.(jpeg|jpg|gif|png)$/i) !== null;
+  const getAttachmentFileType = (url: string) => {
+    const extension = url.split('.').pop()?.toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension || '')) {
+      return 'image';
+    } else if (extension === 'pdf') {
+      return 'pdf';
+    } else if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
+      return 'excel';
+    } else if (['doc', 'docx'].includes(extension || '')) {
+      return 'word';
+    } else {
+      return 'other';
+    }
+  };
+
+  const getAttachmentIcon = (url: string) => {
+    const fileType = getAttachmentFileType(url);
+    
+    switch (fileType) {
+      case 'image':
+        return <FileImage className="h-6 w-6 text-blue-500" />;
+      case 'pdf':
+        return <FilePdf className="h-6 w-6 text-red-500" />;
+      case 'excel':
+        return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
+      case 'word':
+        return <FileWord className="h-6 w-6 text-blue-700" />;
+      default:
+        return <FileText className="h-6 w-6 text-gray-500" />;
+    }
+  };
+
+  const viewAttachment = (url: string) => {
+    setViewingAttachment(url);
+  };
+
+  const closeAttachmentViewer = () => {
+    setViewingAttachment(null);
+  };
+
+  const canViewAttachment = (url: string) => {
+    const fileType = getAttachmentFileType(url);
+    return fileType === 'image' || fileType === 'pdf';
   };
   
   const handleDownload = (url: string, filename: string = 'arquivo') => {
@@ -177,6 +246,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
         variant: "destructive",
       });
     }
+  };
+
+  const getLatestAttachment = () => {
+    if (!action.attachments || action.attachments.length === 0) return null;
+    
+    const latestAttachment = action.attachments[action.attachments.length - 1];
+    return latestAttachment;
   };
 
   const latestAttachment = getLatestAttachment();
@@ -251,6 +327,18 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
               </Button>
             )}
             
+            {canDeleteAction() && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDeleteAction}
+                className="hidden sm:flex text-red-600 hover:text-red-800"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Excluir
+              </Button>
+            )}
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -279,6 +367,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                   <FileText className="mr-2 h-4 w-4" />
                   Ver anotações
                 </DropdownMenuItem>
+                {action.attachments && action.attachments.length > 0 && (
+                  <DropdownMenuItem onClick={toggleAttachments}>
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Ver anexos
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleSendEmail} className="sm:hidden">
                   <Mail className="mr-2 h-4 w-4" />
                   Enviar email
@@ -289,6 +383,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
                     Editar
                   </DropdownMenuItem>
                 )}
+                {canDeleteAction() && (
+                  <DropdownMenuItem onClick={handleDeleteAction} className="sm:hidden text-red-600">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir ação
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -296,38 +396,62 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
         
         {(action.attachments && action.attachments.length > 0) && (
           <div className="mt-3 pt-3 border-t">
-            <div className="flex items-center mb-2 text-sm text-gray-600">
-              <Paperclip className="h-4 w-4 mr-1" />
-              <span>{action.attachments.length} anexo(s)</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center text-sm text-gray-600">
+                <Paperclip className="h-4 w-4 mr-1" />
+                <span>{action.attachments.length} anexo(s)</span>
+              </div>
+              {action.attachments.length > 1 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={toggleAttachments}
+                  className="text-xs"
+                >
+                  Ver todos
+                </Button>
+              )}
             </div>
             
             {latestAttachment && (
               <div className="border rounded-md p-2 flex items-center justify-between">
                 <div className="flex items-center">
-                  {isImageAttachment(latestAttachment) ? (
+                  {getAttachmentFileType(latestAttachment) === 'image' ? (
                     <div className="flex items-center">
                       <FileImage className="h-5 w-5 mr-2 text-blue-500" />
                       <span className="text-sm mr-2">Imagem anexada</span>
                       <img 
                         src={latestAttachment} 
                         alt="Anexo" 
-                        className="h-10 w-10 object-cover rounded" 
+                        className="h-10 w-10 object-cover rounded cursor-pointer" 
+                        onClick={() => viewAttachment(latestAttachment)}
                       />
                     </div>
                   ) : (
                     <div className="flex items-center">
-                      <FileText className="h-5 w-5 mr-2 text-gray-500" />
-                      <span className="text-sm">Documento anexado</span>
+                      {getAttachmentIcon(latestAttachment)}
+                      <span className="text-sm ml-2">Documento anexado</span>
                     </div>
                   )}
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleDownload(latestAttachment, `anexo-${action.id}`)}
-                >
-                  <Download className="h-5 w-5 text-blue-500 hover:text-blue-700" />
-                </Button>
+                <div className="flex space-x-2">
+                  {canViewAttachment(latestAttachment) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => viewAttachment(latestAttachment)}
+                    >
+                      <Eye className="h-4 w-4 text-blue-500 hover:text-blue-700" />
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDownload(latestAttachment, `anexo-${action.id}`)}
+                  >
+                    <Download className="h-4 w-4 text-blue-500 hover:text-blue-700" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -359,6 +483,102 @@ const ActionCard: React.FC<ActionCardProps> = ({ action }) => {
           onOpenChange={setShowEditForm}
           action={action}
         />
+      )}
+
+      {showAttachments && (
+        <Dialog open={showAttachments} onOpenChange={setShowAttachments}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Anexos - {action.subject}</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 py-4">
+              {action.attachments?.map((url, index) => (
+                <div key={index} className="border rounded-md p-3 flex flex-col items-center">
+                  <div className="w-full flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-500">Anexo {index + 1}</span>
+                  </div>
+                  
+                  {getAttachmentFileType(url) === 'image' ? (
+                    <img 
+                      src={url} 
+                      alt={`Anexo ${index + 1}`} 
+                      className="h-24 object-contain mb-1 cursor-pointer"
+                      onClick={() => viewAttachment(url)}
+                    />
+                  ) : (
+                    <div className="h-24 flex items-center justify-center">
+                      {getAttachmentIcon(url)}
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2 mt-2">
+                    {canViewAttachment(url) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => viewAttachment(url)}
+                        className="text-xs"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Visualizar
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(url, `anexo-${index+1}`)}
+                      className="text-xs"
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Baixar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {viewingAttachment && (
+        <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="sm" onClick={closeAttachmentViewer}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {getAttachmentFileType(viewingAttachment) === 'image' ? (
+              <img 
+                src={viewingAttachment} 
+                alt="Visualização do anexo" 
+                className="max-w-full max-h-[70vh] object-contain mx-auto"
+              />
+            ) : getAttachmentFileType(viewingAttachment) === 'pdf' ? (
+              <iframe 
+                src={viewingAttachment} 
+                width="100%" 
+                height="500px" 
+                title="Visualização de PDF"
+                className="border-0"
+              />
+            ) : (
+              <div className="text-center py-10">
+                <FileText className="h-20 w-20 mx-auto text-gray-400 mb-4" />
+                <p>Este tipo de arquivo não pode ser visualizado diretamente.</p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleDownload(viewingAttachment)} 
+                  className="mt-4"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar Arquivo
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       )}
     </Card>
   );

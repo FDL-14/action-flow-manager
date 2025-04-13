@@ -19,6 +19,11 @@ const ActionsPage = () => {
     responsibleId: 'all',
     clientId: 'all',
   });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleActionDeleted = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   const filteredActions = actions.filter(action => {
     // Filtrar por status
@@ -74,7 +79,11 @@ const ActionsPage = () => {
           </div>
         ) : (
           filteredActions.map(action => (
-            <ActionCard key={action.id} action={action} />
+            <ActionCard 
+              key={`${action.id}-${refreshKey}`} 
+              action={action}
+              onDelete={handleActionDeleted} 
+            />
           ))
         )}
       </div>
