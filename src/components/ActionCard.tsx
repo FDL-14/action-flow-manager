@@ -24,11 +24,14 @@ import {
   UserRound,
   Eye,
   Trash2,
-  FileIcon,
-  X,
   File,
   Table, 
-  FileType
+  FileType,
+  X,
+  Phone,
+  MessageSquare,
+  MessageCircle,
+  Share
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -50,6 +53,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const [showNotificationOptions, setShowNotificationOptions] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -117,6 +121,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
 
   const handleSendEmail = async () => {
     await sendActionEmail(action.id);
+  };
+
+  const handleSendAllNotifications = async () => {
+    await sendActionEmail(action.id);
+    setShowNotificationOptions(false);
   };
 
   const handleEditAction = () => {
@@ -309,11 +318,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={handleSendEmail}
+              onClick={() => setShowNotificationOptions(true)}
               className="hidden sm:flex"
             >
-              <Mail className="h-4 w-4 mr-1" />
-              Email
+              <Share className="h-4 w-4 mr-1" />
+              Notificar
             </Button>
             
             {canEditAction() && (
@@ -374,9 +383,9 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                     Ver anexos
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={handleSendEmail} className="sm:hidden">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Enviar email
+                <DropdownMenuItem onClick={() => setShowNotificationOptions(true)} className="sm:hidden">
+                  <Share className="mr-2 h-4 w-4" />
+                  Notificar responsáveis
                 </DropdownMenuItem>
                 {canEditAction() && (
                   <DropdownMenuItem onClick={handleEditAction} className="sm:hidden">
@@ -581,6 +590,58 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={showNotificationOptions} onOpenChange={setShowNotificationOptions}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Enviar Notificações</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col space-y-3">
+              <Button 
+                onClick={handleSendAllNotifications} 
+                className="w-full"
+              >
+                <Share className="mr-2 h-4 w-4" />
+                Enviar Todas as Notificações
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={handleSendEmail} 
+                className="w-full"
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Enviar apenas Email
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  sendActionEmail(action.id, 'sms');
+                  setShowNotificationOptions(false);
+                }} 
+                className="w-full"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Enviar apenas SMS
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  sendActionEmail(action.id, 'whatsapp');
+                  setShowNotificationOptions(false);
+                }} 
+                className="w-full"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Enviar apenas WhatsApp
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

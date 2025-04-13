@@ -54,7 +54,7 @@ export interface Responsible {
   id: string;
   name: string;
   email: string;
-  phone?: string;
+  phone?: string; // Campo de telefone para SMS e WhatsApp
   department: string;
   role: string;
   type?: 'responsible' | 'requester';

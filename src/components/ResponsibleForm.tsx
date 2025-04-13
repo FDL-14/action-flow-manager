@@ -31,6 +31,7 @@ interface ResponsibleFormProps {
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('Email inválido'),
+  phone: z.string().min(10, 'Telefone deve ter pelo menos 10 dígitos').max(15, 'Telefone muito longo'),
   department: z.string().min(2, 'Departamento deve ter pelo menos 2 caracteres'),
   role: z.string().min(2, 'Função deve ter pelo menos 2 caracteres'),
 });
@@ -46,6 +47,7 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange })
     defaultValues: {
       name: '',
       email: '',
+      phone: '',
       department: '',
       role: '',
     },
@@ -56,6 +58,7 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange })
       addResponsible({
         name: values.name,
         email: values.email,
+        phone: values.phone,
         department: values.department,
         role: values.role,
       });
@@ -114,6 +117,24 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange })
                     <Input 
                       placeholder="joao.silva@empresa.com" 
                       type="email"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="(xx) xxxxx-xxxx" 
+                      type="tel"
                       {...field} 
                     />
                   </FormControl>

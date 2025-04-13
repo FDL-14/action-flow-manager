@@ -3,7 +3,7 @@ import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { useEmail } from '@/services/email';
+import { useMessaging } from '@/services/messaging';
 import { useCompany } from './CompanyContext';
 
 interface ActionContextType {
@@ -18,7 +18,7 @@ interface ActionContextType {
   deleteActionNote: (actionNoteId: string, actionId: string) => void;
   addAttachment: (actionId: string, attachment: string) => void;
   getActionSummary: () => ActionSummary;
-  sendActionEmail: (actionId: string) => Promise<void>;
+  sendActionEmail: (actionId: string, method?: 'email' | 'sms' | 'whatsapp') => Promise<void>;
   deleteAction: (id: string) => void;
 }
 
@@ -44,7 +44,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [actions, setActions] = useState<Action[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { sendActionNotification } = useEmail();
+  const { sendActionNotification, sendEmail, sendSMS, sendWhatsApp } = useMessaging();
   const { responsibles } = useCompany();
 
   const backupActionsToLocalStorage = (actionsData: Action[]) => {
@@ -360,7 +360,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   };
 
-  const sendActionEmail = async (actionId: string) => {
+  const sendActionEmail = async (actionId: string, method?: 'email' | 'sms' | 'whatsapp') => {
     const action = actions.find(a => a.id === actionId);
     if (!action) {
       toast({
@@ -384,17 +384,37 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
-      await sendActionNotification(
-        responsible,
-        requester,
-        action.subject,
-        action.description
-      );
+      if ((method === 'sms' || method === 'whatsapp') && !responsible.phone) {
+        toast({
+          title: "Aviso",
+          description: `O responsável não possui telefone cadastrado para envio de ${method === 'sms' ? 'SMS' : 'WhatsApp'}.`,
+          variant: "warning",
+        });
+        return;
+      }
+
+      if (method === 'email') {
+        await sendEmail(responsible, requester, action.subject, action.description);
+        toast.success("Email enviado com sucesso!");
+      } else if (method === 'sms') {
+        await sendSMS(responsible.phone!, action.subject, responsible.name);
+        toast.success("SMS enviado com sucesso!");
+      } else if (method === 'whatsapp') {
+        await sendWhatsApp(responsible.phone!, action.subject, responsible.name, action.description);
+        toast.success("Mensagem de WhatsApp enviada com sucesso!");
+      } else {
+        await sendActionNotification(
+          responsible,
+          requester,
+          action.subject,
+          action.description
+        );
+      }
     } catch (error) {
-      console.error("Error sending action email:", error);
+      console.error("Error sending notifications:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível enviar o email. Tente novamente mais tarde.",
+        description: "Não foi possível enviar as notificações. Tente novamente mais tarde.",
         variant: "destructive",
       });
     }
