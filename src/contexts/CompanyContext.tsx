@@ -3,6 +3,7 @@ import { Company, Client, Responsible } from '@/lib/types';
 import { defaultCompany, mockClients, mockResponsibles } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
+import { useAuth } from './AuthContext';
 
 interface CompanyContextType {
   company: Company | null;
@@ -10,6 +11,8 @@ interface CompanyContextType {
   responsibles: Responsible[];
   setCompany: (company: Company) => void;
   addClient: (client: Omit<Client, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
+  updateClient: (client: Client) => void;
+  deleteClient: (id: string) => void;
   addResponsible: (responsible: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => void;
   updateResponsible: (responsible: Responsible) => void;
   deleteResponsible: (id: string) => void;
@@ -22,6 +25,8 @@ const CompanyContext = createContext<CompanyContextType>({
   responsibles: [],
   setCompany: () => {},
   addClient: () => {},
+  updateClient: () => {},
+  deleteClient: () => {},
   addResponsible: () => {},
   updateResponsible: () => {},
   deleteResponsible: () => {},
@@ -35,6 +40,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [clients, setClients] = useState<Client[]>([]);
   const [responsibles, setResponsibles] = useState<Responsible[]>([]);
   const { toast: toastUI } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     try {
@@ -189,6 +195,39 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
+  const updateClient = (updatedClient: Client) => {
+    if (!company) return;
+    
+    const updatedClients = clients.map(c => 
+      c.id === updatedClient.id ? { ...updatedClient, updatedAt: new Date() } : c
+    );
+    
+    setClients(updatedClients);
+    
+    try {
+      localStorage.setItem('clients', JSON.stringify(updatedClients));
+      toast.success("Cliente atualizado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao atualizar cliente:", error);
+      toast.error("Ocorreu um erro ao atualizar o cliente");
+    }
+  };
+
+  const deleteClient = (id: string) => {
+    if (!company) return;
+    
+    const updatedClients = clients.filter(c => c.id !== id);
+    setClients(updatedClients);
+    
+    try {
+      localStorage.setItem('clients', JSON.stringify(updatedClients));
+      toast.success("Cliente excluído com sucesso!");
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      toast.error("Ocorreu um erro ao excluir o cliente");
+    }
+  };
+
   const addResponsible = (responsibleData: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
     if (!company) return;
     
@@ -280,7 +319,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clients, 
         responsibles, 
         setCompany, 
-        addClient, 
+        addClient,
+        updateClient,
+        deleteClient, 
         addResponsible,
         updateResponsible,
         deleteResponsible,

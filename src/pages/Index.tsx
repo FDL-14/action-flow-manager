@@ -9,21 +9,41 @@ const Index = () => {
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    // Consistent redirection logic for all access URLs
-    if (isAuthenticated) {
-      // If authenticated, go to dashboard
-      navigate('/dashboard');
-    } else {
-      // For public access, allow entry with visitor warning
-      toast.info("Acesso como visitante", {
-        description: "Você está acessando o sistema como visitante. Algumas funcionalidades podem ser limitadas.",
-        duration: 5000,
-      });
-      navigate('/dashboard');
-    }
+    const handleRedirection = () => {
+      if (isAuthenticated) {
+        // Se autenticado, vai para o dashboard
+        console.log("Usuário autenticado, redirecionando para o dashboard");
+        navigate('/dashboard');
+      } else {
+        // Para acesso público, permitir entrada com aviso de visitante
+        console.log("Acesso como visitante, redirecionando para o dashboard");
+        toast.info("Acesso como visitante", {
+          description: "Você está acessando o sistema como visitante. Algumas funcionalidades podem ser limitadas.",
+          duration: 5000,
+        });
+        
+        // Redireciona para o login em vez do dashboard quando não autenticado
+        navigate('/login');
+      }
+    };
+
+    // Executa o redirecionamento
+    handleRedirection();
+
+    // Adicionar um listener para o evento storage para sincronização entre abas
+    const handleStorageChange = () => {
+      console.log("Alteração no localStorage detectada, recarregando dados");
+      handleRedirection();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [isAuthenticated, navigate]);
 
-  return null; // This page only redirects
+  return null; // Esta página apenas redireciona
 };
 
 export default Index;

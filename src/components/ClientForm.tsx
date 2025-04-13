@@ -22,10 +22,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Client } from '@/lib/types';
+import { useEffect } from 'react';
 
 interface ClientFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editClient?: Client;
 }
 
 const formSchema = z.object({
@@ -36,8 +39,8 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange }) => {
-  const { addClient } = useCompany();
+const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient }) => {
+  const { addClient, updateClient } = useCompany();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -49,27 +52,63 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange }) => {
     },
   });
 
+  // Populate form when in edit mode
+  useEffect(() => {
+    if (editClient) {
+      form.reset({
+        name: editClient.name,
+        email: editClient.email || '',
+        phone: editClient.phone || '',
+      });
+    } else {
+      // Reset form when not in edit mode
+      form.reset({
+        name: '',
+        email: '',
+        phone: '',
+      });
+    }
+  }, [editClient, form, open]);
+
   const onSubmit = (values: FormValues) => {
     try {
-      addClient({
-        name: values.name,
-        email: values.email || undefined,
-        phone: values.phone || undefined,
-      });
+      if (editClient) {
+        // Update existing client
+        updateClient({
+          ...editClient,
+          name: values.name,
+          email: values.email || undefined,
+          phone: values.phone || undefined,
+          updatedAt: new Date()
+        });
+
+        toast({
+          title: "Cliente atualizado",
+          description: "O cliente foi atualizado com sucesso!",
+          variant: "default",
+        });
+      } else {
+        // Add new client
+        addClient({
+          name: values.name,
+          email: values.email || undefined,
+          phone: values.phone || undefined,
+        });
+        
+        toast({
+          title: "Cliente adicionado",
+          description: "O cliente foi adicionado com sucesso!",
+          variant: "default",
+        });
+      }
 
       form.reset();
       onOpenChange(false);
-      
-      toast({
-        title: "Cliente adicionado",
-        description: "O cliente foi adicionado com sucesso!",
-        variant: "default",
-      });
     } catch (error) {
-      console.error('Error adding client:', error);
+      console.error('Error handling client:', error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao adicionar o cliente",
+        description: "Ocorreu um erro ao salvar o cliente",
         variant: "destructive",
       });
     }
@@ -79,9 +118,11 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange }) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Cadastrar Cliente</DialogTitle>
+          <DialogTitle>{editClient ? 'Editar Cliente' : 'Cadastrar Cliente'}</DialogTitle>
           <DialogDescription>
-            Adicione um novo cliente ao sistema.
+            {editClient 
+              ? 'Edite as informações do cliente.'
+              : 'Adicione um novo cliente ao sistema.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -140,7 +181,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange }) => {
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Cliente</Button>
+              <Button type="submit">{editClient ? 'Atualizar' : 'Salvar Cliente'}</Button>
             </DialogFooter>
           </form>
         </Form>

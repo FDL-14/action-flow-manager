@@ -16,24 +16,68 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Building2, Mail, Phone, Plus, User } from 'lucide-react';
+import { Building2, Mail, Phone, Plus, Edit, Trash } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ClientForm from '@/components/ClientForm';
+import { Client } from '@/lib/types';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ClientsPage = () => {
-  const { company, clients } = useCompany();
+  const { company, clients, deleteClient } = useCompany();
   const { getActionsByClient } = useActions();
+  const { user } = useAuth();
   const [showClientForm, setShowClientForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+
+  // Verificar permissões do usuário
+  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit);
+  const canDeleteClients = user?.role === 'master';
+
+  const handleEditClient = (client: Client) => {
+    setEditingClient(client);
+    setShowClientForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowClientForm(false);
+    setEditingClient(undefined);
+  };
+
+  const handleDeleteClient = (id: string) => {
+    if (canDeleteClients) {
+      setClientToDelete(id);
+    }
+  };
+
+  const confirmDeleteClient = () => {
+    if (clientToDelete) {
+      deleteClient(clientToDelete);
+      setClientToDelete(null);
+    }
+  };
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Clientes</h1>
-        <Button onClick={() => setShowClientForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Cadastrar Cliente
-        </Button>
+        {canEditClients && (
+          <Button onClick={() => { setEditingClient(undefined); setShowClientForm(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Cadastrar Cliente
+          </Button>
+        )}
       </div>
 
       {clients.length === 0 ? (
@@ -60,6 +104,7 @@ const ClientsPage = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead>Ações Relacionadas</TableHead>
+                  <TableHead className="text-right">Gerenciar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -94,6 +139,31 @@ const ClientsPage = () => {
                           <span className="text-sm">{clientActions.length} ações</span>
                         </div>
                       </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          {canEditClients && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditClient(client)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                          )}
+                          {canDeleteClients && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteClient(client.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash className="h-4 w-4 mr-1" />
+                              Excluir
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -105,8 +175,29 @@ const ClientsPage = () => {
 
       <ClientForm 
         open={showClientForm}
-        onOpenChange={setShowClientForm}
+        onOpenChange={handleCloseForm}
+        editClient={editingClient}
       />
+
+      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita e todas as ações associadas podem ser afetadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteClient}
+              className="bg-red-500 hover:bg-red-700 text-white"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

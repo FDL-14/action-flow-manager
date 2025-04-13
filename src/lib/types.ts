@@ -22,8 +22,11 @@ export interface Permission {
   canAddNotes?: boolean;
   canViewReports?: boolean;
   viewAllActions?: boolean;
-  canEditUser?: boolean; // New permission for editing users
-  canEditAction?: boolean; // New permission for editing actions
+  canEditUser?: boolean; // Permissão para editar usuários
+  canEditAction?: boolean; // Permissão para editar ações
+  canEditClient?: boolean; // Nova permissão para editar clientes
+  canDeleteClient?: boolean; // Nova permissão para excluir clientes
+  viewOnlyAssignedActions?: boolean; // Nova permissão - visualizar apenas ações atribuídas ao usuário
 }
 
 export interface Company {
@@ -89,8 +92,8 @@ export interface Action {
   notes: ActionNote[];
   createdAt: Date;
   updatedAt: Date;
-  createdBy?: string; // ID of the user who created the action
-  createdByName?: string; // Name of the user who created the action
+  createdBy?: string; // ID do usuário que criou a ação
+  createdByName?: string; // Nome do usuário que criou a ação
 }
 
 export interface ActionSummary {
