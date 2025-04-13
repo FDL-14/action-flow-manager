@@ -36,14 +36,18 @@ const UsersPage = () => {
     setSelectedUserId('');
   };
 
-  // Get company names for display - fixed to not show duplicates
+  // Fixed function to properly display company names without repetition
   const getCompanyNames = (companyIds: string[]) => {
     if (!companyIds || companyIds.length === 0) return 'Nenhuma empresa associada';
     
-    return companyIds.map(companyId => {
+    const companyNames = companyIds.map(companyId => {
       const company = companies.find(c => c.id === companyId);
-      return company?.name || 'Não encontrada';
-    }).join(', ');
+      return company ? company.name : 'Não encontrada';
+    });
+    
+    // Remove duplicates from the names array
+    const uniqueCompanyNames = [...new Set(companyNames)];
+    return uniqueCompanyNames.join(', ');
   };
 
   // Only show edit buttons for users the current user has permission to edit
