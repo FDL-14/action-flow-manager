@@ -251,7 +251,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: "default",
           name: "Default Permissions",
           description: "Default user permissions",
-          ...userData.permissions || defaultPermissions
+          ...defaultPermissions,
+          ...(userData.permissions || {}),
+          canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
+            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
+          canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
+            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
         }
       ]
     };
@@ -323,6 +328,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
         };
 
+        const updatedPermissions = {
+          ...defaultPermissions,
+          ...(userData.permissions || {}),
+          canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
+            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
+          canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
+            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
+        };
+
         return {
           ...user,
           name: userData.name,
@@ -336,7 +350,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: "default",
               name: "Default Permissions",
               description: "Default user permissions",
-              ...userData.permissions || defaultPermissions
+              ...updatedPermissions
             }
           ]
         };

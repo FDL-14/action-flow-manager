@@ -53,6 +53,8 @@ const defaultPermissions = {
   canEditAction: false,
   canEditClient: false,
   canDeleteClient: false,
+  canEditCompany: false,
+  canDeleteCompany: false,
   viewOnlyAssignedActions: true,
 };
 
@@ -128,8 +130,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           canEditAction: permissions.canEditAction,
           canEditClient: permissions.canEditClient,
           canDeleteClient: permissions.canDeleteClient,
-          canEditCompany: permissions.canEditCompany || false,
-          canDeleteCompany: permissions.canDeleteCompany || false,
+          canEditCompany: permissions.canEditCompany,
+          canDeleteCompany: permissions.canDeleteCompany,
           viewOnlyAssignedActions: permissions.viewOnlyAssignedActions
         }
       });

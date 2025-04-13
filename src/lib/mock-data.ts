@@ -25,6 +25,8 @@ export const defaultMasterUser: User = {
       canEditAction: true,
       canEditClient: true,
       canDeleteClient: true,
+      canEditCompany: true,
+      canDeleteCompany: true,
       viewOnlyAssignedActions: false
     }
   ]
@@ -57,6 +59,8 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: false,
         canDeleteClient: false,
+        canEditCompany: false,
+        canDeleteCompany: false,
         viewOnlyAssignedActions: true
       }
     ]
@@ -86,6 +90,8 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: false,
         canDeleteClient: false,
+        canEditCompany: false,
+        canDeleteCompany: false,
         viewOnlyAssignedActions: true
       }
     ]
@@ -115,6 +121,8 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: true,
         canDeleteClient: true,
+        canEditCompany: true,
+        canDeleteCompany: true,
         viewOnlyAssignedActions: false
       }
     ]
@@ -144,6 +152,8 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: true,
         canDeleteClient: true,
+        canEditCompany: true,
+        canDeleteCompany: true,
         viewOnlyAssignedActions: false
       }
     ]
