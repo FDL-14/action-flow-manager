@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -83,7 +82,7 @@ const LoginPage = () => {
             setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
           }
         } else {
-          const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
+          const { data, error } = await supabase.functions.invoke<{ exists: boolean; error: any }>(
             'check_master_user_exists',
             { 
               body: {} as CheckMasterUserExistsParams 
@@ -93,7 +92,7 @@ const LoginPage = () => {
           if (error) {
             console.error('Erro ao verificar usuário master:', error);
           } else {
-            const exists = data ?? false;
+            const exists = data?.exists ?? false;
             setMasterUserExists(!!exists);
           }
         }
@@ -149,7 +148,7 @@ const LoginPage = () => {
         
         userEmail = userProfile?.email || null;
       } else {
-        const { data, error } = await supabase.functions.invoke<{ data: string; error: any }>(
+        const { data, error } = await supabase.functions.invoke<{ email: string; error: any }>(
           'get_user_email_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
@@ -161,7 +160,7 @@ const LoginPage = () => {
           throw new Error("Error fetching user information");
         }
         
-        userEmail = data ?? null;
+        userEmail = data?.email ?? null;
       }
       
       if (!userEmail) {
