@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -82,6 +83,7 @@ const LoginPage = () => {
             setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
           }
         } else {
+          // FIX: Extract response.data properly to fix the type issue
           const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
             'check_master_user_exists',
             { 
@@ -122,6 +124,7 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(data.cpf);
       
+      // FIX: Extract response.data properly to fix the type issue
       const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
         'get_user_email_by_cpf', 
         { 
@@ -147,6 +150,7 @@ const LoginPage = () => {
         
         userEmail = userProfile?.email || null;
       } else {
+        // FIX: Extract response.data properly to fix the type issue
         const response = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
           { 
@@ -220,6 +224,7 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(cpf);
       
+      // FIX: Extract response.data properly to fix the type issue
       const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
         'check_user_exists_by_cpf', 
         { 
@@ -245,6 +250,7 @@ const LoginPage = () => {
         
         userExists = existingUsers !== null && existingUsers.length > 0;
       } else {
+        // FIX: Extract response.data properly to fix the type issue
         const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
           'check_user_exists_by_cpf',
           { 
@@ -382,6 +388,7 @@ const LoginPage = () => {
         return;
       }
       
+      // FIX: Properly handle the response object
       const response = await supabase.functions.invoke('create-admin-user');
       
       if (response.error) {
