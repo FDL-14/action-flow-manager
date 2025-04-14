@@ -1,17 +1,23 @@
 
-# Create Master User Function
+# Função de Criação de Usuário Master
 
-This Edge Function creates a master user with all privileges in the system.
+Esta Função Edge cria um usuário master com todos os privilégios no sistema.
 
-It handles:
-- Checking if the master user already exists
-- Creating the user in the Auth system
-- Setting up their profile with the master role
-- Adding all required permissions
+Ela realiza:
+- Verificação se o usuário master já existe
+- Criação do usuário no sistema de Autenticação
+- Configuração do perfil do usuário com papel de master
+- Adição de todas as permissões necessárias
 
-## Environment Variables
-- SUPABASE_URL: The URL of your Supabase project (automatically set)
-- SUPABASE_SERVICE_ROLE_KEY: The service role key for your Supabase project (must be set manually)
+## Variáveis de Ambiente
+- SUPABASE_URL: A URL do seu projeto Supabase (definida automaticamente)
+- SUPABASE_SERVICE_ROLE_KEY: A chave de serviço do seu projeto Supabase (deve ser configurada manualmente)
 
-## Usage
-This function is called from the login page when clicking the "Create Master User" button.
+## Uso
+Esta função é chamada a partir da página de login ao clicar no botão "Criar usuário master".
+
+## Solução de Problemas
+Se a função falhar, verifique:
+1. Se a chave SUPABASE_SERVICE_ROLE_KEY está configurada corretamente
+2. Se o usuário master já não existe no sistema
+3. Os logs da função para mensagens de erro detalhadas

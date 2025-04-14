@@ -48,12 +48,12 @@ const LoginPage = () => {
     const checkMasterUser = async () => {
       try {
         setCheckingMaster(true);
-        // Usando a função de forma typesafe
-        const { data, error } = await supabase.rpc(
-          'check_master_user_exists', 
-          {}, 
-          { count: 'exact' }
-        ) as { data: boolean; error: any };
+        
+        // Tipando corretamente a resposta da chamada RPC
+        const { data, error } = await supabase.rpc('check_master_user_exists', {}) as unknown as { 
+          data: boolean; 
+          error: any 
+        };
         
         if (error) {
           console.error('Erro ao verificar usuário master:', error);
@@ -90,11 +90,14 @@ const LoginPage = () => {
       // Normalizar CPF antes de fazer a consulta
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      // Usar RPC para buscar o usuário pelo CPF para obter o email
+      // Tipando corretamente a resposta da chamada RPC
       const { data: userEmail, error: rpcError } = await supabase.rpc(
         'get_user_email_by_cpf',
         { cpf_param: normalizedCPF }
-      ) as { data: string; error: any };
+      ) as unknown as { 
+        data: string; 
+        error: any 
+      };
       
       if (rpcError) {
         console.error('Erro ao buscar email do usuário:', rpcError);
@@ -164,11 +167,14 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(cpf);
       
-      // Usar RPC para verificar se já existe um usuário com este CPF
+      // Tipando corretamente a resposta da chamada RPC
       const { data: userExists, error: rpcError } = await supabase.rpc(
         'check_user_exists_by_cpf',
         { cpf_param: normalizedCPF }
-      ) as { data: boolean; error: any };
+      ) as unknown as { 
+        data: boolean; 
+        error: any 
+      };
       
       if (rpcError) {
         console.error('Erro ao verificar usuário existente:', rpcError);
@@ -217,6 +223,8 @@ const LoginPage = () => {
   const createMasterUser = async () => {
     setCreatingMaster(true);
     try {
+      console.log("Iniciando criação de usuário master");
+      
       // Criar usuário no Auth com senha @54321
       const { data: authData, error: authError } = await supabase.functions.invoke('create-master-user', {
         body: {
@@ -226,6 +234,8 @@ const LoginPage = () => {
           cpf: '80243088191'
         }
       });
+      
+      console.log("Resposta da função:", authData, authError);
       
       if (authError) {
         console.error('Erro ao criar usuário master:', authError);
