@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { toast } from 'sonner';
@@ -865,3 +866,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
+
+  // Adicionando as funções ausentes
+  const canUserEditResponsibles = () => {
+    if (!user || !user.permissions || user.permissions.length === 0) {
+      return false;
+    }
+    return user.role === 'master' || user.permissions[0].canEdit;
+  };
+
+  const canUserDeleteResponsibles = () => {
+    if (!user || !user.permissions || user.permissions.length === 0) {
+      return false;
+    }
+    return user.role === 'master' || user.permissions[0].canDelete;
+  };
+
+  const getUserCompanyIds = () => {
+    if (!user) return [];
+    return user.companyIds || [];
+  };
+
+  const getUserClientIds = () => {
+    if (!user) return [];
+    return user.clientIds || [];
+  };
+
+  const canViewAllActions = () => {
+    if (!user || !user.permissions || user.permissions.length === 0) {
+      return false;
+    }
+    return user.role === 'master' || user.permissions[0].viewAllActions;
+  };
+
+  const shouldViewOnlyAssignedActions = () => {
+    if (!user || !user.permissions || user.permissions.length === 0) {
+      return true; // Default to restricted view
+    }
+    return user.permissions[0].viewOnlyAssignedActions;
+  };
+
+  return (
+    <AuthContext.Provider value={{
+      user,
+      users,
+      isAuthenticated,
+      login,
+      logout,
+      addUser,
+      updateUser,
+      changePassword,
+      resetUserPassword,
+      canUserEditResponsibles,
+      canUserDeleteResponsibles,
+      getUserCompanyIds,
+      getUserClientIds,
+      canViewAllActions,
+      shouldViewOnlyAssignedActions
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
