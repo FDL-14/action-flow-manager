@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -31,28 +31,30 @@ type FormData = z.infer<typeof formSchema>;
 const LoginPage = () => {
   const { isAuthenticated, login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      cpf: '',
-      password: '',
+      cpf: '80243088191',
+      password: '@54321',
     },
   });
 
   useEffect(() => {
+    // Focus the CPF input when the component mounts
     const cpfInput = document.getElementById('cpf');
     if (cpfInput) {
       cpfInput.focus();
     }
-    
-    // Auto-fill the admin credentials
-    form.setValue('cpf', '80243088191');
-    form.setValue('password', '@54321');
-  }, [form]);
+  }, []);
 
   const normalizeCPF = (cpf: string): string => {
     return cpf.replace(/\D/g, '');
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const onSubmit = async (data: FormData) => {
@@ -61,8 +63,10 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      // Direct login with admin email format
+      // Format the email based on the CPF
       const email = `${normalizedCPF}@exemplo.com`;
+      
+      console.log('Attempting login with:', { email, password: data.password });
       
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
@@ -82,6 +86,9 @@ const LoginPage = () => {
         toast.success("Login bem-sucedido", {
           description: "Você foi autenticado com sucesso"
         });
+        
+        // Explicitly call the login function from AuthContext to update the state
+        await login(email, data.password);
       } else {
         toast.error("Erro no login", {
           description: "CPF ou senha incorretos"
@@ -142,7 +149,20 @@ const LoginPage = () => {
                     <FormItem>
                       <FormLabel>Senha</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Digite sua senha" {...field} />
+                        <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="Digite sua senha" 
+                            {...field} 
+                          />
+                          <button 
+                            type="button" 
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                            onClick={togglePasswordVisibility}
+                          >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormDescription>
                         A senha deve ter pelo menos 6 caracteres
@@ -151,19 +171,14 @@ const LoginPage = () => {
                     </FormItem>
                   )}
                 />
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Entrando...
-                      </>
-                    ) : 'Entrar'}
-                  </Button>
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => form.handleSubmit(onSubmit)()}>
-                    Criar Conta
-                  </Button>
-                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : 'Entrar'}
+                </Button>
               </form>
             </Form>
           </CardContent>
