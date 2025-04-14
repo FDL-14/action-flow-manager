@@ -36,7 +36,7 @@ const UsersPage = () => {
     setSelectedUserId('');
   };
 
-  // Fixed function to properly display company names without repetition
+  // Função para exibir os nomes das empresas sem repetição
   const getCompanyNames = (companyIds: string[]) => {
     if (!companyIds || companyIds.length === 0) return 'Nenhuma empresa associada';
     
@@ -45,12 +45,12 @@ const UsersPage = () => {
       return company ? company.name : 'Não encontrada';
     });
     
-    // Remove duplicates from the names array
+    // Remove duplicados do array de nomes
     const uniqueCompanyNames = [...new Set(companyNames)];
     return uniqueCompanyNames.join(', ');
   };
 
-  // Only show edit buttons for users the current user has permission to edit
+  // Apenas mostra botões de edição para usuários que o usuário atual tem permissão para editar
   const canEditUsers = user?.permissions[0]?.canEditUser || user?.role === 'master';
 
   return (

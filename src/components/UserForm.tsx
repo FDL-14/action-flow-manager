@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -147,9 +148,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         companyIds: [],
         clientIds: [],
         permissions: {
-          ...defaultPermissions,
-          canEditCompany: false,
-          canDeleteCompany: false
+          ...defaultPermissions
         }
       });
       setSelectedCompanies([]);
@@ -226,7 +225,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         }
       }
     } catch (error) {
-      console.error('Error submitting user form:', error);
+      console.error('Erro ao submeter formulário de usuário:', error);
       toast({
         title: "Erro",
         description: "Ocorreu um erro ao salvar o usuário.",
