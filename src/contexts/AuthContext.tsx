@@ -161,12 +161,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   console.error('Erro ao buscar permissões:', permError);
                 }
                 
-                const permissionsObj = permissions || {
-                  can_add_notes: profile.role === 'master',
+                // Define default permissions based on user role
+                const defaultPermissions = {
                   can_create: profile.role === 'master',
+                  can_edit: profile.role === 'master',
                   can_delete: profile.role === 'master',
                   can_mark_complete: true,
                   can_mark_delayed: true,
+                  can_add_notes: true,
                   can_view_reports: profile.role === 'master',
                   view_all_actions: profile.role === 'master',
                   can_edit_user: profile.role === 'master',
@@ -178,26 +180,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   view_only_assigned_actions: profile.role !== 'master',
                 };
                 
+                // Merge with any permissions from the database
+                const permissionsObj = {
+                  ...defaultPermissions,
+                  ...(permissions || {})
+                };
+                
                 // Mapear as propriedades snake_case para camelCase
                 const mappedPermissions = {
                   id: "default",
                   name: "Default Permissions",
                   description: "Default user permissions",
-                  canCreate: permissionsObj.can_create,
-                  canEdit: permissionsObj.can_edit,
-                  canDelete: permissionsObj.can_delete,
-                  canMarkComplete: permissionsObj.can_mark_complete,
-                  canMarkDelayed: permissionsObj.can_mark_delayed,
-                  canAddNotes: permissionsObj.can_add_notes,
-                  canViewReports: permissionsObj.can_view_reports,
-                  viewAllActions: permissionsObj.view_all_actions,
-                  canEditUser: permissionsObj.can_edit_user,
-                  canEditAction: permissionsObj.can_edit_action,
-                  canEditClient: permissionsObj.can_edit_client,
-                  canDeleteClient: permissionsObj.can_delete_client,
-                  canEditCompany: permissionsObj.can_edit_company,
-                  canDeleteCompany: permissionsObj.can_delete_company,
-                  viewOnlyAssignedActions: permissionsObj.view_only_assigned_actions
+                  canCreate: permissionsObj.can_create === null ? defaultPermissions.can_create : permissionsObj.can_create,
+                  canEdit: permissionsObj.can_edit === null ? defaultPermissions.can_edit : permissionsObj.can_edit,
+                  canDelete: permissionsObj.can_delete === null ? defaultPermissions.can_delete : permissionsObj.can_delete,
+                  canMarkComplete: permissionsObj.can_mark_complete === null ? defaultPermissions.can_mark_complete : permissionsObj.can_mark_complete,
+                  canMarkDelayed: permissionsObj.can_mark_delayed === null ? defaultPermissions.can_mark_delayed : permissionsObj.can_mark_delayed,
+                  canAddNotes: permissionsObj.can_add_notes === null ? defaultPermissions.can_add_notes : permissionsObj.can_add_notes,
+                  canViewReports: permissionsObj.can_view_reports === null ? defaultPermissions.can_view_reports : permissionsObj.can_view_reports,
+                  viewAllActions: permissionsObj.view_all_actions === null ? defaultPermissions.view_all_actions : permissionsObj.view_all_actions,
+                  canEditUser: permissionsObj.can_edit_user === null ? defaultPermissions.can_edit_user : permissionsObj.can_edit_user,
+                  canEditAction: permissionsObj.can_edit_action === null ? defaultPermissions.can_edit_action : permissionsObj.can_edit_action,
+                  canEditClient: permissionsObj.can_edit_client === null ? defaultPermissions.can_edit_client : permissionsObj.can_edit_client,
+                  canDeleteClient: permissionsObj.can_delete_client === null ? defaultPermissions.can_delete_client : permissionsObj.can_delete_client,
+                  canEditCompany: permissionsObj.can_edit_company === null ? defaultPermissions.can_edit_company : permissionsObj.can_edit_company,
+                  canDeleteCompany: permissionsObj.can_delete_company === null ? defaultPermissions.can_delete_company : permissionsObj.can_delete_company,
+                  viewOnlyAssignedActions: permissionsObj.view_only_assigned_actions === null ? defaultPermissions.view_only_assigned_actions : permissionsObj.view_only_assigned_actions
                 };
                 
                 return {
@@ -249,7 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Erro ao buscar permissões:', permError);
         }
         
-        const permissionsObj = permissions || {
+        // Define default permissions based on user role
+        const defaultPermissions = {
           can_create: profile.role === 'master',
           can_edit: profile.role === 'master',
           can_delete: profile.role === 'master',
@@ -267,26 +276,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           view_only_assigned_actions: profile.role !== 'master',
         };
         
+        // Merge with any permissions from the database
+        const permissionsObj = {
+          ...defaultPermissions,
+          ...(permissions || {})
+        };
+        
         // Mapear as propriedades snake_case para camelCase
         const mappedPermissions = {
           id: "default",
           name: "Default Permissions",
           description: "Default user permissions",
-          canCreate: permissionsObj.can_create,
-          canEdit: permissionsObj.can_edit,
-          canDelete: permissionsObj.can_delete,
-          canMarkComplete: permissionsObj.can_mark_complete,
-          canMarkDelayed: permissionsObj.can_mark_delayed,
-          canAddNotes: permissionsObj.can_add_notes,
-          canViewReports: permissionsObj.can_view_reports,
-          viewAllActions: permissionsObj.view_all_actions,
-          canEditUser: permissionsObj.can_edit_user,
-          canEditAction: permissionsObj.can_edit_action,
-          canEditClient: permissionsObj.can_edit_client,
-          canDeleteClient: permissionsObj.can_delete_client,
-          canEditCompany: permissionsObj.can_edit_company,
-          canDeleteCompany: permissionsObj.can_delete_company,
-          viewOnlyAssignedActions: permissionsObj.view_only_assigned_actions
+          canCreate: permissionsObj.can_create === null ? defaultPermissions.can_create : permissionsObj.can_create,
+          canEdit: permissionsObj.can_edit === null ? defaultPermissions.can_edit : permissionsObj.can_edit,
+          canDelete: permissionsObj.can_delete === null ? defaultPermissions.can_delete : permissionsObj.can_delete,
+          canMarkComplete: permissionsObj.can_mark_complete === null ? defaultPermissions.can_mark_complete : permissionsObj.can_mark_complete,
+          canMarkDelayed: permissionsObj.can_mark_delayed === null ? defaultPermissions.can_mark_delayed : permissionsObj.can_mark_delayed,
+          canAddNotes: permissionsObj.can_add_notes === null ? defaultPermissions.can_add_notes : permissionsObj.can_add_notes,
+          canViewReports: permissionsObj.can_view_reports === null ? defaultPermissions.can_view_reports : permissionsObj.can_view_reports,
+          viewAllActions: permissionsObj.view_all_actions === null ? defaultPermissions.view_all_actions : permissionsObj.view_all_actions,
+          canEditUser: permissionsObj.can_edit_user === null ? defaultPermissions.can_edit_user : permissionsObj.can_edit_user,
+          canEditAction: permissionsObj.can_edit_action === null ? defaultPermissions.can_edit_action : permissionsObj.can_edit_action,
+          canEditClient: permissionsObj.can_edit_client === null ? defaultPermissions.can_edit_client : permissionsObj.can_edit_client,
+          canDeleteClient: permissionsObj.can_delete_client === null ? defaultPermissions.can_delete_client : permissionsObj.can_delete_client,
+          canEditCompany: permissionsObj.can_edit_company === null ? defaultPermissions.can_edit_company : permissionsObj.can_edit_company,
+          canDeleteCompany: permissionsObj.can_delete_company === null ? defaultPermissions.can_delete_company : permissionsObj.can_delete_company,
+          viewOnlyAssignedActions: permissionsObj.view_only_assigned_actions === null ? defaultPermissions.view_only_assigned_actions : permissionsObj.view_only_assigned_actions
         };
         
         const currentUser: User = {
