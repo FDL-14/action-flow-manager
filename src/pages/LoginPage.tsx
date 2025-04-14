@@ -65,7 +65,7 @@ const LoginPage = () => {
         setCheckingMaster(true);
 
         // Verificar se a função RPC existe e criar uma função PL/pgSQL temporária se não existir
-        const { error: functionCheckError } = await supabase.rpc<boolean>(
+        const { error: functionCheckError } = await supabase.rpc<boolean, CheckMasterUserExistsParams>(
           'check_master_user_exists', 
           {} as CheckMasterUserExistsParams
         );
@@ -87,7 +87,7 @@ const LoginPage = () => {
           }
         } else {
           // A função RPC existe e foi executada com sucesso
-          const { data, error } = await supabase.rpc<boolean>(
+          const { data, error } = await supabase.rpc<boolean, CheckMasterUserExistsParams>(
             'check_master_user_exists',
             {} as CheckMasterUserExistsParams
           );
@@ -129,7 +129,7 @@ const LoginPage = () => {
       const normalizedCPF = normalizeCPF(data.cpf);
       
       // Verificar se a função RPC existe
-      const { error: functionCheckError } = await supabase.rpc<string>(
+      const { error: functionCheckError } = await supabase.rpc<string, GetUserEmailByCpfParams>(
         'get_user_email_by_cpf', 
         { cpf_param: normalizedCPF } as GetUserEmailByCpfParams
       );
@@ -154,7 +154,7 @@ const LoginPage = () => {
         userEmail = userProfile?.email || null;
       } else {
         // A função RPC existe, usar normalmente
-        const { data: email, error: rpcError } = await supabase.rpc<string>(
+        const { data: email, error: rpcError } = await supabase.rpc<string, GetUserEmailByCpfParams>(
           'get_user_email_by_cpf',
           { cpf_param: normalizedCPF } as GetUserEmailByCpfParams
         );
@@ -227,7 +227,7 @@ const LoginPage = () => {
       const normalizedCPF = normalizeCPF(cpf);
       
       // Verificar se a função RPC existe
-      const { error: functionCheckError } = await supabase.rpc<boolean>(
+      const { error: functionCheckError } = await supabase.rpc<boolean, CheckUserExistsByCpfParams>(
         'check_user_exists_by_cpf', 
         { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams
       );
@@ -252,7 +252,7 @@ const LoginPage = () => {
         userExists = existingUsers !== null && existingUsers.length > 0;
       } else {
         // A função RPC existe, usar normalmente
-        const { data, error: rpcError } = await supabase.rpc<boolean>(
+        const { data, error: rpcError } = await supabase.rpc<boolean, CheckUserExistsByCpfParams>(
           'check_user_exists_by_cpf',
           { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams
         );
