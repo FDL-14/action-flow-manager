@@ -53,10 +53,62 @@ serve(async (req) => {
 
     if (existingProfile) {
       console.log("Usuário com este CPF já existe");
+      
+      // Vamos garantir que o usuário existente tenha a função 'master'
+      const { error: roleUpdateError } = await supabase
+        .from('profiles')
+        .update({
+          role: 'master'
+        })
+        .eq('cpf', cpf);
+        
+      if (roleUpdateError) {
+        console.error('Erro ao atualizar função do usuário:', roleUpdateError);
+      }
+      
+      // Vamos garantir que o usuário existente tenha todas as permissões
+      const { data: existingPermissions, error: permissionQueryError } = await supabase
+        .from('user_permissions')
+        .select('*')
+        .eq('user_id', existingProfile.id)
+        .maybeSingle();
+        
+      if (permissionQueryError) {
+        console.error('Erro ao verificar permissões existentes:', permissionQueryError);
+      }
+      
+      if (existingPermissions) {
+        // Atualizar permissões existentes
+        const { error: permUpdateError } = await supabase
+          .from('user_permissions')
+          .update({
+            can_create: true,
+            can_edit: true,
+            can_delete: true,
+            can_mark_complete: true,
+            can_mark_delayed: true,
+            can_add_notes: true,
+            can_view_reports: true,
+            view_all_actions: true,
+            can_edit_user: true,
+            can_edit_action: true,
+            can_edit_client: true,
+            can_delete_client: true,
+            can_edit_company: true,
+            can_delete_company: true,
+            view_only_assigned_actions: false
+          })
+          .eq('user_id', existingProfile.id);
+          
+        if (permUpdateError) {
+          console.error('Erro ao atualizar permissões:', permUpdateError);
+        }
+      }
+      
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'Usuário com este CPF já existe. Use CPF: 80243088191 e senha: @54321 para fazer login',
+          message: 'Usuário com este CPF já existe. Use CPF: 80243088191 e senha: @54321 para fazer login. Permissões atualizadas para Administrador Master.',
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -38,8 +38,15 @@ const Navbar = () => {
   ];
   
   // Verificar se o usuário tem permissão para acessar a página de usuários
-  // Corrigido para usar .some() para verificar as permissões corretamente
-  const canAccessUsers = user?.role === 'master' || (user?.permissions && user?.permissions.some(p => p.canEditUser));
+  // Verifica se o usuário é master ou tem permissão específica
+  const canAccessUsers = user?.role === 'master' || 
+    (user?.permissions && user?.permissions.length > 0 && 
+     user.permissions.some(permission => permission.canEditUser === true));
+
+  // Debug user permissions
+  console.log("User Role:", user?.role);
+  console.log("User Permissions:", JSON.stringify(user?.permissions));
+  console.log("Can Access Users:", canAccessUsers);
 
   const closeSheet = () => setIsOpen(false);
   
@@ -95,7 +102,7 @@ const Navbar = () => {
                   </Link>
                 ))}
                 
-                {/* Adiciona o item Usuários ao menu móvel para usuários com permissão */}
+                {/* Usuários menu item - mobile */}
                 {canAccessUsers && (
                   <Link
                     to="/users"
@@ -138,7 +145,7 @@ const Navbar = () => {
               </Link>
             ))}
             
-            {/* Adiciona o botão de Usuários na navegação desktop para usuários com permissão */}
+            {/* Usuários menu item - desktop */}
             {canAccessUsers && (
               <Link
                 to="/users"

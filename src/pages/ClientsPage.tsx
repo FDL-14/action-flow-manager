@@ -45,8 +45,19 @@ const ClientsPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Verificar permissões do usuário
-  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEditClient);
-  const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDeleteClient);
+  const canEditClients = user?.role === 'master' || 
+    (user?.permissions && user?.permissions.length > 0 && 
+     user.permissions.some(permission => permission.canEditClient === true));
+  
+  const canDeleteClients = user?.role === 'master' || 
+    (user?.permissions && user?.permissions.length > 0 && 
+     user.permissions.some(permission => permission.canDeleteClient === true));
+
+  // Debug permissions
+  console.log("User Role:", user?.role);
+  console.log("User Permissions:", JSON.stringify(user?.permissions));
+  console.log("Can Edit Clients:", canEditClients);
+  console.log("Can Delete Clients:", canDeleteClients);
 
   const handleEditClient = (client: Client) => {
     setEditingClient(client);
