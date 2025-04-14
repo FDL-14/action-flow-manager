@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -28,13 +27,11 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Corrigir a interface para tipagem genérica de retorno das funções RPC
 interface RPCResponse<T> {
   data: T;
   error: any;
 }
 
-// Interfaces para os parâmetros das funções RPC
 interface CheckMasterUserExistsParams {}
 interface GetUserEmailByCpfParams {
   cpf_param: string;
@@ -58,13 +55,11 @@ const LoginPage = () => {
     },
   });
 
-  // Verificar se o usuário master já existe ao carregar a página
   useEffect(() => {
     const checkMasterUser = async () => {
       try {
         setCheckingMaster(true);
 
-        // Verificar se a função RPC existe e criar uma função PL/pgSQL temporária se não existir
         const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
           'check_master_user_exists', 
           { 
@@ -75,7 +70,6 @@ const LoginPage = () => {
         if (functionCheckError) {
           console.error('Erro ao verificar função RPC:', functionCheckError);
           
-          // Verificar diretamente via consulta SQL se existem usuários master
           const { data: masterUsers, error: queryError } = await supabase
             .from('profiles')
             .select('id')
@@ -88,7 +82,6 @@ const LoginPage = () => {
             setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
           }
         } else {
-          // A função RPC existe e foi executada com sucesso
           const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
             'check_master_user_exists',
             { 
@@ -112,7 +105,6 @@ const LoginPage = () => {
     checkMasterUser();
   }, []);
 
-  // Foco automático no campo CPF ao carregar a página
   useEffect(() => {
     const cpfInput = document.getElementById('cpf');
     if (cpfInput) {
@@ -120,7 +112,6 @@ const LoginPage = () => {
     }
   }, []);
 
-  // Função para normalizar CPF (remover caracteres não numéricos)
   const normalizeCPF = (cpf: string): string => {
     return cpf.replace(/\D/g, '');
   };
@@ -129,10 +120,8 @@ const LoginPage = () => {
     setLoading(true);
     
     try {
-      // Normalizar CPF antes de fazer a consulta
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      // Verificar se a função RPC existe
       const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
         'get_user_email_by_cpf', 
         { 
@@ -143,9 +132,8 @@ const LoginPage = () => {
       let userEmail: string | null = null;
       
       if (functionCheckError) {
-        console.error('Erro ao verificar função RPC:', functionCheckError);
+        console.error('Error checking RPC function:', functionCheckError);
         
-        // Consulta alternativa se a função RPC não existir
         const { data: userProfile, error: queryError } = await supabase
           .from('profiles')
           .select('email')
@@ -153,13 +141,12 @@ const LoginPage = () => {
           .maybeSingle();
           
         if (queryError) {
-          console.error('Erro ao buscar email do usuário:', queryError);
-          throw new Error("Erro ao buscar informações de usuário");
+          console.error('Error fetching user email:', queryError);
+          throw new Error("Error fetching user information");
         }
         
         userEmail = userProfile?.email || null;
       } else {
-        // A função RPC existe, usar normalmente
         const { data, error } = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
           { 
@@ -168,12 +155,11 @@ const LoginPage = () => {
         );
         
         if (error) {
-          console.error('Erro ao buscar email do usuário:', error);
-          throw new Error("Erro ao buscar informações de usuário");
+          console.error('Error fetching user email:', error);
+          throw new Error("Error fetching user information");
         }
         
-        // Fix: Extract the string data from the response
-        userEmail = data || null;
+        userEmail = data ?? null;
       }
       
       if (!userEmail) {
@@ -184,7 +170,6 @@ const LoginPage = () => {
         return;
       }
       
-      // Fazer login com o email obtido
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: userEmail,
         password: data.password,
@@ -209,9 +194,9 @@ const LoginPage = () => {
         });
       }
     } catch (error: any) {
-      console.error('Erro no login:', error);
-      toast.error("Erro no login", {
-        description: error.message || "Ocorreu um erro durante o login. Tente novamente."
+      console.error('Login error:', error);
+      toast.error("Login error", {
+        description: error.message || "An error occurred during login. Please try again."
       });
     } finally {
       setLoading(false);
@@ -221,7 +206,7 @@ const LoginPage = () => {
   const handleSignUp = async () => {
     const cpf = form.getValues('cpf');
     const password = form.getValues('password');
-    const email = `${normalizeCPF(cpf)}@exemplo.com`; // Email gerado a partir do CPF
+    const email = `${normalizeCPF(cpf)}@exemplo.com`;
     
     if (!cpf || !password) {
       toast.error("Campos obrigatórios", {
@@ -235,7 +220,6 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(cpf);
       
-      // Verificar se a função RPC existe
       const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
         'check_user_exists_by_cpf', 
         { 
@@ -246,9 +230,8 @@ const LoginPage = () => {
       let userExists = false;
       
       if (functionCheckError) {
-        console.error('Erro ao verificar função RPC:', functionCheckError);
+        console.error('Error checking RPC function:', functionCheckError);
         
-        // Consulta alternativa se a função RPC não existir
         const { data: existingUsers, error: queryError } = await supabase
           .from('profiles')
           .select('id')
@@ -256,13 +239,12 @@ const LoginPage = () => {
           .limit(1);
           
         if (queryError) {
-          console.error('Erro ao verificar usuário existente:', queryError);
-          throw new Error("Erro ao verificar se o usuário já existe");
+          console.error('Error checking user existence:', queryError);
+          throw new Error("Error checking if user already exists");
         }
         
         userExists = existingUsers !== null && existingUsers.length > 0;
       } else {
-        // A função RPC existe, usar normalmente
         const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
           'check_user_exists_by_cpf',
           { 
@@ -271,8 +253,8 @@ const LoginPage = () => {
         );
         
         if (response.error) {
-          console.error('Erro ao verificar usuário existente:', response.error);
-          throw new Error("Erro ao verificar se o usuário já existe");
+          console.error('Error checking user existence:', response.error);
+          throw new Error("Error checking if user already exists");
         }
         
         userExists = !!response.data;
@@ -291,7 +273,7 @@ const LoginPage = () => {
         password,
         options: {
           data: {
-            name: cpf, // Nome baseado no CPF
+            name: cpf,
             cpf: normalizedCPF
           }
         }
@@ -308,7 +290,7 @@ const LoginPage = () => {
         });
       }
     } catch (error: any) {
-      console.error('Erro no cadastro:', error);
+      console.error('Error creating user:', error);
       toast.error("Erro no cadastro", {
         description: error.message || "Ocorreu um erro durante o cadastro. Tente novamente."
       });
@@ -322,7 +304,6 @@ const LoginPage = () => {
     try {
       console.log("Iniciando criação de usuário master");
       
-      // Criar usuário no Auth com senha @54321
       const response = await supabase.functions.invoke('create-master-user', {
         body: {
           email: 'fabiano@totalseguranca.net',
@@ -353,10 +334,8 @@ const LoginPage = () => {
         description: "O usuário master foi criado com sucesso com CPF: 80243088191 e senha: @54321"
       });
       
-      // Atualizar o estado para esconder o botão
       setMasterUserExists(true);
       
-      // Preencher os campos de login com as credenciais do master
       form.setValue('cpf', '80243088191');
       form.setValue('password', '@54321');
       
