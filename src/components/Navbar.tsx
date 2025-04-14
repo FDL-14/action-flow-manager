@@ -38,7 +38,8 @@ const Navbar = () => {
   ];
   
   // Verificar se o usuário tem permissão para acessar a página de usuários
-  const canAccessUsers = user?.role === 'master' || user?.permissions?.some(p => p.canEditUser);
+  // Corrigido para usar .some() para verificar as permissões corretamente
+  const canAccessUsers = user?.role === 'master' || (user?.permissions && user?.permissions.some(p => p.canEditUser));
 
   const closeSheet = () => setIsOpen(false);
   
