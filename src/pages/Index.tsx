@@ -15,12 +15,16 @@ const Index = () => {
   useEffect(() => {
     const initializeDefaultData = async () => {
       try {
+        console.log("Inicializando dados padrão...");
+        
         // Verificar e adicionar empresas adicionais
         if (companies) {
+          console.log(`Total de empresas existentes: ${companies.length}`);
+          
           // Verificar cada empresa adicional
           for (const company of additionalCompanies) {
             if (!companies.some(c => c.id === company.id)) {
-              console.log(`Adicionando empresa ${company.name} ao localStorage`);
+              console.log(`Adicionando empresa ${company.name} (ID: ${company.id}) ao localStorage`);
               addCompany({
                 name: company.name,
                 address: company.address,
@@ -29,16 +33,23 @@ const Index = () => {
                 createdAt: company.createdAt,
                 updatedAt: company.updatedAt
               });
+            } else {
+              console.log(`Empresa ${company.name} já existe no localStorage`);
             }
           }
         }
 
         // Verificar e adicionar usuário master padrão se não existir
         if (users) {
+          console.log(`Total de usuários existentes: ${users.length}`);
+          
           const normalizedMasterCPF = defaultMasterUser.cpf.replace(/\D/g, '');
           
-          if (!users.some(u => u.cpf.replace(/\D/g, '') === normalizedMasterCPF)) {
-            console.log(`Adicionando usuário master ${defaultMasterUser.name} ao localStorage`);
+          // Verificar se já existe usuário com este CPF
+          const existingMasterUser = users.find(u => u.cpf.replace(/\D/g, '') === normalizedMasterCPF);
+          
+          if (!existingMasterUser) {
+            console.log(`Adicionando usuário master ${defaultMasterUser.name} (CPF: ${defaultMasterUser.cpf}) ao localStorage`);
             await addUser({
               name: defaultMasterUser.name,
               cpf: defaultMasterUser.cpf,
@@ -47,6 +58,8 @@ const Index = () => {
               companyIds: defaultMasterUser.companyIds,
               permissions: defaultMasterUser.permissions[0]
             });
+          } else {
+            console.log(`Usuário master ${defaultMasterUser.name} já existe no localStorage (ID: ${existingMasterUser.id})`);
           }
           
           // Verificar e adicionar usuários adicionais
@@ -56,7 +69,7 @@ const Index = () => {
             const normalizedCpf = userToAdd.cpf.replace(/\D/g, '');
             
             if (!normalizedCPFs.includes(normalizedCpf)) {
-              console.log(`Adicionando usuário ${userToAdd.name} ao localStorage`);
+              console.log(`Adicionando usuário ${userToAdd.name} (CPF: ${userToAdd.cpf}) ao localStorage`);
               await addUser({
                 name: userToAdd.name,
                 cpf: userToAdd.cpf,
@@ -66,11 +79,18 @@ const Index = () => {
                 clientIds: userToAdd.clientIds,
                 permissions: userToAdd.permissions[0]
               });
+            } else {
+              console.log(`Usuário ${userToAdd.name} já existe no localStorage`);
             }
           }
         }
       } catch (error) {
         console.error("Erro ao inicializar dados padrão:", error);
+        toast({
+          title: "Erro na inicialização",
+          description: "Ocorreu um erro ao carregar dados iniciais.",
+          variant: "destructive",
+        });
       }
     };
 

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -37,13 +38,43 @@ const LoginPage = () => {
     },
   });
 
+  // Foco automático no campo CPF ao carregar a página
+  useEffect(() => {
+    const cpfInput = document.getElementById('cpf');
+    if (cpfInput) {
+      cpfInput.focus();
+    }
+  }, []);
+
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     
     try {
-      await login(data.cpf, data.password);
+      // Limpar o CPF de qualquer formatação (pontos, traços)
+      const cleanedCpf = data.cpf.replace(/\D/g, '');
+      console.log(`Tentando login com CPF: ${cleanedCpf}, senha: ${data.password}`);
+      
+      const success = await login(cleanedCpf, data.password);
+      
+      if (!success) {
+        toast({
+          title: "Erro no login",
+          description: "CPF ou senha incorretos",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login bem-sucedido",
+          description: "Você foi autenticado com sucesso",
+        });
+      }
     } catch (error) {
       console.error('Erro no login:', error);
+      toast({
+        title: "Erro no login",
+        description: "Ocorreu um erro durante o login. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -81,7 +112,7 @@ const LoginPage = () => {
                     <FormItem>
                       <FormLabel>CPF</FormLabel>
                       <FormControl>
-                        <Input placeholder="Digite seu CPF" {...field} />
+                        <Input id="cpf" placeholder="Digite seu CPF" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
