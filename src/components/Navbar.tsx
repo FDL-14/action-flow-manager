@@ -18,7 +18,6 @@ import {
   LogOut, 
   User,
   Menu,
-  Building2,
   UserCog,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,6 +28,7 @@ const Navbar = () => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   
+  // Define all navigation items that should appear in the navbar
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-5 w-5 mr-2" /> },
     { name: 'Ações', path: '/actions', icon: <CheckSquare className="h-5 w-5 mr-2" /> },
@@ -146,7 +146,7 @@ const Navbar = () => {
                 }`}
               >
                 <UserCog className="h-5 w-5 mr-2" />
-                Usuário
+                Usuários
               </Link>
             )}
 
