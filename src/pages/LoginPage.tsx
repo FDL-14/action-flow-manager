@@ -382,90 +382,34 @@ const LoginPage = () => {
         return;
       }
       
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password: '@54321',
-        email_confirm: true,
-        user_metadata: {
-          name: 'Administrador Master',
-          cpf: normalizedCPF
-        }
-      });
+      const { data, error } = await supabase.functions.invoke('create-admin-user');
       
-      if (authError) {
-        console.error('Erro ao criar usuário:', authError);
+      if (error) {
+        console.error('Erro ao criar usuário administrador:', error);
         toast.error("Erro", {
-          description: authError.message || "Erro ao criar usuário"
+          description: error.message || "Erro ao criar usuário administrador"
         });
         setLoading(false);
         return;
       }
       
-      if (!authData.user) {
+      const responseData = data as any;
+      const success = responseData?.success;
+      const message = responseData?.message || "Operação concluída";
+      
+      if (success) {
+        toast.success("Usuário criado com sucesso", {
+          description: message
+        });
+        
+        form.setValue('cpf', '80243088191');
+        form.setValue('password', '@54321');
+        setMasterUserExists(true);
+      } else {
         toast.error("Erro", {
-          description: "Falha ao criar usuário"
-        });
-        setLoading(false);
-        return;
-      }
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          name: 'Administrador Master',
-          cpf: normalizedCPF,
-          email,
-          role: 'master',
-          company_ids: ['1'],
-          client_ids: []
-        })
-        .eq('id', authData.user.id);
-      
-      if (profileError) {
-        console.error('Erro ao atualizar perfil:', profileError);
-        toast.error("Erro", {
-          description: "Perfil criado, mas falha ao atualizar dados"
+          description: message
         });
       }
-      
-      const permissionsData = {
-        user_id: authData.user.id,
-        can_create: true,
-        can_edit: true,
-        can_delete: true,
-        can_mark_complete: true,
-        can_mark_delayed: true,
-        can_add_notes: true,
-        can_view_reports: true,
-        view_all_actions: true,
-        can_edit_user: true,
-        can_edit_action: true,
-        can_edit_client: true,
-        can_delete_client: true,
-        can_edit_company: true,
-        can_delete_company: true,
-        view_only_assigned_actions: false
-      };
-      
-      const { error: permissionsError } = await supabase
-        .from('user_permissions')
-        .insert(permissionsData);
-      
-      if (permissionsError) {
-        console.error('Erro ao adicionar permissões:', permissionsError);
-        toast.error("Aviso", {
-          description: "Usuário criado, mas falha ao definir permissões"
-        });
-      }
-      
-      toast.success("Usuário criado com sucesso", {
-        description: "Use CPF: 80243088191 e senha: @54321 para fazer login"
-      });
-      
-      form.setValue('cpf', '80243088191');
-      form.setValue('password', '@54321');
-      setMasterUserExists(true);
-      
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error);
       toast.error("Erro", {
