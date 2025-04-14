@@ -3,14 +3,30 @@ import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Building } from 'lucide-react';
+import { Plus, Edit, Building, Trash2 } from 'lucide-react';
 import CompanyForm from './CompanyForm';
 import { Company } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const CompanyList = () => {
-  const { companies, addCompany } = useCompany();
+  const { companies, addCompany, deleteCompany } = useCompany();
+  const { user } = useAuth();
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const { toast } = useToast();
 
   const handleAddCompany = () => {
     setEditingCompany(null);
@@ -22,14 +38,48 @@ const CompanyList = () => {
     setShowCompanyForm(true);
   };
 
+  const handleDeleteCompany = (company: Company) => {
+    if (company.id === companies[0]?.id) {
+      toast({
+        title: "Operação não permitida",
+        description: "Não é possível excluir a empresa principal",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setCompanyToDelete(company);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (companyToDelete) {
+      deleteCompany(companyToDelete.id);
+      setDeleteDialogOpen(false);
+      setCompanyToDelete(null);
+      
+      toast({
+        title: "Empresa excluída",
+        description: "A empresa foi excluída com sucesso",
+        variant: "default",
+      });
+    }
+  };
+
+  // Verify if user has permission to edit/delete companies
+  const canEditCompany = user?.role === 'master' || user?.permissions.some(p => p.canEditCompany);
+  const canDeleteCompany = user?.role === 'master' || user?.permissions.some(p => p.canDeleteCompany);
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Empresas</h1>
-        <Button onClick={handleAddCompany}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Empresa
-        </Button>
+        {canEditCompany && (
+          <Button onClick={handleAddCompany}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Empresa
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -38,9 +88,23 @@ const CompanyList = () => {
             <CardHeader className="bg-gray-50">
               <div className="flex justify-between items-start">
                 <CardTitle>{companyItem.name}</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <div className="flex space-x-1">
+                  {canEditCompany && (
+                    <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canDeleteCompany && companyItem.id !== companies[0]?.id && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteCompany(companyItem)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <CardDescription>
                 {companyItem.id === companies[0]?.id ? 'Empresa Principal' : 'Cliente/Filial'}
@@ -94,6 +158,23 @@ const CompanyList = () => {
         onOpenChange={setShowCompanyForm}
         initialData={editingCompany}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Empresa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a empresa {companyToDelete?.name}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
