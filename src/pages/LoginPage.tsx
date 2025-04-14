@@ -82,17 +82,17 @@ const LoginPage = () => {
             setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
           }
         } else {
-          const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
+          const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
             'check_master_user_exists',
             { 
               body: {} as CheckMasterUserExistsParams 
             }
           );
           
-          if (error) {
-            console.error('Erro ao verificar usuário master:', error);
+          if (response.error) {
+            console.error('Erro ao verificar usuário master:', response.error);
           } else {
-            setMasterUserExists(!!data);
+            setMasterUserExists(!!response.data);
           }
         }
       } catch (error) {
@@ -147,19 +147,19 @@ const LoginPage = () => {
         
         userEmail = userProfile?.email || null;
       } else {
-        const { data, error } = await supabase.functions.invoke<{ data: string; error: any }>(
+        const response = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
           }
         );
         
-        if (error) {
-          console.error('Error fetching user email:', error);
+        if (response.error) {
+          console.error('Error fetching user email:', response.error);
           throw new Error("Error fetching user information");
         }
         
-        userEmail = data ?? null;
+        userEmail = response.data ?? null;
       }
       
       if (!userEmail) {
@@ -349,6 +349,133 @@ const LoginPage = () => {
     }
   };
 
+  const createDirectAdminUser = async () => {
+    setLoading(true);
+    try {
+      const normalizedCPF = '80243088191';
+      const email = `${normalizedCPF}@exemplo.com`;
+      
+      const { data: existingUser, error: queryError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('cpf', normalizedCPF)
+        .maybeSingle();
+        
+      if (queryError) {
+        console.error('Erro ao verificar usuário existente:', queryError);
+        toast.error("Erro", {
+          description: "Erro ao verificar se o usuário já existe"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      if (existingUser) {
+        toast.success("Usuário já existe", {
+          description: "Use CPF: 80243088191 e senha: @54321 para fazer login"
+        });
+        
+        form.setValue('cpf', '80243088191');
+        form.setValue('password', '@54321');
+        
+        setLoading(false);
+        return;
+      }
+      
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password: '@54321',
+        email_confirm: true,
+        user_metadata: {
+          name: 'Administrador Master',
+          cpf: normalizedCPF
+        }
+      });
+      
+      if (authError) {
+        console.error('Erro ao criar usuário:', authError);
+        toast.error("Erro", {
+          description: authError.message || "Erro ao criar usuário"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      if (!authData.user) {
+        toast.error("Erro", {
+          description: "Falha ao criar usuário"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: 'Administrador Master',
+          cpf: normalizedCPF,
+          email,
+          role: 'master',
+          company_ids: ['1'],
+          client_ids: []
+        })
+        .eq('id', authData.user.id);
+      
+      if (profileError) {
+        console.error('Erro ao atualizar perfil:', profileError);
+        toast.error("Erro", {
+          description: "Perfil criado, mas falha ao atualizar dados"
+        });
+      }
+      
+      const permissionsData = {
+        user_id: authData.user.id,
+        can_create: true,
+        can_edit: true,
+        can_delete: true,
+        can_mark_complete: true,
+        can_mark_delayed: true,
+        can_add_notes: true,
+        can_view_reports: true,
+        view_all_actions: true,
+        can_edit_user: true,
+        can_edit_action: true,
+        can_edit_client: true,
+        can_delete_client: true,
+        can_edit_company: true,
+        can_delete_company: true,
+        view_only_assigned_actions: false
+      };
+      
+      const { error: permissionsError } = await supabase
+        .from('user_permissions')
+        .insert(permissionsData);
+      
+      if (permissionsError) {
+        console.error('Erro ao adicionar permissões:', permissionsError);
+        toast.error("Aviso", {
+          description: "Usuário criado, mas falha ao definir permissões"
+        });
+      }
+      
+      toast.success("Usuário criado com sucesso", {
+        description: "Use CPF: 80243088191 e senha: @54321 para fazer login"
+      });
+      
+      form.setValue('cpf', '80243088191');
+      form.setValue('password', '@54321');
+      setMasterUserExists(true);
+      
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      toast.error("Erro", {
+        description: error.message || "Erro ao criar usuário"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (isAuthenticated) {
     return <Navigate to="/" />;
   }
@@ -424,14 +551,14 @@ const LoginPage = () => {
               </form>
             </Form>
             
-            {!masterUserExists && !checkingMaster && (
-              <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col gap-2">
+              {!masterUserExists && !checkingMaster && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   className="w-full text-xs" 
                   onClick={createMasterUser}
-                  disabled={creatingMaster}
+                  disabled={creatingMaster || loading}
                 >
                   {creatingMaster ? (
                     <>
@@ -440,8 +567,23 @@ const LoginPage = () => {
                     </>
                   ) : 'Criar usuário master (CPF: 80243088191)'}
                 </Button>
-              </div>
-            )}
+              )}
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full text-xs" 
+                onClick={createDirectAdminUser}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    Criando usuário administrador...
+                  </>
+                ) : 'Criar usuário administrador (CPF: 80243088191)'}
+              </Button>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col">
             <div className="text-center text-xs text-gray-500 mt-4">
