@@ -137,7 +137,7 @@ const Navbar = () => {
               </Link>
             ))}
             
-            {/* Adiciona o botão de Usuários separadamente na navegação desktop */}
+            {/* Adiciona o botão de Usuários na navegação desktop se o usuário tiver permissão */}
             {canAccessUsers && (
               <Link
                 to="/users"
