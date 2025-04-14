@@ -7,7 +7,8 @@ import {
   getDefaultPermissions, 
   mapPermissionsFromDB, 
   transformPermissionsForDB,
-  createUserObject
+  createUserObject,
+  validateUserRole
 } from './utils';
 
 // Fetch user profile from Supabase
@@ -36,7 +37,8 @@ export const fetchUserProfile = async (userId: string): Promise<User | null> => 
       }
       
       // Define default permissions based on user role
-      const defaultPermissions = getDefaultPermissions(profile.role);
+      const role = validateUserRole(profile.role);
+      const defaultPermissions = getDefaultPermissions(role);
       
       // Merge with any permissions from the database
       const permissionsObj = {
@@ -84,7 +86,8 @@ export const fetchAllUsers = async (): Promise<User[]> => {
           }
           
           // Define default permissions based on user role
-          const defaultPermissions = getDefaultPermissions(profile.role);
+          const role = validateUserRole(profile.role);
+          const defaultPermissions = getDefaultPermissions(role);
           
           // Merge with any permissions from the database
           const permissionsObj = {

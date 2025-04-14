@@ -8,6 +8,12 @@ export const normalizeCPF = (cpf: string): string => {
   return cpf.replace(/\D/g, '');
 };
 
+// Validate and convert user role to the correct type
+export const validateUserRole = (role: string | null | undefined): 'user' | 'master' => {
+  if (role === 'master') return 'master';
+  return 'user'; // Default to 'user' for any invalid value
+};
+
 // Map database permissions to application permissions format
 export const mapPermissionsFromDB = (
   permissionsObj: any, 
