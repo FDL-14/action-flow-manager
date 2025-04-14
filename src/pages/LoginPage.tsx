@@ -42,7 +42,7 @@ const LoginPage = () => {
   });
 
   useEffect(() => {
-    // Focus the CPF input when the component mounts
+    // Foca no input de CPF quando o componente for montado
     const cpfInput = document.getElementById('cpf');
     if (cpfInput) {
       cpfInput.focus();
