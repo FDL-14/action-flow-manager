@@ -19,6 +19,7 @@ import {
   User,
   Menu,
   Building2,
+  UserCog,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -36,10 +37,8 @@ const Navbar = () => {
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },
   ];
   
-  // Adicionar o item Usuários ao menu para usuários master ou com permissão para editar usuários
-  if (user?.role === 'master' || user?.permissions?.[0]?.canEditUser) {
-    navItems.push({ name: 'Usuários', path: '/users', icon: <Users className="h-5 w-5 mr-2" /> });
-  }
+  // Verifica se o usuário tem permissão para acessar a página de usuários
+  const canAccessUsers = user?.role === 'master' || user?.permissions?.[0]?.canEditUser;
 
   const closeSheet = () => setIsOpen(false);
   
@@ -94,6 +93,21 @@ const Navbar = () => {
                     {item.name}
                   </Link>
                 ))}
+                
+                {/* Adiciona o item Usuários ao menu móvel se o usuário tiver permissão */}
+                {canAccessUsers && (
+                  <Link
+                    to="/users"
+                    onClick={closeSheet}
+                    className={`flex items-center px-2 py-1 text-base transition-colors hover:bg-muted rounded-md ${
+                      location.pathname === '/users' ? 'bg-muted font-medium' : ''
+                    }`}
+                  >
+                    <UserCog className="h-5 w-5 mr-2" />
+                    Usuários
+                  </Link>
+                )}
+                
                 <Button 
                   variant="ghost" 
                   className="flex items-center justify-start px-2 py-1"
@@ -122,6 +136,19 @@ const Navbar = () => {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Adiciona o botão de Usuários separadamente na navegação desktop */}
+            {canAccessUsers && (
+              <Link
+                to="/users"
+                className={`px-3 py-2 flex items-center text-sm font-medium transition-colors hover:text-primary ${
+                  location.pathname === '/users' ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <UserCog className="h-5 w-5 mr-2" />
+                Usuário
+              </Link>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
