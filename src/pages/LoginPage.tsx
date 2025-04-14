@@ -382,18 +382,18 @@ const LoginPage = () => {
         return;
       }
       
-      const { data, error } = await supabase.functions.invoke('create-admin-user');
+      const response = await supabase.functions.invoke('create-admin-user');
       
-      if (error) {
-        console.error('Erro ao criar usuário administrador:', error);
+      if (response.error) {
+        console.error('Erro ao criar usuário administrador:', response.error);
         toast.error("Erro", {
-          description: error.message || "Erro ao criar usuário administrador"
+          description: response.error.message || "Erro ao criar usuário administrador"
         });
         setLoading(false);
         return;
       }
       
-      const responseData = data as any;
+      const responseData = response.data as any;
       const success = responseData?.success;
       const message = responseData?.message || "Operação concluída";
       
