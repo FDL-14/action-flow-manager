@@ -1,13 +1,15 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
-import { defaultMasterUser } from '@/lib/mock-data';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   users: User[];
   isAuthenticated: boolean;
-  login: (cpf: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   addUser: (userData: { 
     name: string; 
@@ -55,8 +57,8 @@ interface AuthContextType {
       canEditAction: boolean;
       canEditClient: boolean;
       canDeleteClient: boolean;
-      canEditCompany: boolean;
-      canDeleteCompany: boolean;
+      canEditCompany?: boolean;
+      canDeleteCompany?: boolean;
       viewOnlyAssignedActions: boolean;
     }
   }) => Promise<boolean>;
@@ -94,111 +96,234 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { toast } = useToast();
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
+  // Carregar dados da sessão ao iniciar
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing user from localStorage:', error);
-        localStorage.removeItem('user');
+    // Configurar listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session);
+      setSession(session);
+      setSupabaseUser(session?.user ?? null);
+      setIsAuthenticated(!!session?.user);
+      
+      if (session?.user) {
+        // Buscar perfil do usuário quando autenticado
+        setTimeout(() => fetchUserProfile(session.user.id), 0);
+      } else {
+        setUser(null);
       }
-    }
+    });
 
-    const savedUsers = localStorage.getItem('users');
-    if (savedUsers) {
-      try {
-        const parsedUsers = JSON.parse(savedUsers);
-        
-        const updatedUsers = parsedUsers.map((u: User) => {
-          // Ensure users have proper email, companyIds, clientIds
-          const updatedUser = {
-            ...u,
-            email: u.email || `${u.cpf}@example.com`,
-            companyIds: u.companyIds || ['1'],
-            clientIds: u.clientIds || []
-          };
+    // Verificar sessão atual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Current session:', session);
+      setSession(session);
+      setSupabaseUser(session?.user ?? null);
+      setIsAuthenticated(!!session?.user);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Carregar usuários do Supabase
+  useEffect(() => {
+    async function fetchUsers() {
+      if (supabaseUser) {
+        try {
+          const { data: profiles, error } = await supabase
+            .from('profiles')
+            .select('*');
           
-          // Ensure all users have the required permission properties
-          if (updatedUser.permissions && updatedUser.permissions.length > 0) {
-            updatedUser.permissions = updatedUser.permissions.map(permission => ({
-              ...permission,
-              canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (u.role === 'master'),
-              canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (u.role === 'master')
-            }));
+          if (error) {
+            console.error('Erro ao buscar perfis:', error);
+            return;
           }
           
-          return updatedUser;
-        });
-        
-        setUsers(updatedUsers);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-      } catch (error) {
-        console.error('Error parsing users from localStorage:', error);
+          if (profiles) {
+            // Carregar permissões para cada usuário
+            const usersWithPermissions = await Promise.all(
+              profiles.map(async (profile) => {
+                const { data: permissions, error: permError } = await supabase
+                  .from('user_permissions')
+                  .select('*')
+                  .eq('user_id', profile.id)
+                  .single();
+                
+                if (permError && permError.code !== 'PGRST116') {
+                  console.error('Erro ao buscar permissões:', permError);
+                }
+                
+                const permissionsObj = permissions || {
+                  canCreate: profile.role === 'master',
+                  canEdit: profile.role === 'master',
+                  canDelete: profile.role === 'master',
+                  canMarkComplete: true,
+                  canMarkDelayed: true,
+                  canAddNotes: true,
+                  canViewReports: profile.role === 'master',
+                  viewAllActions: profile.role === 'master',
+                  canEditUser: profile.role === 'master',
+                  canEditAction: profile.role === 'master',
+                  canEditClient: profile.role === 'master',
+                  canDeleteClient: profile.role === 'master',
+                  canEditCompany: profile.role === 'master',
+                  canDeleteCompany: profile.role === 'master',
+                  viewOnlyAssignedActions: profile.role !== 'master',
+                };
+                
+                return {
+                  id: profile.id,
+                  name: profile.name,
+                  cpf: profile.cpf || '',
+                  email: profile.email || '',
+                  role: profile.role as 'user' | 'master',
+                  companyIds: profile.company_ids || ['1'],
+                  clientIds: profile.client_ids || [],
+                  permissions: [{
+                    id: "default",
+                    name: "Default Permissions",
+                    description: "Default user permissions",
+                    ...permissionsObj
+                  }]
+                };
+              })
+            );
+            
+            setUsers(usersWithPermissions);
+          }
+        } catch (error) {
+          console.error('Erro ao processar usuários:', error);
+        }
       }
-    } else {
-      // Initialize with default master user
-      setUsers([defaultMasterUser]);
-      localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
     }
-  }, []);
+
+    fetchUsers();
+  }, [supabaseUser]);
+
+  // Buscar perfil de usuário do Supabase
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Erro ao buscar perfil:', error);
+        return;
+      }
+      
+      if (profile) {
+        const { data: permissions, error: permError } = await supabase
+          .from('user_permissions')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        
+        if (permError && permError.code !== 'PGRST116') {
+          console.error('Erro ao buscar permissões:', permError);
+        }
+        
+        const permissionsObj = permissions || {
+          canCreate: profile.role === 'master',
+          canEdit: profile.role === 'master',
+          canDelete: profile.role === 'master',
+          canMarkComplete: true,
+          canMarkDelayed: true,
+          canAddNotes: true,
+          canViewReports: profile.role === 'master',
+          viewAllActions: profile.role === 'master',
+          canEditUser: profile.role === 'master',
+          canEditAction: profile.role === 'master',
+          canEditClient: profile.role === 'master',
+          canDeleteClient: profile.role === 'master',
+          canEditCompany: profile.role === 'master',
+          canDeleteCompany: profile.role === 'master',
+          viewOnlyAssignedActions: profile.role !== 'master',
+        };
+        
+        const currentUser: User = {
+          id: profile.id,
+          name: profile.name,
+          cpf: profile.cpf || '',
+          email: profile.email || '',
+          role: profile.role as 'user' | 'master',
+          companyIds: profile.company_ids || ['1'],
+          clientIds: profile.client_ids || [],
+          permissions: [{
+            id: "default",
+            name: "Default Permissions",
+            description: "Default user permissions",
+            ...permissionsObj
+          }]
+        };
+        
+        setUser(currentUser);
+      }
+    } catch (error) {
+      console.error('Erro ao processar perfil de usuário:', error);
+    }
+  };
 
   // Função para normalizar CPF (remover caracteres não numéricos)
   const normalizeCPF = (cpf: string): string => {
     return cpf.replace(/\D/g, '');
   };
 
-  const login = async (cpf: string, password: string): Promise<boolean> => {
-    // Normaliza o CPF removendo pontos, traços e espaços
-    const normalizedCPF = normalizeCPF(cpf);
-    console.log("Tentando login com CPF normalizado:", normalizedCPF);
-    
-    // Verifica se há usuário com este CPF normalizado
-    const foundUser = users.find(u => normalizeCPF(u.cpf) === normalizedCPF);
-    
-    if (foundUser && (password === '@54321' || password === foundUser.password)) {
-      // Ensure user has all required permission properties before login
-      const updatedUser = {
-        ...foundUser,
-        permissions: foundUser.permissions.map(permission => ({
-          ...permission,
-          canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (foundUser.role === 'master'),
-          canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (foundUser.role === 'master')
-        }))
-      };
-      
-      setUser(updatedUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      toast({
-        title: "Login realizado com sucesso",
-        description: `Bem-vindo, ${updatedUser.name}!`,
-        variant: "default",
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
-      return true;
+      
+      if (error) {
+        console.error("Erro no login:", error);
+        toast.error("Erro no login", {
+          description: error.message
+        });
+        return false;
+      }
+      
+      if (data.user) {
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error("Erro no login:", error);
+      toast.error("Erro no login", {
+        description: error.message
+      });
+      return false;
     }
-    
-    toast({
-      title: "Erro no login",
-      description: "CPF ou senha incorretos",
-      variant: "destructive",
-    });
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('user');
-    toast({
-      title: "Logout realizado",
-      description: "Você foi desconectado com sucesso.",
-      variant: "default",
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSupabaseUser(null);
+      setSession(null);
+      setIsAuthenticated(false);
+      toast.success("Logout realizado", {
+        description: "Você foi desconectado com sucesso."
+      });
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      toast.error("Erro ao fazer logout", {
+        description: "Ocorreu um erro ao tentar desconectar."
+      });
+    }
   };
 
   const addUser = async (userData: { 
@@ -226,66 +351,146 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
-    if (users.some(u => normalizeCPF(u.cpf) === normalizeCPF(userData.cpf))) {
-      toast({
-        title: "Erro",
-        description: "Já existe um usuário com este CPF",
-        variant: "destructive",
+    try {
+      // Verificar se já existe um usuário com este CPF
+      const { data: existingUser, error: queryError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('cpf', normalizeCPF(userData.cpf))
+        .maybeSingle();
+      
+      if (queryError) {
+        console.error('Erro ao verificar usuário existente:', queryError);
+        toast.error("Erro", {
+          description: "Erro ao verificar se o usuário já existe"
+        });
+        return false;
+      }
+      
+      if (existingUser) {
+        toast.error("Erro", {
+          description: "Já existe um usuário com este CPF"
+        });
+        return false;
+      }
+      
+      // Criar usuário no Auth com senha padrão
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: userData.email,
+        password: '@54321',
+        email_confirm: true,
+        user_metadata: {
+          name: userData.name,
+          cpf: userData.cpf
+        }
       });
-      return false;
-    }
-
-    const defaultPermissions = {
-      canCreate: userData.role === 'master',
-      canEdit: userData.role === 'master',
-      canDelete: userData.role === 'master',
-      canMarkComplete: true,
-      canMarkDelayed: true,
-      canAddNotes: true,
-      canViewReports: userData.role === 'master',
-      viewAllActions: userData.role === 'master',
-      canEditUser: userData.role === 'master',
-      canEditAction: userData.role === 'master',
-      canEditClient: userData.role === 'master',
-      canDeleteClient: userData.role === 'master',
-      canEditCompany: userData.role === 'master',
-      canDeleteCompany: userData.role === 'master',
-      viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
-    };
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: userData.name,
-      cpf: userData.cpf,
-      email: userData.email || `${userData.cpf}@example.com`,
-      role: userData.role,
-      companyIds: userData.companyIds,
-      clientIds: userData.clientIds || [],
-      permissions: [
-        {
+      
+      if (authError) {
+        console.error('Erro ao criar usuário:', authError);
+        toast.error("Erro", {
+          description: authError.message
+        });
+        return false;
+      }
+      
+      if (!authData.user) {
+        toast.error("Erro", {
+          description: "Falha ao criar usuário"
+        });
+        return false;
+      }
+      
+      // Atualizar perfil do usuário
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: userData.name,
+          cpf: userData.cpf,
+          email: userData.email,
+          role: userData.role,
+          company_ids: userData.companyIds,
+          client_ids: userData.clientIds || []
+        })
+        .eq('id', authData.user.id);
+      
+      if (profileError) {
+        console.error('Erro ao atualizar perfil:', profileError);
+        toast.error("Erro", {
+          description: "Perfil criado, mas falha ao atualizar dados"
+        });
+      }
+      
+      // Adicionar permissões do usuário
+      const defaultPermissions = {
+        canCreate: userData.role === 'master',
+        canEdit: userData.role === 'master',
+        canDelete: userData.role === 'master',
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: userData.role === 'master',
+        viewAllActions: userData.role === 'master',
+        canEditUser: userData.role === 'master',
+        canEditAction: userData.role === 'master',
+        canEditClient: userData.role === 'master',
+        canDeleteClient: userData.role === 'master',
+        canEditCompany: userData.role === 'master',
+        canDeleteCompany: userData.role === 'master',
+        viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
+      };
+      
+      const permissionsData = {
+        user_id: authData.user.id,
+        ...defaultPermissions,
+        ...(userData.permissions || {}),
+        canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
+          userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
+        canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
+          userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
+      };
+      
+      const { error: permissionsError } = await supabase
+        .from('user_permissions')
+        .insert(permissionsData);
+      
+      if (permissionsError) {
+        console.error('Erro ao adicionar permissões:', permissionsError);
+        toast.error("Aviso", {
+          description: "Usuário criado, mas falha ao definir permissões"
+        });
+      }
+      
+      toast.success("Usuário criado", {
+        description: "O usuário foi criado com sucesso"
+      });
+      
+      // Atualizar lista de usuários
+      const newUser: User = {
+        id: authData.user.id,
+        name: userData.name,
+        cpf: userData.cpf,
+        email: userData.email,
+        role: userData.role,
+        companyIds: userData.companyIds,
+        clientIds: userData.clientIds || [],
+        permissions: [{
           id: "default",
           name: "Default Permissions",
           description: "Default user permissions",
-          ...defaultPermissions,
-          ...(userData.permissions || {}),
-          canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
-            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-          canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
-            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
-        }
-      ]
-    };
-
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast({
-      title: "Usuário criado",
-      description: "O usuário foi criado com sucesso",
-      variant: "default",
-    });
-    return true;
+          ...permissionsData
+        }]
+      };
+      
+      setUsers(prev => [...prev, newUser]);
+      
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao adicionar usuário:', error);
+      toast.error("Erro", {
+        description: error.message || "Erro ao adicionar usuário"
+      });
+      return false;
+    }
   };
 
   const updateUser = async (userData: { 
@@ -314,153 +519,231 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       viewOnlyAssignedActions: boolean;
     }
   }): Promise<boolean> => {
-    if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
-      toast({
-        title: "Erro",
-        description: "Já existe outro usuário com este CPF",
-        variant: "destructive",
+    try {
+      // Verificar se já existe outro usuário com este CPF
+      const { data: existingUser, error: queryError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('cpf', normalizeCPF(userData.cpf))
+        .neq('id', userData.id)
+        .maybeSingle();
+      
+      if (queryError) {
+        console.error('Erro ao verificar usuário existente:', queryError);
+        toast.error("Erro", {
+          description: "Erro ao verificar se o usuário já existe"
+        });
+        return false;
+      }
+      
+      if (existingUser) {
+        toast.error("Erro", {
+          description: "Já existe outro usuário com este CPF"
+        });
+        return false;
+      }
+      
+      // Atualizar perfil do usuário
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: userData.name,
+          cpf: userData.cpf,
+          email: userData.email,
+          role: userData.role,
+          company_ids: userData.companyIds,
+          client_ids: userData.clientIds || []
+        })
+        .eq('id', userData.id);
+      
+      if (profileError) {
+        console.error('Erro ao atualizar perfil:', profileError);
+        toast.error("Erro", {
+          description: "Falha ao atualizar dados do usuário"
+        });
+        return false;
+      }
+      
+      // Atualizar permissões do usuário
+      const defaultPermissions = {
+        canCreate: userData.role === 'master',
+        canEdit: userData.role === 'master',
+        canDelete: userData.role === 'master',
+        canMarkComplete: true,
+        canMarkDelayed: true,
+        canAddNotes: true,
+        canViewReports: userData.role === 'master',
+        viewAllActions: userData.role === 'master',
+        canEditUser: userData.role === 'master',
+        canEditAction: userData.role === 'master',
+        canEditClient: userData.role === 'master',
+        canDeleteClient: userData.role === 'master',
+        canEditCompany: userData.role === 'master',
+        canDeleteCompany: userData.role === 'master',
+        viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
+      };
+      
+      const permissionsData = {
+        user_id: userData.id,
+        ...defaultPermissions,
+        ...(userData.permissions || {}),
+        canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
+          userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
+        canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
+          userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
+      };
+      
+      // Verificar se já existem permissões
+      const { data: existingPermissions } = await supabase
+        .from('user_permissions')
+        .select('*')
+        .eq('user_id', userData.id)
+        .maybeSingle();
+      
+      let permissionsError;
+      
+      if (existingPermissions) {
+        // Atualizar permissões existentes
+        const { error } = await supabase
+          .from('user_permissions')
+          .update(permissionsData)
+          .eq('user_id', userData.id);
+        
+        permissionsError = error;
+      } else {
+        // Inserir novas permissões
+        const { error } = await supabase
+          .from('user_permissions')
+          .insert(permissionsData);
+        
+        permissionsError = error;
+      }
+      
+      if (permissionsError) {
+        console.error('Erro ao atualizar permissões:', permissionsError);
+        toast.error("Aviso", {
+          description: "Usuário atualizado, mas falha ao atualizar permissões"
+        });
+      }
+      
+      toast.success("Usuário atualizado", {
+        description: "As informações do usuário foram atualizadas com sucesso"
+      });
+      
+      // Atualizar lista de usuários
+      const updatedUser: User = {
+        id: userData.id,
+        name: userData.name,
+        cpf: userData.cpf,
+        email: userData.email,
+        role: userData.role,
+        companyIds: userData.companyIds,
+        clientIds: userData.clientIds || [],
+        permissions: [{
+          id: "default",
+          name: "Default Permissions",
+          description: "Default user permissions",
+          ...permissionsData
+        }]
+      };
+      
+      setUsers(prev => prev.map(u => u.id === userData.id ? updatedUser : u));
+      
+      // Se for o usuário atual, atualizar também o estado do usuário
+      if (user && user.id === userData.id) {
+        setUser(updatedUser);
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao atualizar usuário:', error);
+      toast.error("Erro", {
+        description: error.message || "Erro ao atualizar usuário"
       });
       return false;
     }
-
-    const updatedUsers = users.map(user => {
-      if (user.id === userData.id) {
-        const defaultPermissions = {
-          canCreate: userData.role === 'master',
-          canEdit: userData.role === 'master',
-          canDelete: userData.role === 'master',
-          canMarkComplete: true,
-          canMarkDelayed: true,
-          canAddNotes: true,
-          canViewReports: userData.role === 'master',
-          viewAllActions: userData.role === 'master',
-          canEditUser: userData.role === 'master',
-          canEditAction: userData.role === 'master',
-          canEditClient: userData.role === 'master',
-          canDeleteClient: userData.role === 'master',
-          canEditCompany: userData.role === 'master',
-          canDeleteCompany: userData.role === 'master',
-          viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
-        };
-
-        const updatedPermissions = {
-          ...defaultPermissions,
-          ...(userData.permissions || {}),
-          canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
-            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-          canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
-            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
-        };
-
-        return {
-          ...user,
-          name: userData.name,
-          cpf: userData.cpf,
-          email: userData.email || user.email,
-          role: userData.role,
-          companyIds: userData.companyIds,
-          clientIds: userData.clientIds || user.clientIds || [],
-          permissions: [
-            {
-              id: "default",
-              name: "Default Permissions",
-              description: "Default user permissions",
-              ...updatedPermissions
-            }
-          ]
-        };
-      }
-      return user;
-    });
-
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    if (user && user.id === userData.id) {
-      const updatedUser = updatedUsers.find(u => u.id === userData.id);
-      if (updatedUser) {
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-    }
-    
-    toast({
-      title: "Usuário atualizado",
-      description: "As informações do usuário foram atualizadas com sucesso",
-      variant: "default",
-    });
-    return true;
   };
 
   const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
-    const userToUpdate = users.find(u => u.id === userId);
-    
-    if (!userToUpdate) {
-      toast({
-        title: "Erro",
-        description: "Usuário não encontrado",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (currentPassword !== '@54321' && currentPassword !== userToUpdate.password) {
-      toast({
-        title: "Erro",
-        description: "Senha atual incorreta",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const updatedUsers = users.map(u => {
-      if (u.id === userId) {
-        return {
-          ...u,
+    try {
+      // Usuário só pode mudar a própria senha
+      if (supabaseUser && supabaseUser.id === userId) {
+        const { error } = await supabase.auth.updateUser({
           password: newPassword
-        };
+        });
+        
+        if (error) {
+          console.error('Erro ao alterar senha:', error);
+          toast.error("Erro", {
+            description: error.message || "Erro ao alterar senha"
+          });
+          return false;
+        }
+        
+        toast.success("Senha alterada", {
+          description: "Sua senha foi alterada com sucesso"
+        });
+        
+        return true;
+      } else {
+        // Administrador pode redefinir senha de qualquer usuário
+        toast.error("Erro", {
+          description: "Você só pode alterar sua própria senha"
+        });
+        return false;
       }
-      return u;
-    });
-
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    if (user && user.id === userId) {
-      const updatedUser = updatedUsers.find(u => u.id === userId);
-      if (updatedUser) {
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
+    } catch (error: any) {
+      console.error('Erro ao alterar senha:', error);
+      toast.error("Erro", {
+        description: error.message || "Erro ao alterar senha"
+      });
+      return false;
     }
-    
-    toast({
-      title: "Senha alterada",
-      description: "Sua senha foi alterada com sucesso",
-      variant: "default",
-    });
-    return true;
   };
 
-  const resetUserPassword = (userId: string) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          password: undefined
-        };
+  const resetUserPassword = async (userId: string) => {
+    try {
+      // Para resetar a senha, um administrador precisa gerar um link de redefinição
+      // Como não temos essa funcionalidade direta no Supabase, vamos simular
+      
+      // Buscar email do usuário
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .single();
+      
+      if (userError || !userData) {
+        console.error('Erro ao buscar usuário:', userError);
+        toast.error("Erro", {
+          description: "Usuário não encontrado"
+        });
+        return;
       }
-      return u;
-    });
-
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast({
-      title: "Senha redefinida",
-      description: "A senha foi redefinida para @54321",
-      variant: "default",
-    });
+      
+      // Enviar email de redefinição de senha
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        userData.email,
+        { redirectTo: window.location.origin + '/redefinir-senha' }
+      );
+      
+      if (error) {
+        console.error('Erro ao enviar link de redefinição:', error);
+        toast.error("Erro", {
+          description: error.message || "Erro ao resetar senha"
+        });
+        return;
+      }
+      
+      toast.success("Link enviado", {
+        description: "Um link para redefinição de senha foi enviado para o email do usuário"
+      });
+    } catch (error: any) {
+      console.error('Erro ao resetar senha:', error);
+      toast.error("Erro", {
+        description: error.message || "Erro ao resetar senha"
+      });
+    }
   };
 
   const canUserEditResponsibles = () => {

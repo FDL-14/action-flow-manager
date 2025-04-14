@@ -4,132 +4,84 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { additionalCompanies, additionalUsers, defaultMasterUser } from '@/lib/mock-data';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, users, addUser } = useAuth();
-  const { companies, addCompany } = useCompany();
+  const { isAuthenticated } = useAuth();
+  const { companies } = useCompany();
 
-  // Função para inicializar os dados de exemplo
-  useEffect(() => {
-    const initializeDefaultData = async () => {
-      try {
-        console.log("Inicializando dados padrão...");
-        
-        // Verificar e adicionar empresas adicionais
-        if (companies) {
-          console.log(`Total de empresas existentes: ${companies.length}`);
-          
-          // Verificar cada empresa adicional
-          for (const company of additionalCompanies) {
-            // Verificar se já existe uma empresa com este ID
-            if (!companies.some(c => c.id === company.id)) {
-              console.log(`Adicionando empresa ${company.name} (ID: ${company.id}) ao localStorage`);
-              addCompany({
-                name: company.name,
-                address: company.address,
-                cnpj: company.cnpj,
-                phone: company.phone,
-                createdAt: company.createdAt,
-                updatedAt: company.updatedAt
-              });
-            } else {
-              console.log(`Empresa ${company.name} já existe no localStorage`);
-            }
-          }
-        }
-
-        // Verificar e adicionar usuário master padrão se não existir
-        if (users) {
-          console.log(`Total de usuários existentes: ${users.length}`);
-          
-          const normalizedMasterCPF = defaultMasterUser.cpf.replace(/\D/g, '');
-          
-          // Verificar se já existe usuário com este CPF
-          const existingMasterUser = users.find(u => u.cpf.replace(/\D/g, '') === normalizedMasterCPF);
-          
-          if (!existingMasterUser) {
-            console.log(`Adicionando usuário master ${defaultMasterUser.name} (CPF: ${defaultMasterUser.cpf}) ao localStorage`);
-            await addUser({
-              name: defaultMasterUser.name,
-              cpf: defaultMasterUser.cpf,
-              email: defaultMasterUser.email,
-              role: defaultMasterUser.role,
-              companyIds: defaultMasterUser.companyIds,
-              permissions: defaultMasterUser.permissions[0]
-            });
-          } else {
-            console.log(`Usuário master ${defaultMasterUser.name} já existe no localStorage (ID: ${existingMasterUser.id})`);
-          }
-          
-          // Verificar e adicionar usuários adicionais
-          for (const userToAdd of additionalUsers) {
-            // Normaliza CPFs para comparação
-            const normalizedCPFs = users.map(u => u.cpf.replace(/\D/g, ''));
-            const normalizedCpf = userToAdd.cpf.replace(/\D/g, '');
-            
-            if (!normalizedCPFs.includes(normalizedCpf)) {
-              console.log(`Adicionando usuário ${userToAdd.name} (CPF: ${userToAdd.cpf}) ao localStorage`);
-              await addUser({
-                name: userToAdd.name,
-                cpf: userToAdd.cpf,
-                email: userToAdd.email,
-                role: userToAdd.role,
-                companyIds: userToAdd.companyIds,
-                clientIds: userToAdd.clientIds,
-                permissions: userToAdd.permissions[0]
-              });
-            } else {
-              console.log(`Usuário ${userToAdd.name} já existe no localStorage`);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao inicializar dados padrão:", error);
-        toast.error("Erro na inicialização", {
-          description: "Ocorreu um erro ao carregar dados iniciais."
-        });
-      }
-    };
-
-    // Executa a inicialização de dados
-    initializeDefaultData();
-  }, [companies, users, addCompany, addUser]);
-
+  // Check user's session to determine redirection
   useEffect(() => {
     const handleRedirection = () => {
       if (isAuthenticated) {
-        // Se autenticado, vai para o dashboard
         console.log("Usuário autenticado, redirecionando para o dashboard");
         navigate('/dashboard');
       } else {
-        // Para acesso não autenticado, redirecionar para login
         console.log("Usuário não autenticado, redirecionando para o login");
         navigate('/login');
       }
     };
 
-    // Adicionar um pequeno atraso para garantir que os dados foram carregados
+    // Add a small delay to ensure data is loaded
     const timer = setTimeout(() => {
       handleRedirection();
     }, 500);
 
-    // Adicionar um listener para o evento storage para sincronização entre abas
-    const handleStorageChange = () => {
-      console.log("Alteração no localStorage detectada, recarregando dados");
-      handleRedirection();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('storage', handleStorageChange);
     };
   }, [isAuthenticated, navigate]);
 
-  return null; // Esta página apenas redireciona
+  // Initialize the database when needed
+  useEffect(() => {
+    const initializeData = async () => {
+      if (companies && companies.length === 0) {
+        try {
+          // Check if there are companies in the database
+          const { data: existingCompanies, error: companyError } = await supabase
+            .from('companies')
+            .select('id')
+            .limit(1);
+            
+          if (companyError) {
+            console.error("Erro ao verificar empresas:", companyError);
+            return;
+          }
+          
+          // Create default company if none exists
+          if (!existingCompanies || existingCompanies.length === 0) {
+            const { error } = await supabase
+              .from('companies')
+              .insert({
+                name: 'Total Data',
+                address: 'São Paulo, SP',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+              
+            if (error) {
+              console.error("Erro ao criar empresa padrão:", error);
+              toast.error("Erro na inicialização", {
+                description: "Não foi possível criar a empresa padrão."
+              });
+            } else {
+              console.log("Empresa padrão criada com sucesso");
+            }
+          }
+        } catch (error) {
+          console.error("Erro na inicialização:", error);
+          toast.error("Erro na inicialização", {
+            description: "Ocorreu um erro ao inicializar dados."
+          });
+        }
+      }
+    };
+    
+    initializeData();
+  }, [companies]);
+
+  return null; // This page only redirects
 };
 
 export default Index;
