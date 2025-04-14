@@ -82,17 +82,17 @@ const LoginPage = () => {
             setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
           }
         } else {
-          const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
+          const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
             'check_master_user_exists',
             { 
               body: {} as CheckMasterUserExistsParams 
             }
           );
           
-          if (response.error) {
-            console.error('Erro ao verificar usuário master:', response.error);
+          if (error) {
+            console.error('Erro ao verificar usuário master:', error);
           } else {
-            const exists = response.data ?? false;
+            const exists = data ?? false;
             setMasterUserExists(!!exists);
           }
         }
@@ -148,19 +148,19 @@ const LoginPage = () => {
         
         userEmail = userProfile?.email || null;
       } else {
-        const response = await supabase.functions.invoke<{ data: string; error: any }>(
+        const { data, error } = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
           }
         );
         
-        if (response.error) {
-          console.error('Error fetching user email:', response.error);
+        if (error) {
+          console.error('Error fetching user email:', error);
           throw new Error("Error fetching user information");
         }
         
-        userEmail = response.data ?? null;
+        userEmail = data ?? null;
       }
       
       if (!userEmail) {
@@ -246,19 +246,19 @@ const LoginPage = () => {
         
         userExists = existingUsers !== null && existingUsers.length > 0;
       } else {
-        const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
+        const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
           'check_user_exists_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams 
           }
         );
         
-        if (response.error) {
-          console.error('Error checking user existence:', response.error);
+        if (error) {
+          console.error('Error checking user existence:', error);
           throw new Error("Error checking if user already exists");
         }
         
-        userExists = !!response.data;
+        userExists = !!data;
       }
       
       if (userExists) {
@@ -383,18 +383,18 @@ const LoginPage = () => {
         return;
       }
       
-      const response = await supabase.functions.invoke<any>('create-admin-user');
+      const { data, error } = await supabase.functions.invoke<any>('create-admin-user');
       
-      if (response.error) {
-        console.error('Erro ao criar usuário administrador:', response.error);
+      if (error) {
+        console.error('Erro ao criar usuário administrador:', error);
         toast.error("Erro", {
-          description: response.error.message || "Erro ao criar usuário administrador"
+          description: error.message || "Erro ao criar usuário administrador"
         });
         setLoading(false);
         return;
       }
       
-      const responseData = response.data as any;
+      const responseData = data as any;
       const success = responseData?.success;
       const message = responseData?.message || "Operação concluída";
       
