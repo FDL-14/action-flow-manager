@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -305,7 +306,7 @@ const LoginPage = () => {
     try {
       console.log("Iniciando criação de usuário master");
       
-      const response = await supabase.functions.invoke('create-master-user', {
+      const { data, error } = await supabase.functions.invoke('create-master-user', {
         body: {
           email: 'fabiano@totalseguranca.net',
           password: '@54321',
@@ -314,19 +315,19 @@ const LoginPage = () => {
         }
       });
       
-      console.log("Resposta da função:", response);
+      console.log("Resposta da função:", data);
       
-      if (response.error) {
-        console.error('Erro ao criar usuário master:', response.error);
+      if (error) {
+        console.error('Erro ao criar usuário master:', error);
         toast.error("Erro", {
-          description: response.error.message || "Erro ao criar usuário master"
+          description: error.message || "Erro ao criar usuário master"
         });
         return;
       }
       
-      if (!response.data?.success) {
+      if (!data?.success) {
         toast.error("Erro", {
-          description: response.data?.message || "Falha ao criar usuário master"
+          description: data?.message || "Falha ao criar usuário master"
         });
         return;
       }
