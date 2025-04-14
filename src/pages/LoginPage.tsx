@@ -160,19 +160,19 @@ const LoginPage = () => {
         userEmail = userProfile?.email || null;
       } else {
         // A função RPC existe, usar normalmente
-        const { data, error: rpcError } = await supabase.functions.invoke<{ data: string; error: any }>(
+        const response = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
           }
         );
         
-        if (rpcError) {
-          console.error('Erro ao buscar email do usuário:', rpcError);
+        if (response.error) {
+          console.error('Erro ao buscar email do usuário:', response.error);
           throw new Error("Erro ao buscar informações de usuário");
         }
         
-        userEmail = data || null;
+        userEmail = response.data || null;
       }
       
       if (!userEmail) {
@@ -262,19 +262,19 @@ const LoginPage = () => {
         userExists = existingUsers !== null && existingUsers.length > 0;
       } else {
         // A função RPC existe, usar normalmente
-        const { data, error: rpcError } = await supabase.functions.invoke<{ data: boolean; error: any }>(
+        const response = await supabase.functions.invoke<{ data: boolean; error: any }>(
           'check_user_exists_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams 
           }
         );
         
-        if (rpcError) {
-          console.error('Erro ao verificar usuário existente:', rpcError);
+        if (response.error) {
+          console.error('Erro ao verificar usuário existente:', response.error);
           throw new Error("Erro ao verificar se o usuário já existe");
         }
         
-        userExists = !!data;
+        userExists = !!response.data;
       }
       
       if (userExists) {
