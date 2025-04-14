@@ -5,15 +5,19 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Action } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, UserRound, FileText, Paperclip } from 'lucide-react';
+import { Check, Clock, AlertTriangle, UserRound, FileText, Paperclip, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Dialog, DialogContent } from './ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const Workflow: React.FC = () => {
   const { actions } = useActions();
   const { responsibles } = useCompany();
   const [workflowItems, setWorkflowItems] = useState<Action[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pendente' | 'atrasado' | 'concluido'>('all');
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Sort actions by date and group by status
   useEffect(() => {
@@ -58,6 +62,81 @@ const Workflow: React.FC = () => {
       default:
         return null;
     }
+  };
+
+  // Function to determine file type
+  const getAttachmentFileType = (url: string) => {
+    const extension = url.split('.').pop()?.toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension || '')) {
+      return 'image';
+    } else if (extension === 'pdf') {
+      return 'pdf';
+    } else if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
+      return 'excel';
+    } else if (['doc', 'docx'].includes(extension || '')) {
+      return 'word';
+    } else {
+      return 'other';
+    }
+  };
+
+  // Function to check if attachment can be viewed
+  const canViewAttachment = (url: string) => {
+    const fileType = getAttachmentFileType(url);
+    return fileType === 'image' || fileType === 'pdf';
+  };
+
+  // Function to handle attachment download
+  const handleDownload = (url: string, filename: string = 'arquivo') => {
+    try {
+      // Create a new anchor element
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      
+      // Generate filename with appropriate extension if not already provided
+      const extension = url.split('.').pop()?.toLowerCase();
+      const hasExtension = filename.includes('.');
+      
+      // Add extension if not already in the filename
+      if (!hasExtension && extension) {
+        filename = `${filename}.${extension}`;
+      }
+      
+      a.download = filename;
+      
+      // Append to body, click, and remove to trigger download
+      document.body.appendChild(a);
+      a.click();
+      
+      // Remove the element after the download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+      }, 100);
+      
+      toast({
+        title: "Download iniciado",
+        description: "O download do arquivo foi iniciado.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Erro ao fazer download:", error);
+      toast({
+        title: "Erro no download",
+        description: "Não foi possível baixar o arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // View attachment in a dialog
+  const viewAttachment = (url: string) => {
+    setViewingAttachment(url);
+  };
+
+  const closeAttachmentViewer = () => {
+    setViewingAttachment(null);
   };
 
   const getWorkflowTimeline = () => {
@@ -123,7 +202,31 @@ const Workflow: React.FC = () => {
                 {action.attachments && action.attachments.length > 0 && (
                   <div className="text-xs flex items-center">
                     <Paperclip className="h-3 w-3 mr-1 text-gray-500" />
-                    <span className="font-medium text-gray-500">{action.attachments.length} anexos</span>
+                    <span className="font-medium text-gray-500 mr-2">{action.attachments.length} anexo(s)</span>
+                    <div className="flex space-x-1">
+                      {action.attachments.slice(0, 1).map((url, idx) => (
+                        <div key={idx} className="flex space-x-1">
+                          {canViewAttachment(url) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => viewAttachment(url)}
+                            >
+                              <Eye className="h-3 w-3 text-blue-500" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            onClick={() => handleDownload(url, `anexo-${action.id}-${idx+1}`)}
+                          >
+                            <Download className="h-3 w-3 text-blue-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -184,6 +287,60 @@ const Workflow: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Attachment Viewer Dialog */}
+      {viewingAttachment && (
+        <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm">Visualização do anexo</div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleDownload(viewingAttachment, 'anexo')}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar
+              </Button>
+            </div>
+            
+            {getAttachmentFileType(viewingAttachment) === 'image' ? (
+              <img 
+                src={viewingAttachment} 
+                alt="Visualização do anexo" 
+                className="max-w-full max-h-[70vh] object-contain mx-auto"
+                onError={(e) => {
+                  console.error("Erro ao carregar imagem:", e);
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                  target.onerror = null; // Prevent infinite error loop
+                }}
+              />
+            ) : getAttachmentFileType(viewingAttachment) === 'pdf' ? (
+              <iframe 
+                src={viewingAttachment} 
+                width="100%" 
+                height="500px" 
+                title="Visualização de PDF"
+                className="border-0"
+              />
+            ) : (
+              <div className="text-center py-10">
+                <FileText className="h-20 w-20 mx-auto text-gray-400 mb-4" />
+                <p>Este tipo de arquivo não pode ser visualizado diretamente.</p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleDownload(viewingAttachment)} 
+                  className="mt-4"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar Arquivo
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

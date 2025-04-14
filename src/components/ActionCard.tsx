@@ -234,11 +234,20 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = filename || 'download';
+      
+      const fileType = getAttachmentFileType(url);
+      const extension = url.split('.').pop()?.toLowerCase();
+      const hasExtension = filename.includes('.');
+      
+      if (!hasExtension && extension) {
+        filename = `${filename}.${extension}`;
+      }
+      
+      a.download = filename;
+      
       document.body.appendChild(a);
       a.click();
       
-      // Remover o elemento depois do download iniciar
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);
@@ -564,6 +573,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                 src={viewingAttachment} 
                 alt="Visualização do anexo" 
                 className="max-w-full max-h-[70vh] object-contain mx-auto"
+                onError={(e) => {
+                  console.error("Erro ao carregar imagem:", e);
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                  target.onerror = null; // Prevent infinite error loop
+                }}
               />
             ) : getAttachmentFileType(viewingAttachment) === 'pdf' ? (
               <iframe 

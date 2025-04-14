@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -199,16 +200,30 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
   };
 
+  // Improved download function for all file types
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
+      // Create a temporary anchor element to trigger download
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = filename || 'download';
+      
+      // Generate filename with appropriate extension if not already provided
+      const extension = url.split('.').pop()?.toLowerCase();
+      const hasExtension = filename.includes('.');
+      
+      // Add extension if not already in the filename
+      if (!hasExtension && extension) {
+        filename = `${filename}.${extension}`;
+      }
+      
+      a.download = filename;
+      
+      // Append to body, click, and remove to trigger download
       document.body.appendChild(a);
       a.click();
       
-      // Remover o elemento depois do download iniciar
+      // Remove the element after the download starts
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);
@@ -403,7 +418,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             className="hidden"
             multiple
             onChange={handleFileChange}
-            accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx,.doc,.xls,.csv"
+            accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx,.doc,.xls,.csv,.pdf"
           />
           
           <input
@@ -480,6 +495,12 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                 src={viewingAttachment} 
                 alt="Visualização do anexo" 
                 className="max-w-full max-h-[70vh] object-contain mx-auto"
+                onError={(e) => {
+                  console.error("Erro ao carregar imagem:", e);
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                  target.onerror = null; // Prevent infinite error loop
+                }}
               />
             ) : getAttachmentFileType(viewingAttachment) === 'pdf' ? (
               <iframe 
