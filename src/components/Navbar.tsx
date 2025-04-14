@@ -36,7 +36,8 @@ const Navbar = () => {
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },
   ];
   
-  if (user?.role === 'master') {
+  // Adicionar o item Usuários ao menu para usuários master ou com permissão para editar usuários
+  if (user?.role === 'master' || user?.permissions?.[0]?.canEditUser) {
     navItems.push({ name: 'Usuários', path: '/users', icon: <Users className="h-5 w-5 mr-2" /> });
   }
 
