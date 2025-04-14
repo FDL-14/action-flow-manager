@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface RequesterFormProps {
   open: boolean;
@@ -40,7 +40,6 @@ const formSchema = z.object({
 
 const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => {
   const { company, clients, addResponsible } = useCompany();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -73,17 +72,9 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
       
       form.reset();
       onOpenChange(false);
-      toast({
-        title: "Solicitante adicionado",
-        description: "O solicitante foi adicionado com sucesso.",
-        variant: "default",
-      });
+      toast.success("Solicitante adicionado com sucesso");
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao adicionar o solicitante.",
-        variant: "destructive",
-      });
+      toast.error("Ocorreu um erro ao adicionar o solicitante");
     } finally {
       setIsLoading(false);
     }
