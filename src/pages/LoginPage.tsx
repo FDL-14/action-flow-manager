@@ -160,20 +160,20 @@ const LoginPage = () => {
         userEmail = userProfile?.email || null;
       } else {
         // A função RPC existe, usar normalmente
-        const response = await supabase.functions.invoke<{ data: string; error: any }>(
+        const { data, error } = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
           { 
             body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
           }
         );
         
-        if (response.error) {
-          console.error('Erro ao buscar email do usuário:', response.error);
+        if (error) {
+          console.error('Erro ao buscar email do usuário:', error);
           throw new Error("Erro ao buscar informações de usuário");
         }
         
-        // Correction: Properly extract the data property from the response
-        userEmail = response.data || null;
+        // Fix: Extract the string data from the response
+        userEmail = data || null;
       }
       
       if (!userEmail) {
