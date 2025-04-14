@@ -57,23 +57,18 @@ const LoginPage = () => {
       const success = await login(cleanedCpf, data.password);
       
       if (!success) {
-        toast({
-          title: "Erro no login",
-          description: "CPF ou senha incorretos",
-          variant: "destructive",
+        toast.error("Erro no login", {
+          description: "CPF ou senha incorretos"
         });
       } else {
-        toast({
-          title: "Login bem-sucedido",
-          description: "Você foi autenticado com sucesso",
+        toast.success("Login bem-sucedido", {
+          description: "Você foi autenticado com sucesso"
         });
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      toast({
-        title: "Erro no login",
-        description: "Ocorreu um erro durante o login. Tente novamente.",
-        variant: "destructive",
+      toast.error("Erro no login", {
+        description: "Ocorreu um erro durante o login. Tente novamente."
       });
     } finally {
       setLoading(false);

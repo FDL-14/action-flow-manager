@@ -86,10 +86,8 @@ const Index = () => {
         }
       } catch (error) {
         console.error("Erro ao inicializar dados padrão:", error);
-        toast({
-          title: "Erro na inicialização",
-          description: "Ocorreu um erro ao carregar dados iniciais.",
-          variant: "destructive",
+        toast.error("Erro na inicialização", {
+          description: "Ocorreu um erro ao carregar dados iniciais."
         });
       }
     };
