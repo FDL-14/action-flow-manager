@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,7 +18,7 @@ import {
   LogOut, 
   User,
   Menu,
-  UserCog,
+  Building2,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -28,7 +28,6 @@ const Navbar = () => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   
-  // Define todos os itens de navegação que devem aparecer na barra de navegação
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-5 w-5 mr-2" /> },
     { name: 'Ações', path: '/actions', icon: <CheckSquare className="h-5 w-5 mr-2" /> },
@@ -37,16 +36,9 @@ const Navbar = () => {
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },
   ];
   
-  // Verificar se o usuário tem permissão para acessar a página de usuários
-  // Verifica se o usuário é master ou tem permissão específica
-  const canAccessUsers = user?.role === 'master' || 
-    (user?.permissions && user?.permissions.length > 0 && 
-     user.permissions.some(permission => permission.canEditUser === true));
-
-  // Debug user permissions
-  console.log("User Role:", user?.role);
-  console.log("User Permissions:", JSON.stringify(user?.permissions));
-  console.log("Can Access Users:", canAccessUsers);
+  if (user?.role === 'master') {
+    navItems.push({ name: 'Usuários', path: '/users', icon: <Users className="h-5 w-5 mr-2" /> });
+  }
 
   const closeSheet = () => setIsOpen(false);
   
@@ -101,21 +93,6 @@ const Navbar = () => {
                     {item.name}
                   </Link>
                 ))}
-                
-                {/* Usuários menu item - mobile */}
-                {canAccessUsers && (
-                  <Link
-                    to="/users"
-                    onClick={closeSheet}
-                    className={`flex items-center px-2 py-1 text-base transition-colors hover:bg-muted rounded-md ${
-                      location.pathname === '/users' ? 'bg-muted font-medium' : ''
-                    }`}
-                  >
-                    <UserCog className="h-5 w-5 mr-2" />
-                    Usuários
-                  </Link>
-                )}
-                
                 <Button 
                   variant="ghost" 
                   className="flex items-center justify-start px-2 py-1"
@@ -144,19 +121,6 @@ const Navbar = () => {
                 {item.name}
               </Link>
             ))}
-            
-            {/* Usuários menu item - desktop */}
-            {canAccessUsers && (
-              <Link
-                to="/users"
-                className={`px-3 py-2 flex items-center text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/users' ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <UserCog className="h-5 w-5 mr-2" />
-                Usuários
-              </Link>
-            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

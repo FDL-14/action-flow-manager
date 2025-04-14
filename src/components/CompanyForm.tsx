@@ -24,9 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { Upload, X } from 'lucide-react';
 
 interface CompanyFormProps {
   open: boolean;
@@ -45,11 +43,10 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialData, isNewCompany = false }) => {
-  const { company, setCompany, updateCompanyLogo } = useCompany();
+  const { company, setCompany, updateCompanyLogo, addCompany, updateCompany } = useCompany();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast: toastUI } = useToast();
+  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -101,133 +98,80 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
     setLogoPreview(null);
   };
 
-  const uploadLogo = async (file: File): Promise<string | undefined> => {
+  const onSubmit = (values: FormValues) => {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `companies/${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('public')
-        .upload(filePath, file);
-      
-      if (uploadError) {
-        console.error('Erro ao fazer upload do logo:', uploadError);
-        toast.error('Não foi possível fazer upload do logo');
-        return undefined;
-      }
-      
-      const { data } = supabase.storage.from('public').getPublicUrl(filePath);
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Erro durante upload do logo:', error);
-      toast.error('Erro durante upload do logo');
-      return undefined;
-    }
-  };
-
-  const onSubmit = async (values: FormValues) => {
-    setIsSubmitting(true);
-    
-    try {
-      // Upload do logo, se houver
-      let logoUrl = logoPreview;
-      if (logoFile) {
-        logoUrl = await uploadLogo(logoFile);
-      }
-
       if (isNewCompany) {
-        // Criar nova empresa
-        const newCompany = {
+        // Create new company
+        const newCompany: Omit<Company, 'id'> = {
           name: values.name,
           address: values.address,
           cnpj: values.cnpj,
           phone: values.phone,
-          logo: logoUrl,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         };
         
-        const { data, error } = await supabase
-          .from('companies')
-          .insert(newCompany)
-          .select('*')
-          .single();
-        
-        if (error) {
-          console.error('Erro ao criar empresa:', error);
-          toast.error('Não foi possível criar a empresa');
-          return;
+        if (logoPreview) {
+          newCompany.logo = logoPreview;
         }
         
-        const formattedCompany: Company = {
-          id: data.id,
-          name: data.name,
-          address: data.address || '',
-          cnpj: data.cnpj || '',
-          phone: data.phone || '',
-          logo: data.logo || undefined,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
-        
-        toast.success('Empresa criada com sucesso!');
-        
-        // Se for a primeira empresa, defina como principal
-        if (!company) {
-          setCompany(formattedCompany);
-        }
+        addCompany(newCompany);
       } else if (initialData) {
-        // Atualizar empresa existente
+        // Update existing company that's not the main company
         const updatedCompany = {
+          ...initialData,
           name: values.name,
           address: values.address,
           cnpj: values.cnpj,
           phone: values.phone,
-          logo: logoUrl,
-          updated_at: new Date().toISOString()
+          logo: logoPreview || undefined,
+          updatedAt: new Date(),
         };
         
-        const { error } = await supabase
-          .from('companies')
-          .update(updatedCompany)
-          .eq('id', initialData.id);
+        updateCompany(updatedCompany);
+      } else {
+        // Update main company
+        const updatedCompany = {
+          ...company!,
+          name: values.name,
+          address: values.address,
+          cnpj: values.cnpj,
+          phone: values.phone,
+          updatedAt: new Date(),
+        };
         
-        if (error) {
-          console.error('Erro ao atualizar empresa:', error);
-          toast.error('Não foi possível atualizar a empresa');
-          return;
+        setCompany(updatedCompany);
+        
+        if (logoPreview !== company?.logo) {
+          if (logoPreview) {
+            updateCompanyLogo(logoPreview);
+          } else {
+            // Remove logo
+            const companyWithoutLogo = {
+              ...updatedCompany,
+              logo: undefined,
+            };
+            setCompany(companyWithoutLogo);
+          }
         }
-        
-        // Se for a empresa principal, atualiza no contexto
-        if (company && company.id === initialData.id) {
-          setCompany({
-            ...company,
-            name: values.name,
-            address: values.address,
-            cnpj: values.cnpj,
-            phone: values.phone,
-            logo: logoUrl,
-            updatedAt: new Date()
-          });
-        }
-        
-        toast.success('Empresa atualizada com sucesso!');
       }
       
       onOpenChange(false);
       
-      // Recarregar a página para mostrar as mudanças
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      toast({
+        title: isNewCompany ? "Empresa criada" : "Empresa atualizada",
+        description: isNewCompany 
+          ? "A nova empresa foi criada com sucesso!" 
+          : "As informações da empresa foram atualizadas com sucesso!",
+        variant: "default",
+      });
     } catch (error) {
-      console.error('Erro ao salvar empresa:', error);
-      toastUI({
+      console.error('Error updating company:', error);
+      toast({
         title: "Erro",
         description: `Ocorreu um erro ao ${isNewCompany ? 'criar' : 'atualizar'} a empresa`,
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -350,16 +294,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isNewCompany ? 'Criando...' : 'Salvando...'}
-                  </>
-                ) : (
-                  isNewCompany ? 'Criar Empresa' : 'Salvar Empresa'
-                )}
-              </Button>
+              <Button type="submit">{isNewCompany ? 'Criar Empresa' : 'Salvar Empresa'}</Button>
             </DialogFooter>
           </form>
         </Form>

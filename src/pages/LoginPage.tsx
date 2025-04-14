@@ -15,11 +15,9 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/contexts/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -31,119 +29,49 @@ type FormData = z.infer<typeof formSchema>;
 const LoginPage = () => {
   const { isAuthenticated, login } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [creatingMaster, setCreatingMaster] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      cpf: '80243088191',
-      password: '@54321',
+      cpf: '',
+      password: '',
     },
   });
 
+  // Foco automático no campo CPF ao carregar a página
   useEffect(() => {
-    // Foca no input de CPF quando o componente for montado
     const cpfInput = document.getElementById('cpf');
     if (cpfInput) {
       cpfInput.focus();
     }
   }, []);
 
-  const normalizeCPF = (cpf: string): string => {
-    return cpf.replace(/\D/g, '');
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     
     try {
-      const normalizedCPF = normalizeCPF(data.cpf);
-      const email = `${normalizedCPF}@exemplo.com`;
+      // Limpar o CPF de qualquer formatação (pontos, traços)
+      const cleanedCpf = data.cpf.replace(/\D/g, '');
+      console.log(`Tentando login com CPF: ${cleanedCpf}, senha: ${data.password}`);
       
-      console.log('Tentando login com:', { email, password: data.password });
+      const success = await login(cleanedCpf, data.password);
       
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: data.password,
-      });
-      
-      if (error) {
-        console.error('Erro no login:', error);
-        toast.error("Erro no login", {
-          description: "Credenciais inválidas, por favor tente novamente."
-        });
-        setLoading(false);
-        return;
-      }
-      
-      if (authData.user) {
-        toast.success("Login bem-sucedido", {
-          description: "Você foi autenticado com sucesso"
-        });
-        
-        // Chamar explicitamente a função login do AuthContext para atualizar o estado
-        await login(email, data.password);
-      } else {
+      if (!success) {
         toast.error("Erro no login", {
           description: "CPF ou senha incorretos"
         });
+      } else {
+        toast.success("Login bem-sucedido", {
+          description: "Você foi autenticado com sucesso"
+        });
       }
-    } catch (error: any) {
-      console.error('Login error:', error);
+    } catch (error) {
+      console.error('Erro no login:', error);
       toast.error("Erro no login", {
-        description: error.message || "Ocorreu um erro durante o login. Por favor, tente novamente."
+        description: "Ocorreu um erro durante o login. Tente novamente."
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const createMasterUser = async () => {
-    setCreatingMaster(true);
-    try {
-      const { cpf, password } = form.getValues();
-      const normalizedCPF = normalizeCPF(cpf);
-      const email = `${normalizedCPF}@exemplo.com`;
-      const name = "Usuário Master";
-
-      console.log('Criando usuário master com:', { email, name, cpf });
-
-      const response = await fetch('https://tsjdsbxgottssqqlzfxl.supabase.co/functions/v1/create-master-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          name,
-          cpf: normalizedCPF
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        toast.success("Usuário master criado", {
-          description: "O usuário master foi criado com sucesso. Agora você pode fazer login."
-        });
-      } else {
-        toast.error("Erro ao criar usuário master", {
-          description: result.message || "Ocorreu um erro ao criar o usuário master."
-        });
-      }
-    } catch (error: any) {
-      console.error('Erro ao criar usuário master:', error);
-      toast.error("Erro ao criar usuário master", {
-        description: error.message || "Ocorreu um erro ao criar o usuário master."
-      });
-    } finally {
-      setCreatingMaster(false);
     }
   };
 
@@ -192,58 +120,20 @@ const LoginPage = () => {
                     <FormItem>
                       <FormLabel>Senha</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <Input 
-                            type={showPassword ? "text" : "password"} 
-                            placeholder="Digite sua senha" 
-                            {...field} 
-                          />
-                          <button 
-                            type="button" 
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                            onClick={togglePasswordVisibility}
-                          >
-                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
+                        <Input type="password" placeholder="Digite sua senha" {...field} />
                       </FormControl>
                       <FormDescription>
-                        A senha deve ter pelo menos 6 caracteres
+                        A senha padrão é @54321
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Entrando...
-                    </>
-                  ) : 'Entrar'}
+                  {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
             </Form>
-
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full" 
-                onClick={createMasterUser}
-                disabled={creatingMaster}
-              >
-                {creatingMaster ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando usuário master...
-                  </>
-                ) : 'Criar usuário master'}
-              </Button>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Use esta opção apenas na primeira vez que acessar o sistema
-              </p>
-            </div>
           </CardContent>
           <CardFooter className="flex flex-col">
             <div className="text-center text-xs text-gray-500 mt-4">

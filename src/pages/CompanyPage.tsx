@@ -1,67 +1,16 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit } from 'lucide-react';
 import CompanyForm from '@/components/CompanyForm';
 import { Company } from '@/lib/types';
 import CompanyList from '@/components/CompanyList';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 const CompanyPage = () => {
-  const { company, setCompany } = useCompany();
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const { company } = useCompany();
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [showNewCompanyForm, setShowNewCompanyForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Carregar empresas do Supabase
-  useEffect(() => {
-    async function fetchCompanies() {
-      try {
-        setLoading(true);
-        const { data: companiesData, error } = await supabase
-          .from('companies')
-          .select('*')
-          .order('name');
-
-        if (error) {
-          console.error('Erro ao buscar empresas:', error);
-          toast.error('Não foi possível carregar as empresas');
-          return;
-        }
-
-        if (companiesData && companiesData.length > 0) {
-          // Converter para o formato esperado pela aplicação
-          const formattedCompanies: Company[] = companiesData.map(item => ({
-            id: item.id,
-            name: item.name,
-            address: item.address || '',
-            cnpj: item.cnpj || '',
-            phone: item.phone || '',
-            logo: item.logo || undefined,
-            createdAt: new Date(item.created_at),
-            updatedAt: new Date(item.updated_at)
-          }));
-          
-          setCompanies(formattedCompanies);
-          
-          // Se ainda não tiver uma empresa principal definida, use a primeira
-          if (!company && formattedCompanies.length > 0) {
-            setCompany(formattedCompanies[0]);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao processar dados de empresas:', error);
-        toast.error('Erro ao processar dados de empresas');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchCompanies();
-  }, [company, setCompany]);
 
   return (
     <div className="container mx-auto py-6">
@@ -134,11 +83,7 @@ const CompanyPage = () => {
       {/* Exibir todas as empresas cadastradas */}
       <div className="mt-8">
         <h2 className="text-xl font-semibold mb-4">Todas as Empresas Cadastradas</h2>
-        {loading ? (
-          <p>Carregando empresas...</p>
-        ) : (
-          <CompanyList companies={companies} />
-        )}
+        <CompanyList />
       </div>
 
       <CompanyForm

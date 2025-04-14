@@ -2,19 +2,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, RefreshCw, Key } from 'lucide-react';
-import { useAuth } from '@/contexts/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import UserForm from '@/components/UserForm';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
-import { User } from '@/contexts/auth';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { User } from '@/lib/types';
 
 const UsersPage = () => {
   const { companies } = useCompany();
@@ -44,7 +36,7 @@ const UsersPage = () => {
     setSelectedUserId('');
   };
 
-  // Função para exibir os nomes das empresas sem repetição
+  // Fixed function to properly display company names without repetition
   const getCompanyNames = (companyIds: string[]) => {
     if (!companyIds || companyIds.length === 0) return 'Nenhuma empresa associada';
     
@@ -53,12 +45,12 @@ const UsersPage = () => {
       return company ? company.name : 'Não encontrada';
     });
     
-    // Remove duplicados do array de nomes
+    // Remove duplicates from the names array
     const uniqueCompanyNames = [...new Set(companyNames)];
     return uniqueCompanyNames.join(', ');
   };
 
-  // Apenas mostra botões de edição para usuários que o usuário atual tem permissão para editar
+  // Only show edit buttons for users the current user has permission to edit
   const canEditUsers = user?.permissions[0]?.canEditUser || user?.role === 'master';
 
   return (
@@ -75,26 +67,50 @@ const UsersPage = () => {
 
       <div className="mt-6">
         <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Função</TableHead>
-                <TableHead>Empresas</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nome
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  CPF
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Função
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Empresas
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
               {users.map((userItem) => (
-                <TableRow key={userItem.id}>
-                  <TableCell className="font-medium">{userItem.name}</TableCell>
-                  <TableCell>{userItem.cpf}</TableCell>
-                  <TableCell>{userItem.email}</TableCell>
-                  <TableCell>{userItem.role === 'master' ? 'Administrador' : 'Usuário'}</TableCell>
-                  <TableCell>{getCompanyNames(userItem.companyIds || [])}</TableCell>
-                  <TableCell className="flex justify-end space-x-2">
+                <tr key={userItem.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{userItem.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{userItem.cpf}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{userItem.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{userItem.role === 'master' ? 'Administrador' : 'Usuário'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {getCompanyNames(userItem.companyIds || [])}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end space-x-2">
                     {canEditUsers && (
                       <Button
                         variant="outline"
@@ -125,11 +141,11 @@ const UsersPage = () => {
                         Resetar Senha
                       </Button>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
       </div>
 
