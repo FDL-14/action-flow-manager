@@ -42,7 +42,10 @@ const DashboardPage = () => {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gestão de Ações</h1>
-        <Button onClick={() => setShowActionForm(true)} className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700">
+        <Button 
+          onClick={() => setShowActionForm(true)} 
+          className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nova Ação
         </Button>

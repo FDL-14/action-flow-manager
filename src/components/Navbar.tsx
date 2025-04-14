@@ -37,8 +37,8 @@ const Navbar = () => {
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },
   ];
   
-  // Verifica se o usuário tem permissão para acessar a página de usuários
-  const canAccessUsers = user?.role === 'master' || user?.permissions?.[0]?.canEditUser;
+  // Check if user has permission to access the users page
+  const canAccessUsers = user?.role === 'master' || user?.permissions?.some(p => p.canEditUser);
 
   const closeSheet = () => setIsOpen(false);
   
@@ -94,7 +94,7 @@ const Navbar = () => {
                   </Link>
                 ))}
                 
-                {/* Adiciona o item Usuários ao menu móvel para usuários com permissão */}
+                {/* Add Users item to mobile menu for users with permission */}
                 {canAccessUsers && (
                   <Link
                     to="/users"
@@ -137,7 +137,7 @@ const Navbar = () => {
               </Link>
             ))}
             
-            {/* Adiciona o botão de Usuários na navegação desktop para usuários com permissão */}
+            {/* Add Users button to desktop navigation for users with permission */}
             {canAccessUsers && (
               <Link
                 to="/users"
