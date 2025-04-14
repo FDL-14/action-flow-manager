@@ -28,23 +28,9 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-interface RPCResponse<T> {
-  data: T;
-  error: any;
-}
-
-interface CheckMasterUserExistsParams {}
-interface GetUserEmailByCpfParams {
-  cpf_param: string;
-}
-interface CheckUserExistsByCpfParams {
-  cpf_param: string;
-}
-
 const LoginPage = () => {
   const { isAuthenticated, login } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [masterUserExists, setMasterUserExists] = useState(true); // Default to true to hide the buttons
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -75,70 +61,18 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      // Direct login attempt with admin credentials
-      if (normalizedCPF === '80243088191' && data.password === '@54321') {
-        const { data: authData, error } = await supabase.auth.signInWithPassword({
-          email: '80243088191@exemplo.com',
-          password: data.password,
-        });
-        
-        if (error) {
-          console.error('Erro no login:', error);
-          toast.error("Erro no login", {
-            description: "Credenciais inválidas, por favor tente novamente."
-          });
-        } else if (authData.user) {
-          toast.success("Login bem-sucedido", {
-            description: "Você foi autenticado com sucesso"
-          });
-        }
-        
-        setLoading(false);
-        return;
-      }
-      
-      // For other users, try to find their email by CPF
-      let userEmail: string | null = null;
-      
-      try {
-        const { data: userProfile, error: queryError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('cpf', normalizedCPF)
-          .maybeSingle();
-          
-        if (queryError) {
-          console.error('Error fetching user email:', queryError);
-          throw new Error("Erro ao buscar informações do usuário");
-        }
-        
-        userEmail = userProfile?.email || null;
-      } catch (error) {
-        console.error('Error fetching user email:', error);
-        toast.error("Erro ao buscar usuário", {
-          description: "Não foi possível verificar o CPF no sistema"
-        });
-        setLoading(false);
-        return;
-      }
-      
-      if (!userEmail) {
-        toast.error("Usuário não encontrado", {
-          description: "CPF não cadastrado no sistema"
-        });
-        setLoading(false);
-        return;
-      }
+      // Direct login with admin email format
+      const email = `${normalizedCPF}@exemplo.com`;
       
       const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: userEmail,
+        email,
         password: data.password,
       });
       
       if (error) {
         console.error('Erro no login:', error);
         toast.error("Erro no login", {
-          description: error.message || "CPF ou senha incorretos"
+          description: "Credenciais inválidas, por favor tente novamente."
         });
         setLoading(false);
         return;
@@ -157,86 +91,6 @@ const LoginPage = () => {
       console.error('Login error:', error);
       toast.error("Erro no login", {
         description: error.message || "Ocorreu um erro durante o login. Por favor, tente novamente."
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async () => {
-    const cpf = form.getValues('cpf');
-    const password = form.getValues('password');
-    
-    if (!cpf || !password) {
-      toast.error("Campos obrigatórios", {
-        description: "Preencha o CPF e a senha para criar uma conta"
-      });
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      const normalizedCPF = normalizeCPF(cpf);
-      
-      // Check if user exists
-      try {
-        const { data: existingUsers, error: queryError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('cpf', normalizedCPF)
-          .limit(1);
-          
-        if (queryError) {
-          console.error('Error checking user existence:', queryError);
-          throw new Error("Erro ao verificar se o usuário já existe");
-        }
-        
-        const userExists = existingUsers !== null && existingUsers.length > 0;
-        
-        if (userExists) {
-          toast.error("Usuário já existe", {
-            description: "Já existe um usuário com este CPF"
-          });
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking user:', error);
-        toast.error("Erro", {
-          description: "Não foi possível verificar o cadastro"
-        });
-        setLoading(false);
-        return;
-      }
-      
-      const email = `${normalizedCPF}@exemplo.com`;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: cpf,
-            cpf: normalizedCPF
-          }
-        }
-      });
-      
-      if (error) {
-        console.error('Erro no cadastro:', error);
-        throw error;
-      }
-      
-      if (data.user) {
-        toast.success("Cadastro realizado", {
-          description: "Uma verificação será enviada para o administrador aprovar seu cadastro"
-        });
-      }
-    } catch (error: any) {
-      console.error('Error creating user:', error);
-      toast.error("Erro no cadastro", {
-        description: error.message || "Ocorreu um erro durante o cadastro. Tente novamente."
       });
     } finally {
       setLoading(false);
@@ -306,13 +160,8 @@ const LoginPage = () => {
                       </>
                     ) : 'Entrar'}
                   </Button>
-                  <Button type="button" variant="outline" className="flex-1" onClick={handleSignUp} disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processando...
-                      </>
-                    ) : 'Criar Conta'}
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => form.handleSubmit(onSubmit)()}>
+                    Criar Conta
                   </Button>
                 </div>
               </form>
