@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { toast } from 'sonner';
@@ -162,21 +161,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
                 
                 const permissionsObj = permissions || {
-                  canCreate: profile.role === 'master',
-                  canEdit: profile.role === 'master',
-                  canDelete: profile.role === 'master',
-                  canMarkComplete: true,
-                  canMarkDelayed: true,
-                  canAddNotes: true,
-                  canViewReports: profile.role === 'master',
-                  viewAllActions: profile.role === 'master',
-                  canEditUser: profile.role === 'master',
-                  canEditAction: profile.role === 'master',
-                  canEditClient: profile.role === 'master',
-                  canDeleteClient: profile.role === 'master',
-                  canEditCompany: profile.role === 'master',
-                  canDeleteCompany: profile.role === 'master',
-                  viewOnlyAssignedActions: profile.role !== 'master',
+                  can_add_notes: profile.role === 'master',
+                  can_create: profile.role === 'master',
+                  can_delete: profile.role === 'master',
+                  can_mark_complete: true,
+                  can_mark_delayed: true,
+                  can_view_reports: profile.role === 'master',
+                  view_all_actions: profile.role === 'master',
+                  can_edit_user: profile.role === 'master',
+                  can_edit_action: profile.role === 'master',
+                  can_edit_client: profile.role === 'master',
+                  can_delete_client: profile.role === 'master',
+                  can_edit_company: profile.role === 'master',
+                  can_delete_company: profile.role === 'master',
+                  view_only_assigned_actions: profile.role !== 'master',
+                };
+                
+                // Mapear as propriedades snake_case para camelCase
+                const mappedPermissions = {
+                  id: "default",
+                  name: "Default Permissions",
+                  description: "Default user permissions",
+                  canCreate: permissionsObj.can_create,
+                  canEdit: permissionsObj.can_edit,
+                  canDelete: permissionsObj.can_delete,
+                  canMarkComplete: permissionsObj.can_mark_complete,
+                  canMarkDelayed: permissionsObj.can_mark_delayed,
+                  canAddNotes: permissionsObj.can_add_notes,
+                  canViewReports: permissionsObj.can_view_reports,
+                  viewAllActions: permissionsObj.view_all_actions,
+                  canEditUser: permissionsObj.can_edit_user,
+                  canEditAction: permissionsObj.can_edit_action,
+                  canEditClient: permissionsObj.can_edit_client,
+                  canDeleteClient: permissionsObj.can_delete_client,
+                  canEditCompany: permissionsObj.can_edit_company,
+                  canDeleteCompany: permissionsObj.can_delete_company,
+                  viewOnlyAssignedActions: permissionsObj.view_only_assigned_actions
                 };
                 
                 return {
@@ -187,12 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   role: profile.role as 'user' | 'master',
                   companyIds: profile.company_ids || ['1'],
                   clientIds: profile.client_ids || [],
-                  permissions: [{
-                    id: "default",
-                    name: "Default Permissions",
-                    description: "Default user permissions",
-                    ...permissionsObj
-                  }]
+                  permissions: [mappedPermissions]
                 };
               })
             );
@@ -234,21 +249,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         const permissionsObj = permissions || {
-          canCreate: profile.role === 'master',
-          canEdit: profile.role === 'master',
-          canDelete: profile.role === 'master',
-          canMarkComplete: true,
-          canMarkDelayed: true,
-          canAddNotes: true,
-          canViewReports: profile.role === 'master',
-          viewAllActions: profile.role === 'master',
-          canEditUser: profile.role === 'master',
-          canEditAction: profile.role === 'master',
-          canEditClient: profile.role === 'master',
-          canDeleteClient: profile.role === 'master',
-          canEditCompany: profile.role === 'master',
-          canDeleteCompany: profile.role === 'master',
-          viewOnlyAssignedActions: profile.role !== 'master',
+          can_create: profile.role === 'master',
+          can_edit: profile.role === 'master',
+          can_delete: profile.role === 'master',
+          can_mark_complete: true,
+          can_mark_delayed: true,
+          can_add_notes: true,
+          can_view_reports: profile.role === 'master',
+          view_all_actions: profile.role === 'master',
+          can_edit_user: profile.role === 'master',
+          can_edit_action: profile.role === 'master',
+          can_edit_client: profile.role === 'master',
+          can_delete_client: profile.role === 'master',
+          can_edit_company: profile.role === 'master',
+          can_delete_company: profile.role === 'master',
+          view_only_assigned_actions: profile.role !== 'master',
+        };
+        
+        // Mapear as propriedades snake_case para camelCase
+        const mappedPermissions = {
+          id: "default",
+          name: "Default Permissions",
+          description: "Default user permissions",
+          canCreate: permissionsObj.can_create,
+          canEdit: permissionsObj.can_edit,
+          canDelete: permissionsObj.can_delete,
+          canMarkComplete: permissionsObj.can_mark_complete,
+          canMarkDelayed: permissionsObj.can_mark_delayed,
+          canAddNotes: permissionsObj.can_add_notes,
+          canViewReports: permissionsObj.can_view_reports,
+          viewAllActions: permissionsObj.view_all_actions,
+          canEditUser: permissionsObj.can_edit_user,
+          canEditAction: permissionsObj.can_edit_action,
+          canEditClient: permissionsObj.can_edit_client,
+          canDeleteClient: permissionsObj.can_delete_client,
+          canEditCompany: permissionsObj.can_edit_company,
+          canDeleteCompany: permissionsObj.can_delete_company,
+          viewOnlyAssignedActions: permissionsObj.view_only_assigned_actions
         };
         
         const currentUser: User = {
@@ -259,12 +296,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: profile.role as 'user' | 'master',
           companyIds: profile.company_ids || ['1'],
           clientIds: profile.client_ids || [],
-          permissions: [{
-            id: "default",
-            name: "Default Permissions",
-            description: "Default user permissions",
-            ...permissionsObj
-          }]
+          permissions: [mappedPermissions]
         };
         
         setUser(currentUser);
@@ -422,31 +454,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Adicionar permissões do usuário
       const defaultPermissions = {
-        canCreate: userData.role === 'master',
-        canEdit: userData.role === 'master',
-        canDelete: userData.role === 'master',
-        canMarkComplete: true,
-        canMarkDelayed: true,
-        canAddNotes: true,
-        canViewReports: userData.role === 'master',
-        viewAllActions: userData.role === 'master',
-        canEditUser: userData.role === 'master',
-        canEditAction: userData.role === 'master',
-        canEditClient: userData.role === 'master',
-        canDeleteClient: userData.role === 'master',
-        canEditCompany: userData.role === 'master',
-        canDeleteCompany: userData.role === 'master',
-        viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
+        can_create: userData.role === 'master',
+        can_edit: userData.role === 'master',
+        can_delete: userData.role === 'master',
+        can_mark_complete: true,
+        can_mark_delayed: true,
+        can_add_notes: true,
+        can_view_reports: userData.role === 'master',
+        view_all_actions: userData.role === 'master',
+        can_edit_user: userData.role === 'master',
+        can_edit_action: userData.role === 'master',
+        can_edit_client: userData.role === 'master',
+        can_delete_client: userData.role === 'master',
+        can_edit_company: userData.permissions?.canEditCompany !== undefined ? 
+          userData.permissions.canEditCompany : userData.role === 'master',
+        can_delete_company: userData.permissions?.canDeleteCompany !== undefined ? 
+          userData.permissions.canDeleteCompany : userData.role === 'master',
+        view_only_assigned_actions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
       };
       
+      // Transformar de camelCase para snake_case para o banco
       const permissionsData = {
         user_id: authData.user.id,
-        ...defaultPermissions,
-        ...(userData.permissions || {}),
-        canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
-          userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-        canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
-          userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
+        can_create: userData.permissions?.canCreate !== undefined ? 
+          userData.permissions.canCreate : defaultPermissions.can_create,
+        can_edit: userData.permissions?.canEdit !== undefined ? 
+          userData.permissions.canEdit : defaultPermissions.can_edit,
+        can_delete: userData.permissions?.canDelete !== undefined ? 
+          userData.permissions.canDelete : defaultPermissions.can_delete,
+        can_mark_complete: userData.permissions?.canMarkComplete !== undefined ? 
+          userData.permissions.canMarkComplete : defaultPermissions.can_mark_complete,
+        can_mark_delayed: userData.permissions?.canMarkDelayed !== undefined ? 
+          userData.permissions.canMarkDelayed : defaultPermissions.can_mark_delayed,
+        can_add_notes: userData.permissions?.canAddNotes !== undefined ? 
+          userData.permissions.canAddNotes : defaultPermissions.can_add_notes,
+        can_view_reports: userData.permissions?.canViewReports !== undefined ? 
+          userData.permissions.canViewReports : defaultPermissions.can_view_reports,
+        view_all_actions: userData.permissions?.viewAllActions !== undefined ? 
+          userData.permissions.viewAllActions : defaultPermissions.view_all_actions,
+        can_edit_user: userData.permissions?.canEditUser !== undefined ? 
+          userData.permissions.canEditUser : defaultPermissions.can_edit_user,
+        can_edit_action: userData.permissions?.canEditAction !== undefined ? 
+          userData.permissions.canEditAction : defaultPermissions.can_edit_action,
+        can_edit_client: userData.permissions?.canEditClient !== undefined ? 
+          userData.permissions.canEditClient : defaultPermissions.can_edit_client,
+        can_delete_client: userData.permissions?.canDeleteClient !== undefined ? 
+          userData.permissions.canDeleteClient : defaultPermissions.can_delete_client,
+        can_edit_company: userData.permissions?.canEditCompany !== undefined ? 
+          userData.permissions.canEditCompany : defaultPermissions.can_edit_company,
+        can_delete_company: userData.permissions?.canDeleteCompany !== undefined ? 
+          userData.permissions.canDeleteCompany : defaultPermissions.can_delete_company,
+        view_only_assigned_actions: userData.permissions?.viewOnlyAssignedActions !== undefined ? 
+          userData.permissions.viewOnlyAssignedActions : defaultPermissions.view_only_assigned_actions
       };
       
       const { error: permissionsError } = await supabase
@@ -465,6 +524,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       // Atualizar lista de usuários
+      // Mapear as propriedades snake_case para camelCase
+      const mappedPermissions = {
+        id: "default",
+        name: "Default Permissions",
+        description: "Default user permissions",
+        canCreate: permissionsData.can_create,
+        canEdit: permissionsData.can_edit,
+        canDelete: permissionsData.can_delete,
+        canMarkComplete: permissionsData.can_mark_complete,
+        canMarkDelayed: permissionsData.can_mark_delayed,
+        canAddNotes: permissionsData.can_add_notes,
+        canViewReports: permissionsData.can_view_reports,
+        viewAllActions: permissionsData.view_all_actions,
+        canEditUser: permissionsData.can_edit_user,
+        canEditAction: permissionsData.can_edit_action,
+        canEditClient: permissionsData.can_edit_client,
+        canDeleteClient: permissionsData.can_delete_client,
+        canEditCompany: permissionsData.can_edit_company,
+        canDeleteCompany: permissionsData.can_delete_company,
+        viewOnlyAssignedActions: permissionsData.view_only_assigned_actions
+      };
+      
       const newUser: User = {
         id: authData.user.id,
         name: userData.name,
@@ -473,12 +554,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: userData.role,
         companyIds: userData.companyIds,
         clientIds: userData.clientIds || [],
-        permissions: [{
-          id: "default",
-          name: "Default Permissions",
-          description: "Default user permissions",
-          ...permissionsData
-        }]
+        permissions: [mappedPermissions]
       };
       
       setUsers(prev => [...prev, newUser]);
@@ -566,31 +642,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Atualizar permissões do usuário
       const defaultPermissions = {
-        canCreate: userData.role === 'master',
-        canEdit: userData.role === 'master',
-        canDelete: userData.role === 'master',
-        canMarkComplete: true,
-        canMarkDelayed: true,
-        canAddNotes: true,
-        canViewReports: userData.role === 'master',
-        viewAllActions: userData.role === 'master',
-        canEditUser: userData.role === 'master',
-        canEditAction: userData.role === 'master',
-        canEditClient: userData.role === 'master',
-        canDeleteClient: userData.role === 'master',
-        canEditCompany: userData.role === 'master',
-        canDeleteCompany: userData.role === 'master',
-        viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
+        can_create: userData.role === 'master',
+        can_edit: userData.role === 'master',
+        can_delete: userData.role === 'master',
+        can_mark_complete: true,
+        can_mark_delayed: true,
+        can_add_notes: true,
+        can_view_reports: userData.role === 'master',
+        view_all_actions: userData.role === 'master',
+        can_edit_user: userData.role === 'master',
+        can_edit_action: userData.role === 'master',
+        can_edit_client: userData.role === 'master',
+        can_delete_client: userData.role === 'master',
+        can_edit_company: userData.permissions?.canEditCompany !== undefined ? 
+          userData.permissions.canEditCompany : userData.role === 'master',
+        can_delete_company: userData.permissions?.canDeleteCompany !== undefined ? 
+          userData.permissions.canDeleteCompany : userData.role === 'master',
+        view_only_assigned_actions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
       };
       
+      // Transformar de camelCase para snake_case para o banco
       const permissionsData = {
         user_id: userData.id,
-        ...defaultPermissions,
-        ...(userData.permissions || {}),
-        canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
-          userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-        canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
-          userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
+        can_create: userData.permissions?.canCreate !== undefined ? 
+          userData.permissions.canCreate : defaultPermissions.can_create,
+        can_edit: userData.permissions?.canEdit !== undefined ? 
+          userData.permissions.canEdit : defaultPermissions.can_edit,
+        can_delete: userData.permissions?.canDelete !== undefined ? 
+          userData.permissions.canDelete : defaultPermissions.can_delete,
+        can_mark_complete: userData.permissions?.canMarkComplete !== undefined ? 
+          userData.permissions.canMarkComplete : defaultPermissions.can_mark_complete,
+        can_mark_delayed: userData.permissions?.canMarkDelayed !== undefined ? 
+          userData.permissions.canMarkDelayed : defaultPermissions.can_mark_delayed,
+        can_add_notes: userData.permissions?.canAddNotes !== undefined ? 
+          userData.permissions.canAddNotes : defaultPermissions.can_add_notes,
+        can_view_reports: userData.permissions?.canViewReports !== undefined ? 
+          userData.permissions.canViewReports : defaultPermissions.can_view_reports,
+        view_all_actions: userData.permissions?.viewAllActions !== undefined ? 
+          userData.permissions.viewAllActions : defaultPermissions.view_all_actions,
+        can_edit_user: userData.permissions?.canEditUser !== undefined ? 
+          userData.permissions.canEditUser : defaultPermissions.can_edit_user,
+        can_edit_action: userData.permissions?.canEditAction !== undefined ? 
+          userData.permissions.canEditAction : defaultPermissions.can_edit_action,
+        can_edit_client: userData.permissions?.canEditClient !== undefined ? 
+          userData.permissions.canEditClient : defaultPermissions.can_edit_client,
+        can_delete_client: userData.permissions?.canDeleteClient !== undefined ? 
+          userData.permissions.canDeleteClient : defaultPermissions.can_delete_client,
+        can_edit_company: userData.permissions?.canEditCompany !== undefined ? 
+          userData.permissions.canEditCompany : defaultPermissions.can_edit_company,
+        can_delete_company: userData.permissions?.canDeleteCompany !== undefined ? 
+          userData.permissions.canDeleteCompany : defaultPermissions.can_delete_company,
+        view_only_assigned_actions: userData.permissions?.viewOnlyAssignedActions !== undefined ? 
+          userData.permissions.viewOnlyAssignedActions : defaultPermissions.view_only_assigned_actions
       };
       
       // Verificar se já existem permissões
@@ -631,6 +734,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       // Atualizar lista de usuários
+      // Mapear as propriedades snake_case para camelCase
+      const mappedPermissions = {
+        id: "default",
+        name: "Default Permissions",
+        description: "Default user permissions",
+        canCreate: permissionsData.can_create,
+        canEdit: permissionsData.can_edit,
+        canDelete: permissionsData.can_delete,
+        canMarkComplete: permissionsData.can_mark_complete,
+        canMarkDelayed: permissionsData.can_mark_delayed,
+        canAddNotes: permissionsData.can_add_notes,
+        canViewReports: permissionsData.can_view_reports,
+        viewAllActions: permissionsData.view_all_actions,
+        canEditUser: permissionsData.can_edit_user,
+        canEditAction: permissionsData.can_edit_action,
+        canEditClient: permissionsData.can_edit_client,
+        canDeleteClient: permissionsData.can_delete_client,
+        canEditCompany: permissionsData.can_edit_company,
+        canDeleteCompany: permissionsData.can_delete_company,
+        viewOnlyAssignedActions: permissionsData.view_only_assigned_actions
+      };
+      
       const updatedUser: User = {
         id: userData.id,
         name: userData.name,
@@ -639,12 +764,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: userData.role,
         companyIds: userData.companyIds,
         clientIds: userData.clientIds || [],
-        permissions: [{
-          id: "default",
-          name: "Default Permissions",
-          description: "Default user permissions",
-          ...permissionsData
-        }]
+        permissions: [mappedPermissions]
       };
       
       setUsers(prev => prev.map(u => u.id === userData.id ? updatedUser : u));
@@ -745,65 +865,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   };
-
-  const canUserEditResponsibles = () => {
-    if (!user) return false;
-    
-    // Admin or master can always edit
-    if (user.role === 'master') return true;
-    
-    // Check for specific permission
-    return user.permissions.some(p => p.canEdit);
-  };
-
-  const canUserDeleteResponsibles = () => {
-    if (!user) return false;
-    
-    // Only admin/master can delete
-    return user.role === 'master';
-  };
-
-  const getUserCompanyIds = () => {
-    if (!user) return [];
-    return user.companyIds || ['1'];
-  };
-
-  const getUserClientIds = () => {
-    if (!user) return [];
-    return user.clientIds || [];
-  };
-
-  const canViewAllActions = () => {
-    if (!user) return false;
-    if (user.role === 'master') return true;
-    return user.permissions.some(p => p.viewAllActions);
-  };
-
-  const shouldViewOnlyAssignedActions = () => {
-    if (!user) return false;
-    if (user.role === 'master') return false;
-    return user.permissions.some(p => p.viewOnlyAssignedActions);
-  };
-
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      users,
-      isAuthenticated, 
-      login, 
-      logout,
-      addUser,
-      updateUser,
-      changePassword,
-      resetUserPassword,
-      canUserEditResponsibles,
-      canUserDeleteResponsibles,
-      getUserCompanyIds,
-      getUserClientIds,
-      canViewAllActions,
-      shouldViewOnlyAssignedActions
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
