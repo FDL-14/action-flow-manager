@@ -23,6 +23,7 @@ const Index = () => {
           
           // Verificar cada empresa adicional
           for (const company of additionalCompanies) {
+            // Verificar se já existe uma empresa com este ID
             if (!companies.some(c => c.id === company.id)) {
               console.log(`Adicionando empresa ${company.name} (ID: ${company.id}) ao localStorage`);
               addCompany({
@@ -109,8 +110,10 @@ const Index = () => {
       }
     };
 
-    // Executa o redirecionamento
-    handleRedirection();
+    // Adicionar um pequeno atraso para garantir que os dados foram carregados
+    const timer = setTimeout(() => {
+      handleRedirection();
+    }, 500);
 
     // Adicionar um listener para o evento storage para sincronização entre abas
     const handleStorageChange = () => {
@@ -121,6 +124,7 @@ const Index = () => {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [isAuthenticated, navigate]);
