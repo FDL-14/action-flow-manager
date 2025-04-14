@@ -27,7 +27,22 @@ serve(async (req) => {
     // Create a Supabase client with the service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { email, password, name, cpf } = await req.json()
+    const requestData = await req.json();
+    const { email, password, name, cpf } = requestData;
+
+    if (!email || !password || !name || !cpf) {
+      console.error("Dados incompletos:", { email, name, cpf });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Todos os campos são obrigatórios: email, password, name, cpf',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
 
     console.log("Dados recebidos:", { email, name, cpf });
 
@@ -37,10 +52,10 @@ serve(async (req) => {
         .from('profiles')
         .select('*')
         .eq('email', email)
-        .maybeSingle()
+        .maybeSingle();
 
       if (queryError) {
-        console.error('Erro ao verificar usuário existente:', queryError)
+        console.error('Erro ao verificar usuário existente:', queryError);
         return new Response(
           JSON.stringify({
             success: false,
@@ -50,7 +65,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           }
-        )
+        );
       }
 
       if (existingUser) {
@@ -64,12 +79,12 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
           }
-        )
+        );
       }
 
       console.log("Criando usuário no Auth");
       
-      // Criar usuário no Auth com senha @54321
+      // Criar usuário no Auth
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
@@ -78,10 +93,10 @@ serve(async (req) => {
           name,
           cpf,
         },
-      })
+      });
 
       if (authError) {
-        console.error('Erro ao criar usuário master:', authError)
+        console.error('Erro ao criar usuário master:', authError);
         return new Response(
           JSON.stringify({
             success: false,
@@ -91,7 +106,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           }
-        )
+        );
       }
 
       if (!authData.user) {
@@ -105,7 +120,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           }
-        )
+        );
       }
 
       console.log("Usuário criado no Auth, atualizando perfil");
@@ -121,10 +136,10 @@ serve(async (req) => {
           company_ids: ['1'],
           client_ids: [],
         })
-        .eq('id', authData.user.id)
+        .eq('id', authData.user.id);
 
       if (profileError) {
-        console.error('Erro ao atualizar perfil:', profileError)
+        console.error('Erro ao atualizar perfil:', profileError);
         return new Response(
           JSON.stringify({
             success: false,
@@ -134,7 +149,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           }
-        )
+        );
       }
 
       console.log("Perfil atualizado, adicionando permissões");
@@ -157,14 +172,14 @@ serve(async (req) => {
         can_edit_company: true,
         can_delete_company: true,
         view_only_assigned_actions: false,
-      }
+      };
 
       const { error: permissionsError } = await supabase
         .from('user_permissions')
-        .insert(permissionsData)
+        .insert(permissionsData);
 
       if (permissionsError) {
-        console.error('Erro ao adicionar permissões:', permissionsError)
+        console.error('Erro ao adicionar permissões:', permissionsError);
         return new Response(
           JSON.stringify({
             success: true,
@@ -174,7 +189,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
           }
-        )
+        );
       }
 
       console.log("Usuário master criado com sucesso");
@@ -188,7 +203,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         }
-      )
+      );
     } catch (innerError) {
       console.error('Erro interno:', innerError);
       return new Response(
@@ -200,10 +215,10 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
         }
-      )
+      );
     }
   } catch (error) {
-    console.error('Erro ao criar usuário master:', error)
+    console.error('Erro ao criar usuário master:', error);
     return new Response(
       JSON.stringify({
         success: false,
@@ -213,6 +228,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       }
-    )
+    );
   }
-})
+});

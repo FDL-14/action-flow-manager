@@ -28,6 +28,22 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+// Interfaces para tipagem de retorno das funções RPC
+interface CheckMasterUserExistsResponse {
+  data: boolean;
+  error: any;
+}
+
+interface GetUserEmailByCpfResponse {
+  data: string;
+  error: any;
+}
+
+interface CheckUserExistsByCpfResponse {
+  data: boolean;
+  error: any;
+}
+
 const LoginPage = () => {
   const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -49,11 +65,8 @@ const LoginPage = () => {
       try {
         setCheckingMaster(true);
         
-        // Tipando corretamente a resposta da chamada RPC
-        const { data, error } = await supabase.rpc('check_master_user_exists', {}) as unknown as { 
-          data: boolean; 
-          error: any 
-        };
+        // Usando type assertion para informar ao TypeScript o tipo de retorno esperado
+        const { data, error } = await supabase.rpc('check_master_user_exists') as unknown as CheckMasterUserExistsResponse;
         
         if (error) {
           console.error('Erro ao verificar usuário master:', error);
@@ -90,14 +103,11 @@ const LoginPage = () => {
       // Normalizar CPF antes de fazer a consulta
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      // Tipando corretamente a resposta da chamada RPC
+      // Usando type assertion para informar ao TypeScript o tipo de retorno esperado
       const { data: userEmail, error: rpcError } = await supabase.rpc(
         'get_user_email_by_cpf',
         { cpf_param: normalizedCPF }
-      ) as unknown as { 
-        data: string; 
-        error: any 
-      };
+      ) as unknown as GetUserEmailByCpfResponse;
       
       if (rpcError) {
         console.error('Erro ao buscar email do usuário:', rpcError);
@@ -167,14 +177,11 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(cpf);
       
-      // Tipando corretamente a resposta da chamada RPC
+      // Usando type assertion para informar ao TypeScript o tipo de retorno esperado
       const { data: userExists, error: rpcError } = await supabase.rpc(
         'check_user_exists_by_cpf',
         { cpf_param: normalizedCPF }
-      ) as unknown as { 
-        data: boolean; 
-        error: any 
-      };
+      ) as unknown as CheckUserExistsByCpfResponse;
       
       if (rpcError) {
         console.error('Erro ao verificar usuário existente:', rpcError);
@@ -226,7 +233,7 @@ const LoginPage = () => {
       console.log("Iniciando criação de usuário master");
       
       // Criar usuário no Auth com senha @54321
-      const { data: authData, error: authError } = await supabase.functions.invoke('create-master-user', {
+      const response = await supabase.functions.invoke('create-master-user', {
         body: {
           email: 'fabiano@totalseguranca.net',
           password: '@54321',
@@ -235,19 +242,19 @@ const LoginPage = () => {
         }
       });
       
-      console.log("Resposta da função:", authData, authError);
+      console.log("Resposta da função:", response);
       
-      if (authError) {
-        console.error('Erro ao criar usuário master:', authError);
+      if (response.error) {
+        console.error('Erro ao criar usuário master:', response.error);
         toast.error("Erro", {
-          description: authError.message || "Erro ao criar usuário master"
+          description: response.error.message || "Erro ao criar usuário master"
         });
         return;
       }
       
-      if (!authData.success) {
+      if (!response.data?.success) {
         toast.error("Erro", {
-          description: authData.message || "Falha ao criar usuário master"
+          description: response.data?.message || "Falha ao criar usuário master"
         });
         return;
       }
