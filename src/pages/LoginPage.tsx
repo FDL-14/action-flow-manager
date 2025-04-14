@@ -48,7 +48,12 @@ const LoginPage = () => {
     const checkMasterUser = async () => {
       try {
         setCheckingMaster(true);
-        const { data, error } = await supabase.rpc('check_master_user_exists');
+        // Usando a função de forma typesafe
+        const { data, error } = await supabase.rpc(
+          'check_master_user_exists', 
+          {}, 
+          { count: 'exact' }
+        ) as { data: boolean; error: any };
         
         if (error) {
           console.error('Erro ao verificar usuário master:', error);
@@ -86,9 +91,10 @@ const LoginPage = () => {
       const normalizedCPF = normalizeCPF(data.cpf);
       
       // Usar RPC para buscar o usuário pelo CPF para obter o email
-      const { data: userEmail, error: rpcError } = await supabase.rpc('get_user_email_by_cpf', {
-        cpf_param: normalizedCPF
-      });
+      const { data: userEmail, error: rpcError } = await supabase.rpc(
+        'get_user_email_by_cpf',
+        { cpf_param: normalizedCPF }
+      ) as { data: string; error: any };
       
       if (rpcError) {
         console.error('Erro ao buscar email do usuário:', rpcError);
@@ -159,9 +165,10 @@ const LoginPage = () => {
       const normalizedCPF = normalizeCPF(cpf);
       
       // Usar RPC para verificar se já existe um usuário com este CPF
-      const { data: userExists, error: rpcError } = await supabase.rpc('check_user_exists_by_cpf', {
-        cpf_param: normalizedCPF
-      });
+      const { data: userExists, error: rpcError } = await supabase.rpc(
+        'check_user_exists_by_cpf',
+        { cpf_param: normalizedCPF }
+      ) as { data: boolean; error: any };
       
       if (rpcError) {
         console.error('Erro ao verificar usuário existente:', rpcError);
