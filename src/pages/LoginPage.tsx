@@ -31,6 +31,7 @@ type FormData = z.infer<typeof formSchema>;
 const LoginPage = () => {
   const { isAuthenticated, login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [creatingMaster, setCreatingMaster] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<FormData>({
@@ -99,6 +100,50 @@ const LoginPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createMasterUser = async () => {
+    setCreatingMaster(true);
+    try {
+      const { cpf, password } = form.getValues();
+      const normalizedCPF = normalizeCPF(cpf);
+      const email = `${normalizedCPF}@exemplo.com`;
+      const name = "Usuário Master";
+
+      console.log('Criando usuário master com:', { email, name, cpf });
+
+      const response = await fetch('https://tsjdsbxgottssqqlzfxl.supabase.co/functions/v1/create-master-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          cpf: normalizedCPF
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        toast.success("Usuário master criado", {
+          description: "O usuário master foi criado com sucesso. Agora você pode fazer login."
+        });
+      } else {
+        toast.error("Erro ao criar usuário master", {
+          description: result.message || "Ocorreu um erro ao criar o usuário master."
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar usuário master:', error);
+      toast.error("Erro ao criar usuário master", {
+        description: error.message || "Ocorreu um erro ao criar o usuário master."
+      });
+    } finally {
+      setCreatingMaster(false);
     }
   };
 
@@ -179,6 +224,26 @@ const LoginPage = () => {
                 </Button>
               </form>
             </Form>
+
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={createMasterUser}
+                disabled={creatingMaster}
+              >
+                {creatingMaster ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Criando usuário master...
+                  </>
+                ) : 'Criar usuário master'}
+              </Button>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Use esta opção apenas na primeira vez que acessar o sistema
+              </p>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col">
             <div className="text-center text-xs text-gray-500 mt-4">
