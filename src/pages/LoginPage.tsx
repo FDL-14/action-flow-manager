@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -41,11 +42,9 @@ interface CheckUserExistsByCpfParams {
 }
 
 const LoginPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [creatingMaster, setCreatingMaster] = useState(false);
-  const [masterUserExists, setMasterUserExists] = useState(false);
-  const [checkingMaster, setCheckingMaster] = useState(true);
+  const [masterUserExists, setMasterUserExists] = useState(true); // Default to true to hide the buttons
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -56,62 +55,15 @@ const LoginPage = () => {
   });
 
   useEffect(() => {
-    const checkMasterUser = async () => {
-      try {
-        setCheckingMaster(true);
-
-        const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
-          'check_master_user_exists', 
-          { 
-            body: {} as CheckMasterUserExistsParams 
-          }
-        );
-
-        if (functionCheckError) {
-          console.error('Erro ao verificar função RPC:', functionCheckError);
-          
-          const { data: masterUsers, error: queryError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('role', 'master')
-            .limit(1);
-            
-          if (queryError) {
-            console.error('Erro ao consultar usuários master:', queryError);
-          } else {
-            setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
-          }
-        } else {
-          const { data, error } = await supabase.functions.invoke<{ exists: boolean; error: any }>(
-            'check_master_user_exists',
-            { 
-              body: {} as CheckMasterUserExistsParams 
-            }
-          );
-          
-          if (error) {
-            console.error('Erro ao verificar usuário master:', error);
-          } else {
-            const exists = data?.exists ?? false;
-            setMasterUserExists(!!exists);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao verificar usuário master:', error);
-      } finally {
-        setCheckingMaster(false);
-      }
-    };
-    
-    checkMasterUser();
-  }, []);
-
-  useEffect(() => {
     const cpfInput = document.getElementById('cpf');
     if (cpfInput) {
       cpfInput.focus();
     }
-  }, []);
+    
+    // Auto-fill the admin credentials
+    form.setValue('cpf', '80243088191');
+    form.setValue('password', '@54321');
+  }, [form]);
 
   const normalizeCPF = (cpf: string): string => {
     return cpf.replace(/\D/g, '');
@@ -123,18 +75,32 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
-        'get_user_email_by_cpf', 
-        { 
-          body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
+      // Direct login attempt with admin credentials
+      if (normalizedCPF === '80243088191' && data.password === '@54321') {
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
+          email: '80243088191@exemplo.com',
+          password: data.password,
+        });
+        
+        if (error) {
+          console.error('Erro no login:', error);
+          toast.error("Erro no login", {
+            description: "Credenciais inválidas, por favor tente novamente."
+          });
+        } else if (authData.user) {
+          toast.success("Login bem-sucedido", {
+            description: "Você foi autenticado com sucesso"
+          });
         }
-      );
+        
+        setLoading(false);
+        return;
+      }
       
+      // For other users, try to find their email by CPF
       let userEmail: string | null = null;
       
-      if (functionCheckError) {
-        console.error('Error checking RPC function:', functionCheckError);
-        
+      try {
         const { data: userProfile, error: queryError } = await supabase
           .from('profiles')
           .select('email')
@@ -143,24 +109,17 @@ const LoginPage = () => {
           
         if (queryError) {
           console.error('Error fetching user email:', queryError);
-          throw new Error("Error fetching user information");
+          throw new Error("Erro ao buscar informações do usuário");
         }
         
         userEmail = userProfile?.email || null;
-      } else {
-        const { data, error } = await supabase.functions.invoke<{ email: string; error: any }>(
-          'get_user_email_by_cpf',
-          { 
-            body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
-          }
-        );
-        
-        if (error) {
-          console.error('Error fetching user email:', error);
-          throw new Error("Error fetching user information");
-        }
-        
-        userEmail = data?.email ?? null;
+      } catch (error) {
+        console.error('Error fetching user email:', error);
+        toast.error("Erro ao buscar usuário", {
+          description: "Não foi possível verificar o CPF no sistema"
+        });
+        setLoading(false);
+        return;
       }
       
       if (!userEmail) {
@@ -196,8 +155,8 @@ const LoginPage = () => {
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.error("Login error", {
-        description: error.message || "An error occurred during login. Please try again."
+      toast.error("Erro no login", {
+        description: error.message || "Ocorreu um erro durante o login. Por favor, tente novamente."
       });
     } finally {
       setLoading(false);
@@ -207,7 +166,6 @@ const LoginPage = () => {
   const handleSignUp = async () => {
     const cpf = form.getValues('cpf');
     const password = form.getValues('password');
-    const email = `${normalizeCPF(cpf)}@exemplo.com`;
     
     if (!cpf || !password) {
       toast.error("Campos obrigatórios", {
@@ -221,18 +179,8 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(cpf);
       
-      const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
-        'check_user_exists_by_cpf', 
-        { 
-          body: { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams 
-        }
-      );
-      
-      let userExists = false;
-      
-      if (functionCheckError) {
-        console.error('Error checking RPC function:', functionCheckError);
-        
+      // Check if user exists
+      try {
         const { data: existingUsers, error: queryError } = await supabase
           .from('profiles')
           .select('id')
@@ -241,33 +189,28 @@ const LoginPage = () => {
           
         if (queryError) {
           console.error('Error checking user existence:', queryError);
-          throw new Error("Error checking if user already exists");
+          throw new Error("Erro ao verificar se o usuário já existe");
         }
         
-        userExists = existingUsers !== null && existingUsers.length > 0;
-      } else {
-        const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
-          'check_user_exists_by_cpf',
-          { 
-            body: { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams 
-          }
-        );
+        const userExists = existingUsers !== null && existingUsers.length > 0;
         
-        if (error) {
-          console.error('Error checking user existence:', error);
-          throw new Error("Error checking if user already exists");
+        if (userExists) {
+          toast.error("Usuário já existe", {
+            description: "Já existe um usuário com este CPF"
+          });
+          setLoading(false);
+          return;
         }
-        
-        userExists = !!data;
-      }
-      
-      if (userExists) {
-        toast.error("Usuário já existe", {
-          description: "Já existe um usuário com este CPF"
+      } catch (error) {
+        console.error('Error checking user:', error);
+        toast.error("Erro", {
+          description: "Não foi possível verificar o cadastro"
         });
         setLoading(false);
         return;
       }
+      
+      const email = `${normalizedCPF}@exemplo.com`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -294,127 +237,6 @@ const LoginPage = () => {
       console.error('Error creating user:', error);
       toast.error("Erro no cadastro", {
         description: error.message || "Ocorreu um erro durante o cadastro. Tente novamente."
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createMasterUser = async () => {
-    setCreatingMaster(true);
-    try {
-      console.log("Iniciando criação de usuário master");
-      
-      const { data, error } = await supabase.functions.invoke('create-master-user', {
-        body: {
-          email: 'fabiano@totalseguranca.net',
-          password: '@54321',
-          name: 'Administrador Master',
-          cpf: '80243088191'
-        }
-      });
-      
-      console.log("Resposta da função:", data);
-      
-      if (error) {
-        console.error('Erro ao criar usuário master:', error);
-        toast.error("Erro", {
-          description: error.message || "Erro ao criar usuário master"
-        });
-        return;
-      }
-      
-      if (!data?.success) {
-        toast.error("Erro", {
-          description: data?.message || "Falha ao criar usuário master"
-        });
-        return;
-      }
-      
-      toast.success("Usuário Master criado", {
-        description: "O usuário master foi criado com sucesso com CPF: 80243088191 e senha: @54321"
-      });
-      
-      setMasterUserExists(true);
-      
-      form.setValue('cpf', '80243088191');
-      form.setValue('password', '@54321');
-      
-    } catch (error: any) {
-      console.error('Erro ao criar usuário master:', error);
-      toast.error("Erro", {
-        description: error.message || "Erro ao criar usuário master"
-      });
-    } finally {
-      setCreatingMaster(false);
-    }
-  };
-
-  const createDirectAdminUser = async () => {
-    setLoading(true);
-    try {
-      const normalizedCPF = '80243088191';
-      const email = `${normalizedCPF}@exemplo.com`;
-      
-      const { data: existingUser, error: queryError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('cpf', normalizedCPF)
-        .maybeSingle();
-        
-      if (queryError) {
-        console.error('Erro ao verificar usuário existente:', queryError);
-        toast.error("Erro", {
-          description: "Erro ao verificar se o usuário já existe"
-        });
-        setLoading(false);
-        return;
-      }
-      
-      if (existingUser) {
-        toast.success("Usuário já existe", {
-          description: "Use CPF: 80243088191 e senha: @54321 para fazer login"
-        });
-        
-        form.setValue('cpf', '80243088191');
-        form.setValue('password', '@54321');
-        
-        setLoading(false);
-        return;
-      }
-      
-      const { data, error } = await supabase.functions.invoke<any>('create-admin-user');
-      
-      if (error) {
-        console.error('Erro ao criar usuário administrador:', error);
-        toast.error("Erro", {
-          description: error.message || "Erro ao criar usuário administrador"
-        });
-        setLoading(false);
-        return;
-      }
-      
-      const responseData = data as any;
-      const success = responseData?.success;
-      const message = responseData?.message || "Operação concluída";
-      
-      if (success) {
-        toast.success("Usuário criado com sucesso", {
-          description: message
-        });
-        
-        form.setValue('cpf', '80243088191');
-        form.setValue('password', '@54321');
-        setMasterUserExists(true);
-      } else {
-        toast.error("Erro", {
-          description: message
-        });
-      }
-    } catch (error: any) {
-      console.error('Erro ao criar usuário:', error);
-      toast.error("Erro", {
-        description: error.message || "Erro ao criar usuário"
       });
     } finally {
       setLoading(false);
@@ -495,40 +317,6 @@ const LoginPage = () => {
                 </div>
               </form>
             </Form>
-            
-            <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col gap-2">
-              {!masterUserExists && !checkingMaster && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full text-xs" 
-                  onClick={createMasterUser}
-                  disabled={creatingMaster || loading}
-                >
-                  {creatingMaster ? (
-                    <>
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      Criando usuário master...
-                    </>
-                  ) : 'Criar usuário master (CPF: 80243088191)'}
-                </Button>
-              )}
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full text-xs" 
-                onClick={createDirectAdminUser}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    Criando usuário administrador...
-                  </>
-                ) : 'Criar usuário administrador (CPF: 80243088191)'}
-              </Button>
-            </div>
           </CardContent>
           <CardFooter className="flex flex-col">
             <div className="text-center text-xs text-gray-500 mt-4">
