@@ -28,7 +28,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Interfaces para tipagem de retorno das funções RPC
+// Corrigir a interface para tipagem genérica de retorno das funções RPC
 interface RPCResponse<T> {
   data: T;
   error: any;
@@ -65,9 +65,11 @@ const LoginPage = () => {
         setCheckingMaster(true);
 
         // Verificar se a função RPC existe e criar uma função PL/pgSQL temporária se não existir
-        const { error: functionCheckError } = await supabase.rpc<boolean, CheckMasterUserExistsParams>(
+        const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
           'check_master_user_exists', 
-          {} as CheckMasterUserExistsParams
+          { 
+            body: {} as CheckMasterUserExistsParams 
+          }
         );
 
         if (functionCheckError) {
@@ -87,9 +89,11 @@ const LoginPage = () => {
           }
         } else {
           // A função RPC existe e foi executada com sucesso
-          const { data, error } = await supabase.rpc<boolean, CheckMasterUserExistsParams>(
+          const { data, error } = await supabase.functions.invoke<{ data: boolean; error: any }>(
             'check_master_user_exists',
-            {} as CheckMasterUserExistsParams
+            { 
+              body: {} as CheckMasterUserExistsParams 
+            }
           );
           
           if (error) {
@@ -129,9 +133,11 @@ const LoginPage = () => {
       const normalizedCPF = normalizeCPF(data.cpf);
       
       // Verificar se a função RPC existe
-      const { error: functionCheckError } = await supabase.rpc<string, GetUserEmailByCpfParams>(
+      const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
         'get_user_email_by_cpf', 
-        { cpf_param: normalizedCPF } as GetUserEmailByCpfParams
+        { 
+          body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
+        }
       );
       
       let userEmail: string | null = null;
@@ -154,9 +160,11 @@ const LoginPage = () => {
         userEmail = userProfile?.email || null;
       } else {
         // A função RPC existe, usar normalmente
-        const { data: email, error: rpcError } = await supabase.rpc<string, GetUserEmailByCpfParams>(
+        const { data, error: rpcError } = await supabase.functions.invoke<{ data: string; error: any }>(
           'get_user_email_by_cpf',
-          { cpf_param: normalizedCPF } as GetUserEmailByCpfParams
+          { 
+            body: { cpf_param: normalizedCPF } as GetUserEmailByCpfParams 
+          }
         );
         
         if (rpcError) {
@@ -164,7 +172,7 @@ const LoginPage = () => {
           throw new Error("Erro ao buscar informações de usuário");
         }
         
-        userEmail = email;
+        userEmail = data || null;
       }
       
       if (!userEmail) {
@@ -227,9 +235,11 @@ const LoginPage = () => {
       const normalizedCPF = normalizeCPF(cpf);
       
       // Verificar se a função RPC existe
-      const { error: functionCheckError } = await supabase.rpc<boolean, CheckUserExistsByCpfParams>(
+      const { error: functionCheckError } = await supabase.functions.invoke<{ error: any }>(
         'check_user_exists_by_cpf', 
-        { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams
+        { 
+          body: { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams 
+        }
       );
       
       let userExists = false;
@@ -252,9 +262,11 @@ const LoginPage = () => {
         userExists = existingUsers !== null && existingUsers.length > 0;
       } else {
         // A função RPC existe, usar normalmente
-        const { data, error: rpcError } = await supabase.rpc<boolean, CheckUserExistsByCpfParams>(
+        const { data, error: rpcError } = await supabase.functions.invoke<{ data: boolean; error: any }>(
           'check_user_exists_by_cpf',
-          { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams
+          { 
+            body: { cpf_param: normalizedCPF } as CheckUserExistsByCpfParams 
+          }
         );
         
         if (rpcError) {
