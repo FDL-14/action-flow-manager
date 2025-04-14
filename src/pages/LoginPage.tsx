@@ -172,6 +172,7 @@ const LoginPage = () => {
           throw new Error("Erro ao buscar informações de usuário");
         }
         
+        // Correction: Properly extract the data property from the response
         userEmail = response.data || null;
       }
       
