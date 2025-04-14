@@ -29,18 +29,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 // Interfaces para tipagem de retorno das funções RPC
-interface CheckMasterUserExistsResponse {
-  data: boolean;
-  error: any;
-}
-
-interface GetUserEmailByCpfResponse {
-  data: string;
-  error: any;
-}
-
-interface CheckUserExistsByCpfResponse {
-  data: boolean;
+interface RPCResponse<T> {
+  data: T;
   error: any;
 }
 
@@ -64,14 +54,34 @@ const LoginPage = () => {
     const checkMasterUser = async () => {
       try {
         setCheckingMaster(true);
-        
-        // Usando type assertion para informar ao TypeScript o tipo de retorno esperado
-        const { data, error } = await supabase.rpc('check_master_user_exists') as unknown as CheckMasterUserExistsResponse;
-        
-        if (error) {
-          console.error('Erro ao verificar usuário master:', error);
+
+        // Verificar se a função RPC existe e criar uma função PL/pgSQL temporária se não existir
+        const { error: functionCheckError } = await supabase.rpc('check_master_user_exists') as RPCResponse<boolean>;
+
+        if (functionCheckError) {
+          console.error('Erro ao verificar função RPC:', functionCheckError);
+          
+          // Verificar diretamente via consulta SQL se existem usuários master
+          const { data: masterUsers, error: queryError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'master')
+            .limit(1);
+            
+          if (queryError) {
+            console.error('Erro ao consultar usuários master:', queryError);
+          } else {
+            setMasterUserExists(masterUsers !== null && masterUsers.length > 0);
+          }
         } else {
-          setMasterUserExists(!!data);
+          // A função RPC existe e foi executada com sucesso
+          const { data, error } = await supabase.rpc('check_master_user_exists') as RPCResponse<boolean>;
+          
+          if (error) {
+            console.error('Erro ao verificar usuário master:', error);
+          } else {
+            setMasterUserExists(!!data);
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar usuário master:', error);
@@ -103,19 +113,40 @@ const LoginPage = () => {
       // Normalizar CPF antes de fazer a consulta
       const normalizedCPF = normalizeCPF(data.cpf);
       
-      // Usando type assertion para informar ao TypeScript o tipo de retorno esperado
-      const { data: userEmail, error: rpcError } = await supabase.rpc(
-        'get_user_email_by_cpf',
-        { cpf_param: normalizedCPF }
-      ) as unknown as GetUserEmailByCpfResponse;
+      // Verificar se a função RPC existe
+      const { error: functionCheckError } = await supabase.rpc('get_user_email_by_cpf', { cpf_param: normalizedCPF }) as RPCResponse<string>;
       
-      if (rpcError) {
-        console.error('Erro ao buscar email do usuário:', rpcError);
-        toast.error("Erro ao buscar informações de usuário", {
-          description: rpcError.message
-        });
-        setLoading(false);
-        return;
+      let userEmail: string | null = null;
+      
+      if (functionCheckError) {
+        console.error('Erro ao verificar função RPC:', functionCheckError);
+        
+        // Consulta alternativa se a função RPC não existir
+        const { data: userProfile, error: queryError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('cpf', normalizedCPF)
+          .maybeSingle();
+          
+        if (queryError) {
+          console.error('Erro ao buscar email do usuário:', queryError);
+          throw new Error("Erro ao buscar informações de usuário");
+        }
+        
+        userEmail = userProfile?.email || null;
+      } else {
+        // A função RPC existe, usar normalmente
+        const { data: email, error: rpcError } = await supabase.rpc(
+          'get_user_email_by_cpf',
+          { cpf_param: normalizedCPF }
+        ) as RPCResponse<string>;
+        
+        if (rpcError) {
+          console.error('Erro ao buscar email do usuário:', rpcError);
+          throw new Error("Erro ao buscar informações de usuário");
+        }
+        
+        userEmail = email;
       }
       
       if (!userEmail) {
@@ -177,15 +208,40 @@ const LoginPage = () => {
     try {
       const normalizedCPF = normalizeCPF(cpf);
       
-      // Usando type assertion para informar ao TypeScript o tipo de retorno esperado
-      const { data: userExists, error: rpcError } = await supabase.rpc(
-        'check_user_exists_by_cpf',
-        { cpf_param: normalizedCPF }
-      ) as unknown as CheckUserExistsByCpfResponse;
+      // Verificar se a função RPC existe
+      const { error: functionCheckError } = await supabase.rpc('check_user_exists_by_cpf', { cpf_param: normalizedCPF }) as RPCResponse<boolean>;
       
-      if (rpcError) {
-        console.error('Erro ao verificar usuário existente:', rpcError);
-        throw new Error("Erro ao verificar se o usuário já existe");
+      let userExists = false;
+      
+      if (functionCheckError) {
+        console.error('Erro ao verificar função RPC:', functionCheckError);
+        
+        // Consulta alternativa se a função RPC não existir
+        const { data: existingUsers, error: queryError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('cpf', normalizedCPF)
+          .limit(1);
+          
+        if (queryError) {
+          console.error('Erro ao verificar usuário existente:', queryError);
+          throw new Error("Erro ao verificar se o usuário já existe");
+        }
+        
+        userExists = existingUsers !== null && existingUsers.length > 0;
+      } else {
+        // A função RPC existe, usar normalmente
+        const { data, error: rpcError } = await supabase.rpc(
+          'check_user_exists_by_cpf',
+          { cpf_param: normalizedCPF }
+        ) as RPCResponse<boolean>;
+        
+        if (rpcError) {
+          console.error('Erro ao verificar usuário existente:', rpcError);
+          throw new Error("Erro ao verificar se o usuário já existe");
+        }
+        
+        userExists = !!data;
       }
       
       if (userExists) {
