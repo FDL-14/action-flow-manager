@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, RefreshCw, Key } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useCompany } from '@/contexts/CompanyContext';
 import UserForm from '@/components/UserForm';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
-import { User } from '@/lib/types';
+import { User } from '@/contexts/auth';
 import {
   Table,
   TableBody,
