@@ -43,7 +43,7 @@ const ClientsPage = () => {
 
   // Verificar permissões do usuário
   const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit);
-  const canDeleteClients = user?.role === 'master';
+  const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDelete);
 
   const handleEditClient = (client: Client) => {
     setEditingClient(client);
@@ -73,7 +73,10 @@ const ClientsPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Clientes</h1>
         {canEditClients && (
-          <Button onClick={() => { setEditingClient(undefined); setShowClientForm(true); }}>
+          <Button 
+            onClick={() => { setEditingClient(undefined); setShowClientForm(true); }}
+            className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Cadastrar Cliente
           </Button>
