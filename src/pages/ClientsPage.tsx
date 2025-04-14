@@ -1,28 +1,26 @@
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Building2, Mail, Phone, Plus, Edit, Trash } from 'lucide-react';
-import { useCompany } from '@/contexts/CompanyContext';
-import { useActions } from '@/contexts/ActionContext';
 import { useAuth } from '@/contexts/AuthContext';
-import ClientForm from '@/components/ClientForm';
+import { useCompany } from '@/contexts/CompanyContext';
 import { Client } from '@/lib/types';
-import { 
+import { Button } from "@/components/ui/button";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -32,41 +30,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import ClientForm from '@/components/ClientForm';
+import { useToast } from '@/hooks/use-toast';
 
 const ClientsPage = () => {
-  const { company, clients, deleteClient } = useCompany();
-  const { getActionsByClient } = useActions();
+  const { clients, deleteClient, getClientsByCompanyId } = useCompany();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
   const [showClientForm, setShowClientForm] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
-  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Verificar permissões do usuário
-  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit);
-  const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDelete);
+  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEditClient);
+  const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDeleteClient);
 
   const handleEditClient = (client: Client) => {
     setEditingClient(client);
     setShowClientForm(true);
   };
 
-  const handleCloseForm = () => {
-    setShowClientForm(false);
-    setEditingClient(undefined);
+  const handleDeleteClient = (client: Client) => {
+    setClientToDelete(client);
+    setShowDeleteDialog(true);
   };
 
-  const handleDeleteClient = (id: string) => {
-    if (canDeleteClients) {
-      setClientToDelete(id);
-    }
-  };
-
-  const confirmDeleteClient = () => {
+  const confirmDelete = () => {
     if (clientToDelete) {
-      deleteClient(clientToDelete);
+      deleteClient(clientToDelete.id);
+      toast({
+        title: "Cliente excluído",
+        description: `O cliente ${clientToDelete.name} foi excluído com sucesso.`,
+      });
+      setShowDeleteDialog(false);
       setClientToDelete(null);
     }
   };
+
+  const filteredClients = clients.filter((client) =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="container mx-auto py-6">
@@ -74,7 +80,7 @@ const ClientsPage = () => {
         <h1 className="text-2xl font-bold">Gerenciamento de Clientes</h1>
         {canEditClients && (
           <Button 
-            onClick={() => { setEditingClient(undefined); setShowClientForm(true); }}
+            onClick={() => { setEditingClient(null); setShowClientForm(true); }}
             className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -83,119 +89,98 @@ const ClientsPage = () => {
         )}
       </div>
 
-      {clients.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Nenhum cliente cadastrado</CardTitle>
-            <CardDescription>
-              Clique no botão "Cadastrar Cliente" para adicionar seu primeiro cliente.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista de Clientes</CardTitle>
-            <CardDescription>
-              Gerenciar clientes para associação com ações.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Ações Relacionadas</TableHead>
-                  <TableHead className="text-right">Gerenciar</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clients.map((client) => {
-                  const clientActions = getActionsByClient(client.id);
-                  return (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          <Building2 className="h-4 w-4 mr-2 text-gray-400" />
-                          {client.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {client.email && (
-                            <div className="flex items-center text-sm">
-                              <Mail className="h-3 w-3 mr-2 text-gray-400" />
-                              {client.email}
-                            </div>
-                          )}
-                          {client.phone && (
-                            <div className="flex items-center text-sm">
-                              <Phone className="h-3 w-3 mr-2 text-gray-400" />
-                              {client.phone}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <span className="text-sm">{clientActions.length} ações</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          {canEditClients && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditClient(client)}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Editar
-                            </Button>
-                          )}
-                          {canDeleteClients && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteClient(client.id)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash className="h-4 w-4 mr-1" />
-                              Excluir
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Filtrar Clientes</CardTitle>
+          <CardDescription>Use o campo abaixo para encontrar clientes específicos</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Input
+            placeholder="Buscar por nome do cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </CardContent>
+      </Card>
 
-      <ClientForm 
+      <div className="rounded-md border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Telefone</TableHead>
+              <TableHead>Endereço</TableHead>
+              <TableHead>CNPJ</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredClients.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center">
+                  Nenhum cliente encontrado
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredClients.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>{client.email || "-"}</TableCell>
+                  <TableCell>{client.phone || "-"}</TableCell>
+                  <TableCell>{client.address || "-"}</TableCell>
+                  <TableCell>{client.cnpj || "-"}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    {canEditClients && (
+                      <Button
+                        onClick={() => handleEditClient(client)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                    )}
+                    {canDeleteClients && (
+                      <Button
+                        onClick={() => handleDeleteClient(client)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Excluir
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <ClientForm
         open={showClientForm}
-        onOpenChange={handleCloseForm}
+        onOpenChange={setShowClientForm}
         editClient={editingClient}
       />
 
-      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita e todas as ações associadas podem ser afetadas.
+              Tem certeza que deseja excluir o cliente{" "}
+              <span className="font-bold">{clientToDelete?.name}</span>?
+              <br />
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteClient}
-              className="bg-red-500 hover:bg-red-700 text-white"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
