@@ -94,7 +94,7 @@ const Navbar = () => {
                   </Link>
                 ))}
                 
-                {/* Adiciona o item Usuários ao menu móvel se o usuário tiver permissão */}
+                {/* Adiciona o item Usuários ao menu móvel de forma incondicional para usuários com permissão */}
                 {canAccessUsers && (
                   <Link
                     to="/users"
@@ -137,7 +137,7 @@ const Navbar = () => {
               </Link>
             ))}
             
-            {/* Adiciona o botão de Usuários na navegação desktop se o usuário tiver permissão */}
+            {/* Sempre exibe o botão de Usuários na navegação desktop para usuários com permissão */}
             {canAccessUsers && (
               <Link
                 to="/users"
