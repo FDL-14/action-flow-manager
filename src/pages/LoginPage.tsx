@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
-  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
+  cpf: z.string().min(1, 'CPF é obrigatório'),
   password: z.string().min(1, 'Senha é obrigatória'),
 });
 
@@ -36,25 +36,53 @@ const LoginPage = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: '',
+      cpf: '',
       password: '',
     },
   });
 
-  // Foco automático no campo Email ao carregar a página
+  // Foco automático no campo CPF ao carregar a página
   useEffect(() => {
-    const emailInput = document.getElementById('email');
-    if (emailInput) {
-      emailInput.focus();
+    const cpfInput = document.getElementById('cpf');
+    if (cpfInput) {
+      cpfInput.focus();
     }
   }, []);
+
+  // Função para normalizar CPF (remover caracteres não numéricos)
+  const normalizeCPF = (cpf: string): string => {
+    return cpf.replace(/\D/g, '');
+  };
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     
     try {
+      // Normalizar CPF antes de fazer a consulta
+      const normalizedCPF = normalizeCPF(data.cpf);
+      
+      // Buscar o usuário pelo CPF para obter o email
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('cpf', normalizedCPF)
+        .maybeSingle();
+      
+      if (profileError) {
+        throw new Error('Erro ao buscar informações de usuário: ' + profileError.message);
+      }
+      
+      if (!profiles || !profiles.email) {
+        toast.error("Usuário não encontrado", {
+          description: "CPF não cadastrado no sistema"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Fazer login com o email obtido
       const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
+        email: profiles.email,
         password: data.password,
       });
       
@@ -69,7 +97,7 @@ const LoginPage = () => {
         });
       } else {
         toast.error("Erro no login", {
-          description: "Email ou senha incorretos"
+          description: "CPF ou senha incorretos"
         });
       }
     } catch (error: any) {
@@ -83,12 +111,13 @@ const LoginPage = () => {
   };
 
   const handleSignUp = async () => {
-    const email = form.getValues('email');
+    const cpf = form.getValues('cpf');
     const password = form.getValues('password');
+    const email = `${normalizeCPF(cpf)}@exemplo.com`; // Email gerado a partir do CPF
     
-    if (!email || !password) {
+    if (!cpf || !password) {
       toast.error("Campos obrigatórios", {
-        description: "Preencha o email e a senha para criar uma conta"
+        description: "Preencha o CPF e a senha para criar uma conta"
       });
       return;
     }
@@ -96,12 +125,35 @@ const LoginPage = () => {
     setLoading(true);
     
     try {
+      const normalizedCPF = normalizeCPF(cpf);
+      
+      // Verificar se já existe um usuário com este CPF
+      const { data: existingUser, error: queryError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('cpf', normalizedCPF)
+        .maybeSingle();
+      
+      if (queryError) {
+        console.error('Erro ao verificar usuário existente:', queryError);
+        throw new Error("Erro ao verificar se o usuário já existe");
+      }
+      
+      if (existingUser) {
+        toast.error("Usuário já existe", {
+          description: "Já existe um usuário com este CPF"
+        });
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name: email.split('@')[0], // Nome baseado no email
+            name: cpf, // Nome baseado no CPF
+            cpf: normalizedCPF
           }
         }
       });
@@ -113,7 +165,7 @@ const LoginPage = () => {
       
       if (data.user) {
         toast.success("Cadastro realizado", {
-          description: "Verifique seu email para confirmar o cadastro"
+          description: "Uma verificação será enviada para o administrador aprovar seu cadastro"
         });
       }
     } catch (error: any) {
@@ -233,7 +285,7 @@ const LoginPage = () => {
       }
       
       toast.success("Usuário Master criado", {
-        description: "O usuário master foi criado com sucesso com email: fabiano@totalseguranca.net e senha: @54321"
+        description: "O usuário master foi criado com sucesso com CPF: 80243088191 e senha: @54321"
       });
       
     } catch (error: any) {
@@ -273,12 +325,12 @@ const LoginPage = () => {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="cpf"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>CPF</FormLabel>
                       <FormControl>
-                        <Input id="email" placeholder="Digite seu email" {...field} />
+                        <Input id="cpf" placeholder="Digite seu CPF" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -334,7 +386,7 @@ const LoginPage = () => {
                     <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                     Criando usuário master...
                   </>
-                ) : 'Criar usuário master (fabiano@totalseguranca.net)'}
+                ) : 'Criar usuário master (CPF: 80243088191)'}
               </Button>
             </div>
           </CardContent>
