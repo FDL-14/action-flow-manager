@@ -44,9 +44,11 @@ import EditActionForm from './EditActionForm';
 interface ActionCardProps {
   action: Action;
   onDelete?: () => void;
+  onMenuClick?: () => void;
+  isProcessing?: boolean;
 }
 
-const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
+const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, isProcessing = false }) => {
   const { responsibles, clients } = useCompany();
   const { updateActionStatus, sendActionEmail, deleteAction } = useActions();
   const [showNotes, setShowNotes] = useState(false);
