@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -40,16 +41,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     };
   }, [attachmentUrls]);
 
-  useEffect(() => {
-    if (isCompleting && (newNote.trim().length === 0 && attachmentUrls.length === 0)) {
-      toast({
-        title: "Atenção",
-        description: "Adicione uma anotação ou anexo para concluir esta ação.",
-        variant: "default",
-      });
-    }
-  }, [isCompleting, newNote, attachmentUrls.length, toast]);
-
   const handleAddNote = () => {
     if (!newNote.trim() && attachmentUrls.length === 0) {
       toast({
@@ -65,6 +56,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         addActionNote(action.id, newNote);
       }
       
+      // Adicionando anexos
       attachmentUrls.forEach(url => {
         try {
           addAttachment(action.id, url);
@@ -78,6 +70,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         }
       });
       
+      // Limpando os campos
       setNewNote('');
       setUploadedFiles([]);
       setAttachmentUrls([]);
@@ -88,6 +81,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         variant: "default",
       });
 
+      // Se estiver no processo de concluir a ação
       if (isCompleting) {
         updateActionStatus(action.id, 'concluido', new Date());
         setIsCompleting(false);
@@ -144,6 +138,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       try {
         const newFiles = Array.from(e.target.files);
         
+        // Verificar tamanho total dos arquivos (limite de 10MB)
         const totalSize = newFiles.reduce((acc, file) => acc + file.size, 0);
         if (totalSize > 10 * 1024 * 1024) {
           toast({
@@ -156,6 +151,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         
         setUploadedFiles(prev => [...prev, ...newFiles]);
         
+        // Criar URLs para os arquivos
         const newAttachments = newFiles.map(file => 
           URL.createObjectURL(file)
         );
@@ -183,6 +179,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       const newFiles = [...uploadedFiles];
       const newAttachments = [...attachmentUrls];
       
+      // Liberar URL do objeto
       URL.revokeObjectURL(newAttachments[index]);
       
       newFiles.splice(index, 1);
@@ -214,10 +211,12 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
 
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
+      // Criar um elemento âncora temporário para o download
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       
+      // Adicionar a extensão do arquivo se não existir no nome
       const extension = url.split('.').pop()?.toLowerCase();
       const hasExtension = filename.includes('.');
       
@@ -227,9 +226,11 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       
       a.download = filename;
       
+      // Adicionar ao DOM, clicar e remover
       document.body.appendChild(a);
       a.click();
       
+      // Pequeno timeout para garantir que o download inicie antes de remover
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);
@@ -296,8 +297,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   };
 
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
-
-  const hasNoteOrAttachment = newNote.trim().length > 0 || attachmentUrls.length > 0;
 
   return (
     <div className="space-y-4">

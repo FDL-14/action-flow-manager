@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -82,10 +83,12 @@ const Workflow: React.FC = () => {
 
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
+      // Criar um elemento âncora temporário para o download
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       
+      // Adicionar a extensão do arquivo se não existir no nome
       const extension = url.split('.').pop()?.toLowerCase();
       const hasExtension = filename.includes('.');
       
@@ -95,9 +98,11 @@ const Workflow: React.FC = () => {
       
       a.download = filename;
       
+      // Adicionar ao DOM, clicar e remover
       document.body.appendChild(a);
       a.click();
       
+      // Pequeno timeout para garantir que o download inicie antes de remover
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);

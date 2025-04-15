@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -235,13 +236,15 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const updateActionStatus = (id: string, status: 'pendente' | 'concluido' | 'atrasado', completedAt?: Date) => {
+    const currentTime = new Date();
+    
     const updatedActions = actions.map(action => 
       action.id === id 
         ? { 
             ...action, 
             status, 
-            completedAt: status === 'concluido' ? completedAt || new Date() : action.completedAt,
-            updatedAt: new Date()
+            completedAt: status === 'concluido' ? completedAt || currentTime : action.completedAt,
+            updatedAt: currentTime
           } 
         : action
     );
@@ -255,11 +258,20 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error("Erro ao salvar atualização de status:", saveError);
     }
 
-    toast({
-      title: "Status atualizado",
-      description: `O status da ação foi atualizado para ${status}.`,
-      variant: "default",
-    });
+    // Mensagem de confirmação específica para conclusão de ação
+    if (status === 'concluido') {
+      toast({
+        title: "Ação concluída",
+        description: "A ação foi marcada como concluída com sucesso.",
+        variant: "default",
+      });
+    } else {
+      toast({
+        title: "Status atualizado",
+        description: `O status da ação foi atualizado para ${status}.`,
+        variant: "default",
+      });
+    }
   };
 
   const addActionNote = (actionId: string, content: string) => {

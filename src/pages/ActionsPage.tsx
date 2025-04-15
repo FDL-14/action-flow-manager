@@ -20,9 +20,18 @@ const ActionsPage = () => {
     clientId: 'all',
   });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   const handleActionDeleted = () => {
     setRefreshKey(prev => prev + 1);
+  };
+  
+  const handleActionMenuClick = (actionId: string) => {
+    setProcessingAction(actionId);
+    // Pequeno timeout para garantir que a UI seja atualizada
+    setTimeout(() => {
+      setProcessingAction(null);
+    }, 500);
   };
 
   const filteredActions = actions.filter(action => {
@@ -83,6 +92,8 @@ const ActionsPage = () => {
               key={`${action.id}-${refreshKey}`} 
               action={action}
               onDelete={handleActionDeleted} 
+              onMenuClick={() => handleActionMenuClick(action.id)}
+              isProcessing={processingAction === action.id}
             />
           ))
         )}
