@@ -83,35 +83,58 @@ const Workflow: React.FC = () => {
 
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Criar um elemento âncora temporário para o download
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      
-      // Adicionar a extensão do arquivo se não existir no nome
-      const extension = url.split('.').pop()?.toLowerCase();
-      const hasExtension = filename.includes('.');
-      
-      if (!hasExtension && extension) {
-        filename = `${filename}.${extension}`;
-      }
-      
-      a.download = filename;
-      
-      // Adicionar ao DOM, clicar e remover
-      document.body.appendChild(a);
-      a.click();
-      
-      // Pequeno timeout para garantir que o download inicie antes de remover
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 100);
-      
-      toast({
-        title: "Download iniciado",
-        description: "O download do arquivo foi iniciado.",
-        variant: "default",
-      });
+      // Criar link de download com fetch para tratar como blob
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.status}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          // Criar URL do objeto blob
+          const blobUrl = window.URL.createObjectURL(blob);
+          
+          // Criar elemento âncora temporário para o download
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = blobUrl;
+          
+          // Adicionar a extensão do arquivo se não existir no nome
+          const extension = url.split('.').pop()?.toLowerCase();
+          const hasExtension = filename.includes('.');
+          
+          if (!hasExtension && extension) {
+            filename = `${filename}.${extension}`;
+          }
+          
+          a.download = filename;
+          
+          // Adicionar ao DOM, clicar e remover
+          document.body.appendChild(a);
+          a.click();
+          
+          // Pequeno timeout para garantir que o download inicie antes de remover
+          setTimeout(() => {
+            document.body.removeChild(a);
+            // Liberar objeto URL
+            window.URL.revokeObjectURL(blobUrl);
+          }, 100);
+          
+          toast({
+            title: "Download iniciado",
+            description: "O download do arquivo foi iniciado.",
+            variant: "default",
+          });
+        })
+        .catch(error => {
+          console.error("Erro ao fazer download:", error);
+          toast({
+            title: "Erro no download",
+            description: "Não foi possível baixar o arquivo. Tente novamente.",
+            variant: "destructive",
+          });
+        });
     } catch (error) {
       console.error("Erro ao fazer download:", error);
       toast({

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -243,31 +244,58 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      
-      const extension = url.split('.').pop()?.toLowerCase();
-      const hasExtension = filename.includes('.');
-      
-      if (!hasExtension && extension) {
-        filename = `${filename}.${extension}`;
-      }
-      
-      a.download = filename;
-      
-      document.body.appendChild(a);
-      a.click();
-      
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 100);
-      
-      toast({
-        title: "Download iniciado",
-        description: "O download do arquivo foi iniciado.",
-        variant: "default",
-      });
+      // Usar fetch para tratar como blob
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.status}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          // Criar URL do objeto blob
+          const blobUrl = window.URL.createObjectURL(blob);
+          
+          // Criar elemento âncora temporário para o download
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = blobUrl;
+          
+          // Adicionar a extensão do arquivo se não existir no nome
+          const extension = url.split('.').pop()?.toLowerCase();
+          const hasExtension = filename.includes('.');
+          
+          if (!hasExtension && extension) {
+            filename = `${filename}.${extension}`;
+          }
+          
+          a.download = filename;
+          
+          // Adicionar ao DOM, clicar e remover
+          document.body.appendChild(a);
+          a.click();
+          
+          // Pequeno timeout para garantir que o download inicie antes de remover
+          setTimeout(() => {
+            document.body.removeChild(a);
+            // Liberar objeto URL
+            window.URL.revokeObjectURL(blobUrl);
+          }, 100);
+          
+          toast({
+            title: "Download iniciado",
+            description: "O download do arquivo foi iniciado.",
+            variant: "default",
+          });
+        })
+        .catch(error => {
+          console.error("Erro ao fazer download:", error);
+          toast({
+            title: "Erro no download",
+            description: "Não foi possível baixar o arquivo. Tente novamente.",
+            variant: "destructive",
+          });
+        });
     } catch (error) {
       console.error("Erro ao fazer download:", error);
       toast({
@@ -374,7 +402,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" type="button">
+                <Button variant="ghost" size="icon" disabled={isProcessing} type="button" onClick={onMenuClick}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
