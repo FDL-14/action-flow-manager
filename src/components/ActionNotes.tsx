@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -60,8 +59,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       addActionNote(action.id, data.content);
       form.reset();
       
-      // Se tiver adicionado anotação e a ação não estiver concluída, 
-      // mostra o botão de marcar como concluída
       if (action.status !== 'concluido') {
         setShowCompleteButton(true);
       }
@@ -94,20 +91,14 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     setIsUploading(true);
 
     try {
-      // Simular um upload para ambiente de desenvolvimento
-      // Em produção, aqui seria feito o upload para um servidor real
       const fileURL = URL.createObjectURL(selectedFile);
       
-      // Adiciona o arquivo à lista de anexos da ação
       addAttachment(action.id, fileURL);
       
-      // Atualiza a lista local de arquivos anexados
       setUploadedFiles(prev => [...prev, fileURL]);
       
-      // Limpa a seleção de arquivo
       setSelectedFile(null);
 
-      // Se tiver feito upload de arquivos, mostra o botão de marcar como concluída
       if (action.status !== 'concluido') {
         setShowCompleteButton(true);
       }
@@ -262,7 +253,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       {showCompleteButton && (
         <div className="pt-4 border-t mt-4">
           <Button 
-            variant="success" 
+            variant="default" 
             onClick={handleComplete} 
             className="w-full bg-green-600 hover:bg-green-700 text-white"
             type="button"
