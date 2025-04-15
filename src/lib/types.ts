@@ -9,6 +9,7 @@ export interface User {
   clientIds?: string[]; // Clients user has access to
   permissions: Permission[];
   password?: string;
+  responsibleId?: string; // Link to the responsible record
 }
 
 export interface Permission {

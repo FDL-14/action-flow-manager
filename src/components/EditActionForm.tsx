@@ -54,21 +54,28 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
       setFilteredClients(clients);
     }
 
-    // Filter responsibles based on selected company
+    // Filter responsibles based on selected company and their relationship with clients
     if (selectedCompanyId) {
-      setFilteredResponsibles(
-        responsibles.filter(
-          resp => resp.type !== 'requester' && 
-          (resp.companyId === selectedCompanyId || !resp.companyId)
-        )
+      const companyResponsibles = responsibles.filter(
+        resp => (resp.type !== 'requester' && 
+        (resp.companyId === selectedCompanyId || 
+          (resp.clientIds && resp.clientIds.some(id => 
+            clients.some(c => c.id === id && c.companyId === selectedCompanyId)
+          ))))
       );
       
-      setRequesters(
-        responsibles.filter(
-          resp => (resp.type === 'requester' || !resp.type) && 
-          (resp.companyId === selectedCompanyId || !resp.companyId)
-        )
+      setFilteredResponsibles(companyResponsibles);
+      
+      // Filter requesters similarly
+      const companyRequesters = responsibles.filter(
+        resp => ((resp.type === 'requester' || !resp.type) && 
+        (resp.companyId === selectedCompanyId || 
+          (resp.clientIds && resp.clientIds.some(id => 
+            clients.some(c => c.id === id && c.companyId === selectedCompanyId)
+          ))))
       );
+      
+      setRequesters(companyRequesters);
     } else {
       setFilteredResponsibles(responsibles.filter(r => r.type !== 'requester'));
       setRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
@@ -159,6 +166,9 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                       // Clear client selection if changing company
                       if (value !== field.value) {
                         form.setValue('clientId', '');
+                        // Also reset responsible and requester if company changes
+                        form.setValue('responsibleId', '');
+                        form.setValue('requesterId', '');
                       }
                     }}
                     defaultValue={field.value}

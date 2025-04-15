@@ -1,9 +1,11 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,6 +43,7 @@ interface ActionFormProps {
 const formSchema = z.object({
   subject: z.string().min(3, 'Assunto deve ter pelo menos 3 caracteres'),
   description: z.string().min(10, 'Descrição deve ter pelo menos 10 caracteres'),
+  companyId: z.string().min(1, 'Selecione uma empresa'),
   responsibleId: z.string().min(1, 'Selecione um responsável'),
   clientId: z.string().optional(),
   requesterId: z.string().min(1, 'Selecione um solicitante'),
@@ -51,10 +54,15 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
-  const { company, responsibles, clients } = useCompany();
+  const { companies, responsibles, clients, company: defaultCompany } = useCompany();
   const { addAction } = useActions();
+  const { user } = useAuth();
   const [attachments, setAttachments] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [filteredClients, setFilteredClients] = useState(clients);
+  const [filteredResponsibles, setFilteredResponsibles] = useState(responsibles);
+  const [filteredRequesters, setFilteredRequesters] = useState(responsibles);
+  const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -62,6 +70,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     defaultValues: {
       subject: '',
       description: '',
+      companyId: defaultCompany?.id || '',
       responsibleId: '',
       clientId: '',
       requesterId: '',
@@ -69,6 +78,29 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
       endDate: '',
     },
   });
+
+  // Filter clients based on selected company
+  useEffect(() => {
+    if (selectedCompanyId) {
+      setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
+      
+      // Filter responsibles based on users related to this company
+      const companyResponsibles = responsibles.filter(
+        resp => resp.companyId === selectedCompanyId || 
+          (resp.clientIds && resp.clientIds.some(id => 
+            clients.some(c => c.id === id && c.companyId === selectedCompanyId)
+          ))
+      );
+      
+      // Split into responsibles and requesters
+      setFilteredResponsibles(companyResponsibles.filter(r => r.type !== 'requester'));
+      setFilteredRequesters(companyResponsibles.filter(r => r.type === 'requester' || !r.type));
+    } else {
+      setFilteredClients(clients);
+      setFilteredResponsibles(responsibles.filter(r => r.type !== 'requester'));
+      setFilteredRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
+    }
+  }, [selectedCompanyId, clients, responsibles]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -99,10 +131,10 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   };
 
   const onSubmit = (values: FormValues) => {
-    if (!company) {
+    if (!user) {
       toast({
         title: "Erro",
-        description: "Nenhuma empresa configurada",
+        description: "Usuário não autenticado",
         variant: "destructive",
       });
       return;
@@ -113,12 +145,14 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         subject: values.subject,
         description: values.description,
         responsibleId: values.responsibleId,
+        companyId: values.companyId,
         clientId: values.clientId || undefined,
         requesterId: values.requesterId,
         startDate: new Date(values.startDate),
         endDate: new Date(values.endDate),
-        companyId: company.id,
         attachments,
+        createdBy: user.id,
+        createdByName: user.name
       });
 
       // Reset form and close dialog
@@ -168,6 +202,40 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="companyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Empresa</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedCompanyId(value);
+                      // Reset client selection when company changes
+                      form.setValue('clientId', '');
+                      form.setValue('responsibleId', '');
+                      form.setValue('requesterId', '');
+                    }} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma empresa" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
@@ -185,7 +253,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {clients.map((client) => (
+                      {filteredClients.map((client) => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.name}
                         </SelectItem>
@@ -213,7 +281,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {responsibles.map((responsible) => (
+                      {filteredResponsibles.map((responsible) => (
                         <SelectItem key={responsible.id} value={responsible.id}>
                           {responsible.name}
                         </SelectItem>
@@ -241,7 +309,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {responsibles.map((responsible) => (
+                      {filteredRequesters.map((responsible) => (
                         <SelectItem key={responsible.id} value={responsible.id}>
                           {responsible.name}
                         </SelectItem>
@@ -310,6 +378,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                   className="hidden"
                   multiple
                   onChange={handleFileChange}
+                  accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx,.doc,.xls"
                 />
                 <label htmlFor="file-upload" className="cursor-pointer">
                   <div className="flex flex-col items-center">
