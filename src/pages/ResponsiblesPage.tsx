@@ -46,6 +46,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 
+// Custom type for display requesters
+type DisplayRequester = Responsible & { isSystemUser?: boolean };
+
 const ResponsiblesPage = () => {
   const { company, responsibles, deleteResponsible } = useCompany();
   const { getActionsByResponsible } = useActions();
@@ -62,7 +65,7 @@ const ResponsiblesPage = () => {
   );
   
   // Add system users that aren't already requesters
-  const displayRequesters: (Responsible & { isSystemUser?: boolean })[] = [...requesters];
+  const displayRequesters: DisplayRequester[] = [...requesters];
   
   // Check if all users are already included
   const requesterUserIds = requesters
@@ -90,7 +93,7 @@ const ResponsiblesPage = () => {
     }
   });
 
-  const handleEdit = (responsible: Responsible & { isSystemUser?: boolean }) => {
+  const handleEdit = (responsible: DisplayRequester) => {
     if (!canUserEditResponsibles()) {
       toast.error("Você não tem permissão para editar solicitantes.");
       return;
@@ -106,7 +109,7 @@ const ResponsiblesPage = () => {
     setShowResponsibleForm(true);
   };
 
-  const handleDelete = (responsible: Responsible & { isSystemUser?: boolean }) => {
+  const handleDelete = (responsible: DisplayRequester) => {
     if (!canUserDeleteResponsibles()) {
       toast.error("Você não tem permissão para excluir solicitantes.");
       return;
