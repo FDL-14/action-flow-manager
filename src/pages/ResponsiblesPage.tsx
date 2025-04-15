@@ -62,7 +62,7 @@ const ResponsiblesPage = () => {
   );
   
   // Add system users that aren't already requesters
-  const displayRequesters = [...requesters];
+  const displayRequesters: (Responsible & { isSystemUser?: boolean })[] = [...requesters];
   
   // Check if all users are already included
   const requesterUserIds = requesters
@@ -83,12 +83,14 @@ const ResponsiblesPage = () => {
         type: 'requester',
         companyName: company?.name || '',
         companyId: company?.id || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         isSystemUser: true // Flag to identify users automatically added for display
       });
     }
   });
 
-  const handleEdit = (responsible: Responsible) => {
+  const handleEdit = (responsible: Responsible & { isSystemUser?: boolean }) => {
     if (!canUserEditResponsibles()) {
       toast.error("Você não tem permissão para editar solicitantes.");
       return;
@@ -104,7 +106,7 @@ const ResponsiblesPage = () => {
     setShowResponsibleForm(true);
   };
 
-  const handleDelete = (responsible: Responsible) => {
+  const handleDelete = (responsible: Responsible & { isSystemUser?: boolean }) => {
     if (!canUserDeleteResponsibles()) {
       toast.error("Você não tem permissão para excluir solicitantes.");
       return;

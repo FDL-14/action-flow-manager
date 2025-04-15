@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { User } from '@/lib/types';
 
 interface RequesterFormProps {
   open: boolean;
@@ -51,7 +52,7 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
   const [activeTab, setActiveTab] = useState<string>("manual");
 
   // Filter users that are not already registered as requesters
-  const [availableUsers, setAvailableUsers] = useState<typeof users>([]);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
 
   const manualForm = useForm<z.infer<typeof manualFormSchema>>({
     resolver: zodResolver(manualFormSchema),
@@ -76,9 +77,10 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
       manualForm.reset();
       userForm.reset();
       
-      // Filter out users that are already registered as requesters
+      // Get all users that are not already added as requesters
+      // We're now checking if the user is already in the responsibles list
       const existingRequesterUserIds = users
-        .filter(user => user.requesterIds && user.requesterIds.length > 0)
+        .filter(user => user.responsibleId)
         .map(user => user.id);
       
       setAvailableUsers(users.filter(user => !existingRequesterUserIds.includes(user.id)));

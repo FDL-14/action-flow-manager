@@ -10,6 +10,9 @@ export interface User {
   permissions: Permission[];
   password?: string;
   responsibleId?: string; // Link to the responsible record
+  phone?: string; // Added phone property for users
+  department?: string; // Added department property for users
+  requesterIds?: string[]; // IDs of requesters associated with this user
 }
 
 export interface Permission {
@@ -71,6 +74,7 @@ export interface Responsible {
   createdAt: Date;
   updatedAt: Date;
   userId?: string; // The ID of the user associated with this responsible
+  isSystemUser?: boolean; // Flag to identify if this is a system user automatically added
 }
 
 export interface ActionNote {

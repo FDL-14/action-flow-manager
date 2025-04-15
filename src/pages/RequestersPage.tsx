@@ -6,6 +6,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import RequesterForm from '@/components/RequesterForm';
 import { Badge } from '@/components/ui/badge';
+import { Responsible } from '@/lib/types';
 
 const RequestersPage = () => {
   const { company, responsibles } = useCompany();
@@ -18,7 +19,7 @@ const RequestersPage = () => {
   );
 
   // Add all system users that aren't already in the requesters list
-  const displayRequesters = [...requesters];
+  const displayRequesters: (Responsible & { isSystemUser?: boolean })[] = [...requesters];
 
   // Check if all users are already included as requesters
   const userIds = users.map(user => user.id);
@@ -40,6 +41,8 @@ const RequestersPage = () => {
         type: 'requester',
         companyName: company?.name || '',
         companyId: company?.id || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         isSystemUser: true // Flag to identify users automatically added
       });
     }
