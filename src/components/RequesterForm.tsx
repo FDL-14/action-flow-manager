@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,7 +50,6 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("manual");
 
-  // Filter users that are not already registered as requesters
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
 
   const manualForm = useForm<z.infer<typeof manualFormSchema>>({
@@ -77,8 +75,6 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
       manualForm.reset();
       userForm.reset();
       
-      // Get all users that are not already added as requesters
-      // We're now checking if the user is already in the responsibles list
       const existingRequesterUserIds = users
         .filter(user => user.responsibleId)
         .map(user => user.id);
@@ -267,7 +263,7 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {users.map(user => (
+                          {availableUsers.map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.name}
                             </SelectItem>

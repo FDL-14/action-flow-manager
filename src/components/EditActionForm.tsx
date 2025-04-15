@@ -210,7 +210,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="none">Nenhum</SelectItem>
                         {filteredClients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}
@@ -260,7 +260,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                   <FormLabel>Solicitante (opcional)</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    defaultValue={field.value || ''}
+                    defaultValue={field.value || 'none'}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -268,7 +268,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
+                      <SelectItem value="none">Nenhum</SelectItem>
                       {filteredRequesters.map((requester) => (
                         <SelectItem key={requester.id} value={requester.id}>
                           {requester.name}
