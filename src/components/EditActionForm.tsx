@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Action } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
@@ -41,9 +42,9 @@ interface EditActionFormProps {
 const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, action }) => {
   const { responsibles, clients, companies } = useCompany();
   const { updateAction } = useActions();
+  const { users } = useAuth();
   const [filteredClients, setFilteredClients] = useState(clients);
-  const [filteredResponsibles, setFilteredResponsibles] = useState(responsibles.filter(r => r.type !== 'requester'));
-  const [requesters, setRequesters] = useState(responsibles.filter(r => r.type === 'requester' || !r.type));
+  const [filteredRequesters, setFilteredRequesters] = useState(responsibles.filter(r => r.type === 'requester' || !r.type));
   const [selectedCompanyId, setSelectedCompanyId] = useState(action.companyId);
 
   useEffect(() => {
@@ -54,18 +55,8 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
       setFilteredClients(clients);
     }
 
-    // Filter responsibles based on selected company and their relationship with clients
+    // Filter requesters based on selected company and their relationship with clients
     if (selectedCompanyId) {
-      const companyResponsibles = responsibles.filter(
-        resp => (resp.type !== 'requester' && 
-        (resp.companyId === selectedCompanyId || 
-          (resp.clientIds && resp.clientIds.some(id => 
-            clients.some(c => c.id === id && c.companyId === selectedCompanyId)
-          ))))
-      );
-      
-      setFilteredResponsibles(companyResponsibles);
-      
       // Filter requesters similarly
       const companyRequesters = responsibles.filter(
         resp => ((resp.type === 'requester' || !resp.type) && 
@@ -75,10 +66,9 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
           ))))
       );
       
-      setRequesters(companyRequesters);
+      setFilteredRequesters(companyRequesters);
     } else {
-      setFilteredResponsibles(responsibles.filter(r => r.type !== 'requester'));
-      setRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
+      setFilteredRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
     }
   }, [selectedCompanyId, clients, responsibles]);
 
@@ -95,6 +85,18 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
       endDate: action.endDate
     }
   });
+
+  // Get list of users for the selected company
+  const getCompanyUsers = () => {
+    if (!selectedCompanyId) return [];
+    
+    return users.filter(user => 
+      user.companyIds.includes(selectedCompanyId) || 
+      (user.clientIds && user.clientIds.some(id => 
+        clients.some(c => c.id === id && c.companyId === selectedCompanyId)
+      ))
+    );
+  };
 
   const onSubmit = (data: FormData) => {
     // Ensure all required fields are passed to updateAction
@@ -237,9 +239,9 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {filteredResponsibles.map((responsible) => (
-                          <SelectItem key={responsible.id} value={responsible.id}>
-                            {responsible.name}
+                        {getCompanyUsers().map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -267,7 +269,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="">Nenhum</SelectItem>
-                      {requesters.map((requester) => (
+                      {filteredRequesters.map((requester) => (
                         <SelectItem key={requester.id} value={requester.id}>
                           {requester.name}
                         </SelectItem>

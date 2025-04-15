@@ -56,11 +56,10 @@ type FormValues = z.infer<typeof formSchema>;
 const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   const { companies, responsibles, clients, company: defaultCompany } = useCompany();
   const { addAction } = useActions();
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const [attachments, setAttachments] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [filteredClients, setFilteredClients] = useState(clients);
-  const [filteredResponsibles, setFilteredResponsibles] = useState(responsibles);
   const [filteredRequesters, setFilteredRequesters] = useState(responsibles);
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
   const { toast } = useToast();
@@ -79,25 +78,24 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     },
   });
 
-  // Filter clients based on selected company
+  // Filter clients and users based on selected company
   useEffect(() => {
     if (selectedCompanyId) {
+      // Filter clients based on selected company
       setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
       
-      // Filter responsibles based on users related to this company
-      const companyResponsibles = responsibles.filter(
-        resp => resp.companyId === selectedCompanyId || 
+      // Filter requesters based on users related to this company
+      const companyRequesters = responsibles.filter(
+        resp => (resp.type === 'requester' || !resp.type) && 
+        (resp.companyId === selectedCompanyId || 
           (resp.clientIds && resp.clientIds.some(id => 
             clients.some(c => c.id === id && c.companyId === selectedCompanyId)
-          ))
+          )))
       );
       
-      // Split into responsibles and requesters
-      setFilteredResponsibles(companyResponsibles.filter(r => r.type !== 'requester'));
-      setFilteredRequesters(companyResponsibles.filter(r => r.type === 'requester' || !r.type));
+      setFilteredRequesters(companyRequesters);
     } else {
       setFilteredClients(clients);
-      setFilteredResponsibles(responsibles.filter(r => r.type !== 'requester'));
       setFilteredRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
     }
   }, [selectedCompanyId, clients, responsibles]);
@@ -176,6 +174,18 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     }
   };
 
+  // Get list of users for the selected company
+  const getCompanyUsers = () => {
+    if (!selectedCompanyId) return [];
+    
+    return users.filter(user => 
+      user.companyIds.includes(selectedCompanyId) || 
+      (user.clientIds && user.clientIds.some(id => 
+        clients.some(c => c.id === id && c.companyId === selectedCompanyId)
+      ))
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
@@ -212,7 +222,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                     onValueChange={(value) => {
                       field.onChange(value);
                       setSelectedCompanyId(value);
-                      // Reset client selection when company changes
+                      // Reset selections when company changes
                       form.setValue('clientId', '');
                       form.setValue('responsibleId', '');
                       form.setValue('requesterId', '');
@@ -281,9 +291,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredResponsibles.map((responsible) => (
-                        <SelectItem key={responsible.id} value={responsible.id}>
-                          {responsible.name}
+                      {getCompanyUsers().map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
