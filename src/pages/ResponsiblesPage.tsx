@@ -49,18 +49,57 @@ import { toast } from 'sonner';
 const ResponsiblesPage = () => {
   const { company, responsibles, deleteResponsible } = useCompany();
   const { getActionsByResponsible } = useActions();
-  const { user, canUserEditResponsibles, canUserDeleteResponsibles } = useAuth();
+  const { user, canUserEditResponsibles, canUserDeleteResponsibles, users } = useAuth();
   
   const [showResponsibleForm, setShowResponsibleForm] = useState(false);
   const [selectedResponsible, setSelectedResponsible] = useState<Responsible | undefined>(undefined);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [responsibleToDelete, setResponsibleToDelete] = useState<Responsible | undefined>(undefined);
 
+  // Filter to show only requesters (solicitantes)
+  const requesters = responsibles.filter(resp => 
+    resp.type === 'requester' || resp.role === 'Solicitante'
+  );
+  
+  // Add system users that aren't already requesters
+  const displayRequesters = [...requesters];
+  
+  // Check if all users are already included
+  const requesterUserIds = requesters
+    .filter(req => req.userId)
+    .map(req => req.userId);
+  
+  // Add missing users as requesters for display only (not actually adding to the responsibles list)
+  users.forEach(user => {
+    if (!requesterUserIds.includes(user.id)) {
+      displayRequesters.push({
+        id: `user-${user.id}`,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        department: user.department || 'Usuários',
+        role: 'Usuário do Sistema',
+        userId: user.id,
+        type: 'requester',
+        companyName: company?.name || '',
+        companyId: company?.id || '',
+        isSystemUser: true // Flag to identify users automatically added for display
+      });
+    }
+  });
+
   const handleEdit = (responsible: Responsible) => {
     if (!canUserEditResponsibles()) {
       toast.error("Você não tem permissão para editar solicitantes.");
       return;
     }
+    
+    // Don't allow editing of auto-added users
+    if (responsible.isSystemUser) {
+      toast.error("Não é possível editar usuários do sistema adicionados automaticamente.");
+      return;
+    }
+    
     setSelectedResponsible(responsible);
     setShowResponsibleForm(true);
   };
@@ -68,6 +107,12 @@ const ResponsiblesPage = () => {
   const handleDelete = (responsible: Responsible) => {
     if (!canUserDeleteResponsibles()) {
       toast.error("Você não tem permissão para excluir solicitantes.");
+      return;
+    }
+    
+    // Don't allow deleting of auto-added users
+    if (responsible.isSystemUser) {
+      toast.error("Não é possível excluir usuários do sistema adicionados automaticamente.");
       return;
     }
     
@@ -105,7 +150,7 @@ const ResponsiblesPage = () => {
         </Button>
       </div>
 
-      {responsibles.length === 0 ? (
+      {displayRequesters.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Nenhum solicitante cadastrado</CardTitle>
@@ -134,7 +179,7 @@ const ResponsiblesPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {responsibles.map((responsible) => {
+                {displayRequesters.map((responsible) => {
                   const responsibleActions = getActionsByResponsible(responsible.id);
                   const completed = responsibleActions.filter(a => a.status === 'concluido').length;
                   const delayed = responsibleActions.filter(a => a.status === 'atrasado').length;
@@ -148,6 +193,9 @@ const ResponsiblesPage = () => {
                           {responsible.name}
                           {responsible.userId && (
                             <Badge className="ml-2 bg-blue-500">Usuário</Badge>
+                          )}
+                          {responsible.isSystemUser && (
+                            <Badge className="ml-2 bg-green-500">Auto</Badge>
                           )}
                         </div>
                       </TableCell>
@@ -199,8 +247,14 @@ const ResponsiblesPage = () => {
                             variant="outline" 
                             size="sm" 
                             onClick={() => handleEdit(responsible)}
-                            disabled={!canUserEditResponsibles()}
-                            title={canUserEditResponsibles() ? "Editar solicitante" : "Você não tem permissão para editar"}
+                            disabled={!canUserEditResponsibles() || responsible.isSystemUser}
+                            title={
+                              responsible.isSystemUser
+                                ? "Não é possível editar usuários do sistema adicionados automaticamente"
+                                : !canUserEditResponsibles() 
+                                  ? "Você não tem permissão para editar" 
+                                  : "Editar solicitante"
+                            }
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -208,13 +262,15 @@ const ResponsiblesPage = () => {
                             variant="destructive" 
                             size="sm"
                             onClick={() => handleDelete(responsible)}
-                            disabled={!canUserDeleteResponsibles() || responsibleActions.length > 0}
+                            disabled={!canUserDeleteResponsibles() || responsibleActions.length > 0 || responsible.isSystemUser}
                             title={
-                              !canUserDeleteResponsibles() 
-                                ? "Você não tem permissão para excluir" 
-                                : responsibleActions.length > 0 
-                                  ? "Não é possível excluir solicitantes com ações atribuídas"
-                                  : "Excluir solicitante"
+                              responsible.isSystemUser
+                                ? "Não é possível excluir usuários do sistema adicionados automaticamente"
+                                : !canUserDeleteResponsibles() 
+                                  ? "Você não tem permissão para excluir" 
+                                  : responsibleActions.length > 0 
+                                    ? "Não é possível excluir solicitantes com ações atribuídas"
+                                    : "Excluir solicitante"
                             }
                           >
                             <Trash2 className="h-4 w-4" />
