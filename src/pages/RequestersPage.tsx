@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
 import RequesterForm from '@/components/RequesterForm';
 
 const RequestersPage = () => {
   const { company, responsibles } = useCompany();
+  const { users } = useAuth();
   const [showRequesterForm, setShowRequesterForm] = useState(false);
 
   // Filter responsibles that are of type 'requester' or have role 'Solicitante'
@@ -41,6 +43,9 @@ const RequestersPage = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Empresa
                 </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tipo
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -58,11 +63,16 @@ const RequestersPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{requester.companyName || '-'}</div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {requester.userId ? 'Usuário do Sistema' : 'Solicitante Externo'}
+                    </div>
+                  </td>
                 </tr>
               ))}
               {requesters.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                  <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                     Nenhum solicitante cadastrado.
                   </td>
                 </tr>

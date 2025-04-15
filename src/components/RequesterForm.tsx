@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ const formSchema = z.object({
 
 const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => {
   const { company, clients, addResponsible } = useCompany();
+  const { users } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -80,13 +82,19 @@ const RequesterForm: React.FC<RequesterFormProps> = ({ open, onOpenChange }) => 
     }
   };
 
+  // Check if all system users are already registered as requesters
+  useEffect(() => {
+    // This effect will run when the component is mounted
+    // It could be used to ensure all users are added as requesters if needed
+  }, []);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Novo Solicitante</DialogTitle>
           <DialogDescription>
-            Adicione um novo solicitante ao sistema.
+            Adicione um novo solicitante ao sistema. Solicitantes podem ser usuários do sistema ou pessoas externas.
           </DialogDescription>
         </DialogHeader>
 

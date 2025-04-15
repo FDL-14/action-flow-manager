@@ -58,7 +58,7 @@ const ResponsiblesPage = () => {
 
   const handleEdit = (responsible: Responsible) => {
     if (!canUserEditResponsibles()) {
-      toast.error("Você não tem permissão para editar responsáveis.");
+      toast.error("Você não tem permissão para editar solicitantes.");
       return;
     }
     setSelectedResponsible(responsible);
@@ -67,14 +67,14 @@ const ResponsiblesPage = () => {
 
   const handleDelete = (responsible: Responsible) => {
     if (!canUserDeleteResponsibles()) {
-      toast.error("Você não tem permissão para excluir responsáveis.");
+      toast.error("Você não tem permissão para excluir solicitantes.");
       return;
     }
     
     // Check if responsible has associated actions
     const actions = getActionsByResponsible(responsible.id);
     if (actions.length > 0) {
-      toast.error("Não é possível excluir um responsável que possui ações associadas.");
+      toast.error("Não é possível excluir um solicitante que possui ações associadas.");
       return;
     }
     
@@ -86,7 +86,7 @@ const ResponsiblesPage = () => {
     if (responsibleToDelete) {
       deleteResponsible(responsibleToDelete.id);
       setShowDeleteDialog(false);
-      toast.success("Responsável excluído com sucesso!");
+      toast.success("Solicitante excluído com sucesso!");
     }
   };
 
@@ -98,28 +98,28 @@ const ResponsiblesPage = () => {
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h1 className="text-2xl font-bold">Gerenciamento de Responsáveis</h1>
+        <h1 className="text-2xl font-bold">Gerenciamento de Solicitantes</h1>
         <Button onClick={handleAddNew}>
           <Plus className="h-4 w-4 mr-2" />
-          Cadastrar Responsável
+          Cadastrar Solicitante
         </Button>
       </div>
 
       {responsibles.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Nenhum responsável cadastrado</CardTitle>
+            <CardTitle>Nenhum solicitante cadastrado</CardTitle>
             <CardDescription>
-              Clique no botão "Cadastrar Responsável" para adicionar seu primeiro responsável.
+              Clique no botão "Cadastrar Solicitante" para adicionar seu primeiro solicitante.
             </CardDescription>
           </CardHeader>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Responsáveis</CardTitle>
+            <CardTitle>Lista de Solicitantes</CardTitle>
             <CardDescription>
-              Gerenciar responsáveis para atribuição de ações.
+              Gerenciar solicitantes para atribuição de ações.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -146,6 +146,9 @@ const ResponsiblesPage = () => {
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-2 text-gray-400" />
                           {responsible.name}
+                          {responsible.userId && (
+                            <Badge className="ml-2 bg-blue-500">Usuário</Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -197,7 +200,7 @@ const ResponsiblesPage = () => {
                             size="sm" 
                             onClick={() => handleEdit(responsible)}
                             disabled={!canUserEditResponsibles()}
-                            title={canUserEditResponsibles() ? "Editar responsável" : "Você não tem permissão para editar"}
+                            title={canUserEditResponsibles() ? "Editar solicitante" : "Você não tem permissão para editar"}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -210,8 +213,8 @@ const ResponsiblesPage = () => {
                               !canUserDeleteResponsibles() 
                                 ? "Você não tem permissão para excluir" 
                                 : responsibleActions.length > 0 
-                                  ? "Não é possível excluir responsáveis com ações atribuídas"
-                                  : "Excluir responsável"
+                                  ? "Não é possível excluir solicitantes com ações atribuídas"
+                                  : "Excluir solicitante"
                             }
                           >
                             <Trash2 className="h-4 w-4" />
@@ -238,7 +241,7 @@ const ResponsiblesPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o responsável "{responsibleToDelete?.name}"? 
+              Tem certeza que deseja excluir o solicitante "{responsibleToDelete?.name}"? 
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -50,8 +50,8 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
       name: '',
       email: '',
       phone: '',
-      department: '',
-      role: '',
+      department: 'Solicitantes',
+      role: 'Solicitante',
     },
   });
 
@@ -71,8 +71,8 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
         name: '',
         email: '',
         phone: '',
-        department: '',
-        role: '',
+        department: 'Solicitantes',
+        role: 'Solicitante',
       });
     }
   }, [editResponsible, form, open]);
@@ -91,7 +91,7 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
           updatedAt: new Date()
         });
 
-        toast.success("Responsável atualizado com sucesso!");
+        toast.success("Solicitante atualizado com sucesso!");
       } else {
         // Add new responsible
         addResponsible({
@@ -100,16 +100,17 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
           phone: values.phone,
           department: values.department,
           role: values.role,
+          type: 'requester', // Explicitly mark as requester
         });
         
-        toast.success("Responsável adicionado com sucesso!");
+        toast.success("Solicitante adicionado com sucesso!");
       }
 
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error handling responsible:', error);
-      toast.error("Ocorreu um erro ao salvar o responsável");
+      console.error('Error handling solicitante:', error);
+      toast.error("Ocorreu um erro ao salvar o solicitante");
     }
   };
 
@@ -117,11 +118,11 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{editResponsible ? 'Editar Responsável' : 'Cadastrar Responsável'}</DialogTitle>
+          <DialogTitle>{editResponsible ? 'Editar Solicitante' : 'Cadastrar Solicitante'}</DialogTitle>
           <DialogDescription>
             {editResponsible 
-              ? 'Edite as informações do responsável para atribuição de ações.'
-              : 'Adicione um novo responsável para atribuição de ações.'}
+              ? 'Edite as informações do solicitante para atribuição de ações.'
+              : 'Adicione um novo solicitante para atribuição de ações.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -215,7 +216,7 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">{editResponsible ? 'Atualizar' : 'Salvar Responsável'}</Button>
+              <Button type="submit">{editResponsible ? 'Atualizar' : 'Salvar Solicitante'}</Button>
             </DialogFooter>
           </form>
         </Form>
