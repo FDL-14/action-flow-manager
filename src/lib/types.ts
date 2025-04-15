@@ -74,7 +74,7 @@ export interface Responsible {
   createdAt: Date;
   updatedAt: Date;
   userId?: string; // The ID of the user associated with this responsible
-  isSystemUser?: boolean; // Flag to identify if this is a system user automatically added
+  isSystemUser?: boolean; // Added flag to identify if this is a system user automatically added
 }
 
 export interface ActionNote {

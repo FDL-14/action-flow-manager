@@ -8,6 +8,9 @@ import RequesterForm from '@/components/RequesterForm';
 import { Badge } from '@/components/ui/badge';
 import { Responsible } from '@/lib/types';
 
+// Custom type for display requesters
+type DisplayRequester = Responsible & { isSystemUser?: boolean };
+
 const RequestersPage = () => {
   const { company, responsibles } = useCompany();
   const { users } = useAuth();
@@ -19,7 +22,7 @@ const RequestersPage = () => {
   );
 
   // Add all system users that aren't already in the requesters list
-  const displayRequesters: (Responsible & { isSystemUser?: boolean })[] = [...requesters];
+  const displayRequesters: DisplayRequester[] = [...requesters];
 
   // Check if all users are already included as requesters
   const userIds = users.map(user => user.id);
