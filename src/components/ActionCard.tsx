@@ -153,9 +153,19 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
     }
   };
 
-  const toggleNotes = () => setShowNotes(!showNotes);
+  const toggleNotes = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowNotes(!showNotes);
+  };
+  
   const closeNotes = () => setShowNotes(false);
-  const toggleAttachments = () => setShowAttachments(!showAttachments);
+  
+  const toggleAttachments = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowAttachments(!showAttachments);
+  };
 
   const canManageAction = () => {
     if (!user) return false;
@@ -235,7 +245,6 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       a.style.display = 'none';
       a.href = url;
       
-      const fileType = getAttachmentFileType(url);
       const extension = url.split('.').pop()?.toLowerCase();
       const hasExtension = filename.includes('.');
       
@@ -329,6 +338,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
               size="sm" 
               onClick={() => setShowNotificationOptions(true)}
               className="hidden sm:flex"
+              type="button"
             >
               <Share className="h-4 w-4 mr-1" />
               Notificar
@@ -340,6 +350,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                 size="sm" 
                 onClick={handleEditAction}
                 className="hidden sm:flex"
+                type="button"
               >
                 <Edit className="h-4 w-4 mr-1" />
                 Editar
@@ -352,6 +363,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                 size="sm" 
                 onClick={handleDeleteAction}
                 className="hidden sm:flex text-red-600 hover:text-red-800"
+                type="button"
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Excluir
@@ -360,24 +372,33 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" type="button">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {canManageAction() && action.status !== 'concluido' && (
-                  <DropdownMenuItem onClick={handleMarkComplete}>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.preventDefault();
+                    handleMarkComplete();
+                  }}>
                     <Check className="mr-2 h-4 w-4 text-green-600" />
                     Marcar como concluído
                   </DropdownMenuItem>
                 )}
                 {canManageAction() && action.status === 'concluido' && (
-                  <DropdownMenuItem onClick={handleMarkIncomplete}>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.preventDefault();
+                    handleMarkIncomplete();
+                  }}>
                     Marcar como pendente
                   </DropdownMenuItem>
                 )}
                 {canManageAction() && action.status !== 'atrasado' && (
-                  <DropdownMenuItem onClick={handleMarkDelayed}>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.preventDefault();
+                    handleMarkDelayed();
+                  }}>
                     <AlertTriangle className="mr-2 h-4 w-4 text-red-600" />
                     Marcar como atrasado
                   </DropdownMenuItem>
@@ -392,18 +413,27 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                     Ver anexos
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => setShowNotificationOptions(true)} className="sm:hidden">
+                <DropdownMenuItem onClick={(e) => {
+                  e.preventDefault();
+                  setShowNotificationOptions(true);
+                }} className="sm:hidden">
                   <Share className="mr-2 h-4 w-4" />
                   Notificar responsáveis
                 </DropdownMenuItem>
                 {canEditAction() && (
-                  <DropdownMenuItem onClick={handleEditAction} className="sm:hidden">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.preventDefault();
+                    handleEditAction();
+                  }} className="sm:hidden">
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </DropdownMenuItem>
                 )}
                 {canDeleteAction() && (
-                  <DropdownMenuItem onClick={handleDeleteAction} className="sm:hidden text-red-600">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.preventDefault();
+                    handleDeleteAction();
+                  }} className="sm:hidden text-red-600">
                     <Trash2 className="mr-2 h-4 w-4" />
                     Excluir ação
                   </DropdownMenuItem>
@@ -614,8 +644,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
           <div className="grid gap-4 py-4">
             <div className="flex flex-col space-y-3">
               <Button 
-                onClick={handleSendAllNotifications} 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSendAllNotifications();
+                }} 
                 className="w-full"
+                type="button"
               >
                 <Share className="mr-2 h-4 w-4" />
                 Enviar Todas as Notificações
@@ -623,8 +657,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
               
               <Button 
                 variant="outline" 
-                onClick={handleSendEmail} 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSendEmail();
+                  setShowNotificationOptions(false);
+                }} 
                 className="w-full"
+                type="button"
               >
                 <Mail className="mr-2 h-4 w-4" />
                 Enviar apenas Email
@@ -632,11 +671,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
               
               <Button 
                 variant="outline" 
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   sendActionEmail(action.id, 'sms');
                   setShowNotificationOptions(false);
                 }} 
                 className="w-full"
+                type="button"
               >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Enviar apenas SMS
@@ -644,11 +685,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
               
               <Button 
                 variant="outline" 
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   sendActionEmail(action.id, 'whatsapp');
                   setShowNotificationOptions(false);
                 }} 
                 className="w-full"
+                type="button"
               >
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Enviar apenas WhatsApp

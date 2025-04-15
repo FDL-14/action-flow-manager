@@ -69,6 +69,7 @@ export interface Responsible {
   clientIds?: string[]; // Clients this responsible is assigned to
   createdAt: Date;
   updatedAt: Date;
+  userId?: string; // The ID of the user associated with this responsible
 }
 
 export interface ActionNote {

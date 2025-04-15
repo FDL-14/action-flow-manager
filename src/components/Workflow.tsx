@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -19,10 +18,8 @@ const Workflow: React.FC = () => {
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Sort actions by date and group by status
   useEffect(() => {
     const sortedActions = [...actions].sort((a, b) => {
-      // Sort by status priority: atrasado -> pendente -> concluido
       const statusPriority = {
         atrasado: 0,
         pendente: 1,
@@ -34,11 +31,9 @@ const Workflow: React.FC = () => {
       
       if (statusDiff !== 0) return statusDiff;
       
-      // Then sort by date (most recent first for each status)
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-    // Apply filter if not 'all'
     const filteredActions = filterStatus === 'all' 
       ? sortedActions 
       : sortedActions.filter(action => action.status === filterStatus);
@@ -64,53 +59,45 @@ const Workflow: React.FC = () => {
     }
   };
 
-  // Function to determine file type
   const getAttachmentFileType = (url: string) => {
-    const extension = url.split('.').pop()?.toLowerCase();
+    const extension = url.split('.').pop()?.toLowerCase() || '';
     
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension || '')) {
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension)) {
       return 'image';
     } else if (extension === 'pdf') {
       return 'pdf';
-    } else if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
+    } else if (['xls', 'xlsx', 'csv'].includes(extension)) {
       return 'excel';
-    } else if (['doc', 'docx'].includes(extension || '')) {
+    } else if (['doc', 'docx'].includes(extension)) {
       return 'word';
     } else {
       return 'other';
     }
   };
 
-  // Function to check if attachment can be viewed
   const canViewAttachment = (url: string) => {
     const fileType = getAttachmentFileType(url);
     return fileType === 'image' || fileType === 'pdf';
   };
 
-  // Function to handle attachment download
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Create a new anchor element
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       
-      // Generate filename with appropriate extension if not already provided
       const extension = url.split('.').pop()?.toLowerCase();
       const hasExtension = filename.includes('.');
       
-      // Add extension if not already in the filename
       if (!hasExtension && extension) {
         filename = `${filename}.${extension}`;
       }
       
       a.download = filename;
       
-      // Append to body, click, and remove to trigger download
       document.body.appendChild(a);
       a.click();
       
-      // Remove the element after the download starts
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);
@@ -130,7 +117,6 @@ const Workflow: React.FC = () => {
     }
   };
 
-  // View attachment in a dialog
   const viewAttachment = (url: string) => {
     setViewingAttachment(url);
   };
@@ -150,7 +136,6 @@ const Workflow: React.FC = () => {
             }`}>
               {getStatusIcon(action.status)}
             </div>
-            {/* Line connector */}
             <div className="w-0.5 bg-gray-200 flex-grow mt-1"></div>
           </div>
           
@@ -212,6 +197,7 @@ const Workflow: React.FC = () => {
                               size="icon"
                               className="h-5 w-5"
                               onClick={() => viewAttachment(url)}
+                              type="button"
                             >
                               <Eye className="h-3 w-3 text-blue-500" />
                             </Button>
@@ -221,6 +207,7 @@ const Workflow: React.FC = () => {
                             size="icon"
                             className="h-5 w-5"
                             onClick={() => handleDownload(url, `anexo-${action.id}-${idx+1}`)}
+                            type="button"
                           >
                             <Download className="h-3 w-3 text-blue-500" />
                           </Button>
@@ -246,6 +233,7 @@ const Workflow: React.FC = () => {
           variant={filterStatus === 'all' ? 'default' : 'outline'} 
           onClick={() => setFilterStatus('all')}
           size="sm"
+          type="button"
         >
           Todas
         </Button>
@@ -254,6 +242,7 @@ const Workflow: React.FC = () => {
           onClick={() => setFilterStatus('pendente')}
           size="sm"
           className="text-yellow-500"
+          type="button"
         >
           <Clock className="h-4 w-4 mr-1" />
           Pendentes
@@ -263,6 +252,7 @@ const Workflow: React.FC = () => {
           onClick={() => setFilterStatus('atrasado')}
           size="sm"
           className="text-red-500"
+          type="button"
         >
           <AlertTriangle className="h-4 w-4 mr-1" />
           Atrasadas
@@ -272,6 +262,7 @@ const Workflow: React.FC = () => {
           onClick={() => setFilterStatus('concluido')}
           size="sm"
           className="text-green-500"
+          type="button"
         >
           <Check className="h-4 w-4 mr-1" />
           Concluídas
@@ -288,7 +279,6 @@ const Workflow: React.FC = () => {
         )}
       </div>
 
-      {/* Attachment Viewer Dialog */}
       {viewingAttachment && (
         <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
@@ -298,6 +288,7 @@ const Workflow: React.FC = () => {
                 variant="outline" 
                 size="sm"
                 onClick={() => handleDownload(viewingAttachment, 'anexo')}
+                type="button"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Baixar
@@ -332,6 +323,7 @@ const Workflow: React.FC = () => {
                   variant="outline" 
                   onClick={() => handleDownload(viewingAttachment)} 
                   className="mt-4"
+                  type="button"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Baixar Arquivo

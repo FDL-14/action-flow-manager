@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -20,7 +19,7 @@ interface ActionNotesProps {
 
 const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }) => {
   const { user } = useAuth();
-  const { addActionNote, deleteActionNote, addAttachment } = useActions();
+  const { addActionNote, deleteActionNote, addAttachment, updateActionStatus } = useActions();
   const [newNote, setNewNote] = useState('');
   const [isAttachmentRequired, setIsAttachmentRequired] = useState(action.status === 'concluido');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -62,7 +61,9 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
 
     try {
-      addActionNote(action.id, newNote);
+      if (newNote.trim()) {
+        addActionNote(action.id, newNote);
+      }
       
       attachmentUrls.forEach(url => {
         try {
@@ -87,8 +88,13 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         variant: "default",
       });
 
-      if (isCompleting && onComplete) {
+      if (isCompleting) {
+        updateActionStatus(action.id, 'concluido', new Date());
         setIsCompleting(false);
+        
+        if (onComplete) {
+          onComplete();
+        }
         
         if (onClose) {
           onClose();
@@ -109,6 +115,12 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     
     if (newNote.trim() || attachmentUrls.length > 0) {
       handleAddNote();
+    } else {
+      toast({
+        title: "Atenção",
+        description: "Adicione uma anotação ou anexo para concluir esta ação.",
+        variant: "default",
+      });
     }
   };
 
@@ -200,30 +212,24 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
   };
 
-  // Improved download function for all file types
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Create a temporary anchor element to trigger download
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       
-      // Generate filename with appropriate extension if not already provided
       const extension = url.split('.').pop()?.toLowerCase();
       const hasExtension = filename.includes('.');
       
-      // Add extension if not already in the filename
       if (!hasExtension && extension) {
         filename = `${filename}.${extension}`;
       }
       
       a.download = filename;
       
-      // Append to body, click, and remove to trigger download
       document.body.appendChild(a);
       a.click();
       
-      // Remove the element after the download starts
       setTimeout(() => {
         document.body.removeChild(a);
       }, 100);
@@ -357,6 +363,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                         size="sm"
                         onClick={() => viewAttachment(url)}
                         className="text-xs"
+                        type="button"
                       >
                         <Eye className="h-3 w-3 mr-1" />
                         Visualizar
@@ -367,6 +374,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                       size="sm"
                       onClick={() => handleDownload(url, `anexo-${index+1}`)}
                       className="text-xs"
+                      type="button"
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Baixar
@@ -466,6 +474,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             <Button 
               onClick={handleAddNote}
               variant="outline"
+              type="button"
             >
               Adicionar Anotação
             </Button>
@@ -473,6 +482,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
               <Button 
                 onClick={handleCompleteAction}
                 variant="default"
+                type="button"
               >
                 Concluir Ação
               </Button>
@@ -485,7 +495,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
             <div className="flex justify-end mb-2">
-              <Button variant="ghost" size="sm" onClick={closeAttachmentViewer}>
+              <Button variant="ghost" size="sm" onClick={closeAttachmentViewer} type="button">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -518,6 +528,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                   variant="outline" 
                   onClick={() => handleDownload(viewingAttachment)} 
                   className="mt-4"
+                  type="button"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Baixar Arquivo

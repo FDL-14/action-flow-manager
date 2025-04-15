@@ -23,11 +23,11 @@ const formSchema = z.object({
   subject: z.string().min(3, { message: 'O assunto deve ter pelo menos 3 caracteres' }),
   description: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres' }),
   responsibleId: z.string({ required_error: 'Selecione um responsável' }),
+  companyId: z.string({ required_error: 'Selecione uma empresa' }),
   clientId: z.string().optional(),
   requesterId: z.string().optional(),
   startDate: z.date(),
-  endDate: z.date(),
-  companyId: z.string().default('1')
+  endDate: z.date()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -39,13 +39,41 @@ interface EditActionFormProps {
 }
 
 const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, action }) => {
-  const { responsibles, clients } = useCompany();
+  const { responsibles, clients, companies } = useCompany();
   const { updateAction } = useActions();
+  const [filteredClients, setFilteredClients] = useState(clients);
+  const [filteredResponsibles, setFilteredResponsibles] = useState(responsibles.filter(r => r.type !== 'requester'));
   const [requesters, setRequesters] = useState(responsibles.filter(r => r.type === 'requester' || !r.type));
+  const [selectedCompanyId, setSelectedCompanyId] = useState(action.companyId);
 
   useEffect(() => {
-    setRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
-  }, [responsibles]);
+    // Filter clients based on selected company
+    if (selectedCompanyId) {
+      setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
+    } else {
+      setFilteredClients(clients);
+    }
+
+    // Filter responsibles based on selected company
+    if (selectedCompanyId) {
+      setFilteredResponsibles(
+        responsibles.filter(
+          resp => resp.type !== 'requester' && 
+          (resp.companyId === selectedCompanyId || !resp.companyId)
+        )
+      );
+      
+      setRequesters(
+        responsibles.filter(
+          resp => (resp.type === 'requester' || !resp.type) && 
+          (resp.companyId === selectedCompanyId || !resp.companyId)
+        )
+      );
+    } else {
+      setFilteredResponsibles(responsibles.filter(r => r.type !== 'requester'));
+      setRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
+    }
+  }, [selectedCompanyId, clients, responsibles]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -53,11 +81,11 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
       subject: action.subject,
       description: action.description,
       responsibleId: action.responsibleId,
+      companyId: action.companyId,
       clientId: action.clientId || '',
       requesterId: action.requesterId || '',
       startDate: action.startDate,
-      endDate: action.endDate,
-      companyId: action.companyId
+      endDate: action.endDate
     }
   });
 
@@ -118,6 +146,41 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
               )}
             />
             
+            <FormField
+              control={form.control}
+              name="companyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Empresa</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedCompanyId(value);
+                      // Clear client selection if changing company
+                      if (value !== field.value) {
+                        form.setValue('clientId', '');
+                      }
+                    }}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma empresa" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -135,8 +198,8 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {clients.map((client) => (
+                        <SelectItem value="">Nenhum</SelectItem>
+                        {filteredClients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}
                           </SelectItem>
@@ -164,7 +227,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {responsibles.filter(r => r.type !== 'requester').map((responsible) => (
+                        {filteredResponsibles.map((responsible) => (
                           <SelectItem key={responsible.id} value={responsible.id}>
                             {responsible.name}
                           </SelectItem>
@@ -185,7 +248,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                   <FormLabel>Solicitante (opcional)</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    defaultValue={field.value || 'none'}
+                    defaultValue={field.value || ''}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -193,7 +256,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
+                      <SelectItem value="">Nenhum</SelectItem>
                       {requesters.map((requester) => (
                         <SelectItem key={requester.id} value={requester.id}>
                           {requester.name}
@@ -222,6 +285,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                               "pl-3 text-left font-normal",
                               !field.value && "text-muted-foreground"
                             )}
+                            type="button"
                           >
                             {field.value ? (
                               format(field.value, "PPP", { locale: ptBR })
@@ -237,9 +301,6 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
                           initialFocus
                         />
                       </PopoverContent>
@@ -264,6 +325,7 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                               "pl-3 text-left font-normal",
                               !field.value && "text-muted-foreground"
                             )}
+                            type="button"
                           >
                             {field.value ? (
                               format(field.value, "PPP", { locale: ptBR })
@@ -279,9 +341,6 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
                           initialFocus
                         />
                       </PopoverContent>
