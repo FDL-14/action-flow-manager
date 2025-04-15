@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +36,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showCompleteButton, setShowCompleteButton] = useState(action.status !== 'concluido');
+  const [addedNoteOrAttachment, setAddedNoteOrAttachment] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,6 +64,9 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       if (action.status !== 'concluido') {
         setShowCompleteButton(true);
       }
+      
+      // Marca que o usuário adicionou uma anotação nesta sessão
+      setAddedNoteOrAttachment(true);
     } catch (error) {
       toast({
         title: "Erro ao adicionar anotação",
@@ -102,6 +107,9 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       if (action.status !== 'concluido') {
         setShowCompleteButton(true);
       }
+      
+      // Marca que o usuário adicionou um anexo nesta sessão
+      setAddedNoteOrAttachment(true);
       
       toast({
         title: "Arquivo anexado",
@@ -257,9 +265,15 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             onClick={handleComplete} 
             className="w-full bg-green-600 hover:bg-green-700 text-white"
             type="button"
+            disabled={!addedNoteOrAttachment}
           >
             Marcar Ação como Concluída
           </Button>
+          {!addedNoteOrAttachment && (
+            <p className="text-xs text-center mt-2 text-amber-600">
+              Adicione uma anotação ou anexo para concluir esta ação
+            </p>
+          )}
         </div>
       )}
     </div>
