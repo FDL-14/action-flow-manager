@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -9,7 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import WorkflowReportFilter from './WorkflowReportFilter';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
 
 const WorkflowReport = () => {
@@ -63,7 +64,7 @@ const WorkflowReport = () => {
 
   const generatePDF = () => {
     try {
-      const doc = new jsPDF() as any;
+      const doc = new jsPDF();
       
       doc.setFontSize(16);
       doc.text('Relatório Gerencial de Ações', 14, 20);
@@ -87,7 +88,7 @@ const WorkflowReport = () => {
         format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })
       ]);
       
-      doc.autoTable({
+      autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
         startY: 40,
@@ -95,7 +96,9 @@ const WorkflowReport = () => {
         headStyles: { fillColor: [60, 60, 60] }
       });
       
-      let yPos = doc.lastAutoTable.finalY + 10;
+      // We need to cast to any to access the lastAutoTable property
+      const pdfDoc = doc as any;
+      let yPos = pdfDoc.lastAutoTable.finalY + 10;
       
       if (filters.showNotes || filters.showAttachments) {
         doc.setFontSize(12);

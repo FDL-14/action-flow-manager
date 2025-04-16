@@ -46,6 +46,6 @@ declare module 'jspdf-autotable' {
     };
   }
 
-  function autoTable(options: UserOptions): jsPDFWithAutoTable;
+  function autoTable(doc: jsPDF, options: UserOptions): jsPDFWithAutoTable;
   export default autoTable;
 }
