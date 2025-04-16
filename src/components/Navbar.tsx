@@ -19,6 +19,7 @@ import {
   User,
   Menu,
   Building2,
+  FileText,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -31,6 +32,7 @@ const Navbar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-5 w-5 mr-2" /> },
     { name: 'Ações', path: '/actions', icon: <CheckSquare className="h-5 w-5 mr-2" /> },
+    { name: 'Workflow', path: '/workflow', icon: <FileText className="h-5 w-5 mr-2" /> },
     { name: 'Clientes', path: '/clients', icon: <Users className="h-5 w-5 mr-2" /> },
     { name: 'Responsáveis', path: '/responsibles', icon: <User className="h-5 w-5 mr-2" /> },
     { name: 'Empresa', path: '/company', icon: <Building className="h-5 w-5 mr-2" /> },

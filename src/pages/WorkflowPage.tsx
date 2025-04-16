@@ -22,11 +22,11 @@ const WorkflowPage = () => {
             <TabsList>
               <TabsTrigger value="workflow" className="flex items-center gap-1">
                 <BarChart2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Workflow</span>
+                <span className={isMobile ? "hidden" : "inline"}>Workflow</span>
               </TabsTrigger>
               <TabsTrigger value="report" className="flex items-center gap-1">
                 <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Relatório</span>
+                <span className={isMobile ? "hidden" : "inline"}>Relatório</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
