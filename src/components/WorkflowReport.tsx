@@ -12,11 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const WorkflowReport = () => {
   const { actions } = useActions();
   const { responsibles, clients } = useCompany();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     status: 'all',
     responsibleId: 'all',
@@ -183,6 +185,12 @@ const WorkflowReport = () => {
     window.print();
   };
 
+  // Function to handle the "Ver" button click
+  const handleViewAction = (actionId: string) => {
+    // Use navigate instead of directly modifying window.location
+    navigate(`/actions?id=${actionId}`);
+  };
+
   return (
     <div className="space-y-6 print:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
@@ -267,7 +275,7 @@ const WorkflowReport = () => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => window.location.href = `/actions?id=${action.id}`}
+                        onClick={() => handleViewAction(action.id)}
                       >
                         Ver
                       </Button>
