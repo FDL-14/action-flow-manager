@@ -37,6 +37,12 @@ declare module 'jspdf-autotable' {
     previousAutoTable: UserOptions;
     lastAutoTable: {
       finalY?: number;
+      pageNumber?: number;
+      pageCount?: number;
+      settings?: UserOptions;
+      cursor?: {
+        y?: number;
+      };
     };
   }
 

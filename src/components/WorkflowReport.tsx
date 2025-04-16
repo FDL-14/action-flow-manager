@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -27,29 +26,23 @@ const WorkflowReport = () => {
     showAttachments: true,
   });
 
-  // Filter actions based on current filters
   const filteredActions = actions.filter(action => {
-    // Filter by status
     if (filters.status !== 'all' && action.status !== filters.status) {
       return false;
     }
     
-    // Filter by responsible
     if (filters.responsibleId !== 'all' && action.responsibleId !== filters.responsibleId) {
       return false;
     }
     
-    // Filter by client
     if (filters.clientId !== 'all' && action.clientId !== filters.clientId) {
       return false;
     }
     
-    // Filter by start date
     if (filters.startDate && new Date(action.startDate) < new Date(filters.startDate)) {
       return false;
     }
     
-    // Filter by end date
     if (filters.endDate && new Date(action.endDate) > new Date(filters.endDate)) {
       return false;
     }
@@ -57,39 +50,32 @@ const WorkflowReport = () => {
     return true;
   });
 
-  // Function to get responsible name by ID
   const getResponsibleName = (id: string) => {
     const responsible = responsibles.find(r => r.id === id);
     return responsible ? responsible.name : 'N/A';
   };
 
-  // Function to get client name by ID
   const getClientName = (id?: string) => {
     if (!id) return 'N/A';
     const client = clients.find(c => c.id === id);
     return client ? client.name : 'N/A';
   };
 
-  // Generate PDF report
   const generatePDF = () => {
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF() as any;
       
-      // Add title
       doc.setFontSize(16);
       doc.text('Relatório Gerencial de Ações', 14, 20);
       
-      // Add filters information
       doc.setFontSize(10);
       let filterText = `Filtros: Status: ${filters.status === 'all' ? 'Todos' : 
         filters.status === 'pendente' ? 'Pendentes' : 
         filters.status === 'concluido' ? 'Concluídas' : 'Atrasadas'}`;
       doc.text(filterText, 14, 30);
       
-      // Add date
       doc.text(`Data do relatório: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 14, 35);
       
-      // Table header and data
       const tableColumn = ["Assunto", "Responsável", "Cliente", "Status", "Início", "Término"];
       const tableRows = filteredActions.map(action => [
         action.subject,
@@ -101,7 +87,6 @@ const WorkflowReport = () => {
         format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })
       ]);
       
-      // @ts-ignore - jspdf-autotable types
       doc.autoTable({
         head: [tableColumn],
         body: tableRows,
@@ -110,7 +95,6 @@ const WorkflowReport = () => {
         headStyles: { fillColor: [60, 60, 60] }
       });
       
-      // Add additional details if requested
       let yPos = doc.lastAutoTable.finalY + 10;
       
       if (filters.showNotes || filters.showAttachments) {
@@ -121,7 +105,6 @@ const WorkflowReport = () => {
         filteredActions.forEach(action => {
           yPos += 8;
           
-          // Check if page needs to break
           if (yPos > 270) {
             doc.addPage();
             yPos = 20;
@@ -131,7 +114,6 @@ const WorkflowReport = () => {
           doc.text(`Ação: ${action.subject}`, 14, yPos);
           yPos += 5;
           
-          // Add notes if requested
           if (filters.showNotes && action.notes.length > 0) {
             const visibleNotes = action.notes.filter(note => !note.isDeleted);
             if (visibleNotes.length > 0) {
@@ -142,7 +124,6 @@ const WorkflowReport = () => {
               visibleNotes.forEach(note => {
                 const noteText = `- ${format(new Date(note.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}: ${note.content.substring(0, 80)}${note.content.length > 80 ? '...' : ''}`;
                 
-                // Check if page needs to break
                 if (yPos > 270) {
                   doc.addPage();
                   yPos = 20;
@@ -154,11 +135,9 @@ const WorkflowReport = () => {
             }
           }
           
-          // Add attachments info if requested
           if (filters.showAttachments && action.attachments && action.attachments.length > 0) {
             yPos += 2;
             
-            // Check if page needs to break
             if (yPos > 270) {
               doc.addPage();
               yPos = 20;
@@ -169,7 +148,6 @@ const WorkflowReport = () => {
             yPos += 6;
           }
           
-          // Add a separator
           if (yPos > 270) {
             doc.addPage();
             yPos = 20;
@@ -198,14 +176,12 @@ const WorkflowReport = () => {
     }
   };
 
-  // Print the current report
   const printReport = () => {
     window.print();
   };
 
   return (
     <div className="space-y-6 print:p-6">
-      {/* Report Header and Filters - Hidden when printing */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <h2 className="text-2xl font-bold flex items-center">
           <FileText className="mr-2 h-6 w-6" />
@@ -224,7 +200,6 @@ const WorkflowReport = () => {
         </div>
       </div>
       
-      {/* Filters - Hidden when printing */}
       <Card className="print:hidden">
         <CardContent className="pt-6">
           <WorkflowReportFilter 
@@ -234,7 +209,6 @@ const WorkflowReport = () => {
         </CardContent>
       </Card>
       
-      {/* Report Title for Print */}
       <div className="hidden print:block mb-4">
         <h1 className="text-2xl font-bold text-center">Relatório Gerencial de Ações</h1>
         <p className="text-center text-gray-500">
@@ -242,7 +216,6 @@ const WorkflowReport = () => {
         </p>
       </div>
       
-      {/* Actions Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden print:shadow-none">
         {filteredActions.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
@@ -304,7 +277,6 @@ const WorkflowReport = () => {
         )}
       </div>
       
-      {/* Details Section - If Enabled */}
       {(filters.showNotes || filters.showAttachments) && filteredActions.length > 0 && (
         <div className="space-y-4 mt-8">
           <h3 className="text-xl font-bold border-b pb-2">Detalhes das Ações</h3>
@@ -315,7 +287,6 @@ const WorkflowReport = () => {
                 <h4 className="text-lg font-bold mb-2">{action.subject}</h4>
                 <p className="text-sm text-gray-500 mb-4">{action.description}</p>
                 
-                {/* Notes Section */}
                 {filters.showNotes && action.notes.filter(note => !note.isDeleted).length > 0 && (
                   <div className="mb-4">
                     <h5 className="text-sm font-semibold mb-2">Anotações:</h5>
@@ -336,7 +307,6 @@ const WorkflowReport = () => {
                   </div>
                 )}
                 
-                {/* Attachments Section */}
                 {filters.showAttachments && action.attachments && action.attachments.length > 0 && (
                   <div>
                     <h5 className="text-sm font-semibold mb-2">Anexos:</h5>
