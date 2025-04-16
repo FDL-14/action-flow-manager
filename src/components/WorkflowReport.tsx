@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Download, FileText, Printer } from 'lucide-react';
+import { Download, FileText, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import WorkflowReportFilter from './WorkflowReportFilter';
@@ -28,6 +27,7 @@ const WorkflowReport = () => {
     showNotes: true,
     showAttachments: true,
   });
+  const [expandedActionId, setExpandedActionId] = useState<string | null>(null);
 
   const filteredActions = actions.filter(action => {
     if (filters.status !== 'all' && action.status !== filters.status) {
@@ -98,7 +98,6 @@ const WorkflowReport = () => {
         headStyles: { fillColor: [60, 60, 60] }
       });
       
-      // We need to cast to any to access the lastAutoTable property
       const pdfDoc = doc as any;
       let yPos = pdfDoc.lastAutoTable.finalY + 10;
       
@@ -185,10 +184,16 @@ const WorkflowReport = () => {
     window.print();
   };
 
-  // Function to handle the "Ver" button click
   const handleViewAction = (actionId: string) => {
-    // Use navigate instead of directly modifying window.location
     navigate(`/actions?id=${actionId}`);
+  };
+
+  const toggleActionDetails = (actionId: string) => {
+    if (expandedActionId === actionId) {
+      setExpandedActionId(null);
+    } else {
+      setExpandedActionId(actionId);
+    }
   };
 
   return (
@@ -272,13 +277,27 @@ const WorkflowReport = () => {
                     <TableCell>{format(new Date(action.startDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                     <TableCell>{format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                     <TableCell className="print:hidden">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleViewAction(action.id)}
-                      >
-                        Ver
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewAction(action.id)}
+                        >
+                          Ver
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleActionDetails(action.id)}
+                          className="flex items-center"
+                        >
+                          {expandedActionId === action.id ? (
+                            <>Fechar <ChevronUp className="ml-1 h-4 w-4" /></>
+                          ) : (
+                            <>Detalhe <ChevronDown className="ml-1 h-4 w-4" /></>
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -288,47 +307,49 @@ const WorkflowReport = () => {
         )}
       </div>
       
-      {(filters.showNotes || filters.showAttachments) && filteredActions.length > 0 && (
+      {(filters.showNotes || filters.showAttachments) && filteredActions.length > 0 && expandedActionId && (
         <div className="space-y-4 mt-8">
-          <h3 className="text-xl font-bold border-b pb-2">Detalhes das Ações</h3>
+          <h3 className="text-xl font-bold border-b pb-2">Detalhes da Ação</h3>
           
-          {filteredActions.map((action) => (
-            <Card key={action.id} className="mb-4">
-              <CardContent className="pt-6">
-                <h4 className="text-lg font-bold mb-2">{action.subject}</h4>
-                <p className="text-sm text-gray-500 mb-4">{action.description}</p>
-                
-                {filters.showNotes && action.notes.filter(note => !note.isDeleted).length > 0 && (
-                  <div className="mb-4">
-                    <h5 className="text-sm font-semibold mb-2">Anotações:</h5>
-                    <div className="space-y-2 pl-4 text-sm">
-                      {action.notes
-                        .filter(note => !note.isDeleted)
-                        .map((note) => (
-                          <div key={note.id} className="pb-2 border-b border-gray-100">
-                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                              <span>
-                                {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                              </span>
+          {filteredActions
+            .filter(action => action.id === expandedActionId)
+            .map((action) => (
+              <Card key={action.id} className="mb-4">
+                <CardContent className="pt-6">
+                  <h4 className="text-lg font-bold mb-2">{action.subject}</h4>
+                  <p className="text-sm text-gray-500 mb-4">{action.description}</p>
+                  
+                  {filters.showNotes && action.notes.filter(note => !note.isDeleted).length > 0 && (
+                    <div className="mb-4">
+                      <h5 className="text-sm font-semibold mb-2">Anotações:</h5>
+                      <div className="space-y-2 pl-4 text-sm">
+                        {action.notes
+                          .filter(note => !note.isDeleted)
+                          .map((note) => (
+                            <div key={note.id} className="pb-2 border-b border-gray-100">
+                              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>
+                                  {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </span>
+                              </div>
+                              <p className="whitespace-pre-line">{note.content}</p>
                             </div>
-                            <p className="whitespace-pre-line">{note.content}</p>
-                          </div>
-                        ))}
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                
-                {filters.showAttachments && action.attachments && action.attachments.length > 0 && (
-                  <div>
-                    <h5 className="text-sm font-semibold mb-2">Anexos:</h5>
-                    <div className="pl-4">
-                      <p className="text-sm">{action.attachments.length} arquivo(s) anexado(s)</p>
+                  )}
+                  
+                  {filters.showAttachments && action.attachments && action.attachments.length > 0 && (
+                    <div>
+                      <h5 className="text-sm font-semibold mb-2">Anexos:</h5>
+                      <div className="pl-4">
+                        <p className="text-sm">{action.attachments.length} arquivo(s) anexado(s)</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  )}
+                </CardContent>
+              </Card>
+            ))}
         </div>
       )}
     </div>
