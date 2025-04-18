@@ -53,12 +53,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { sendActionNotification, sendEmail, sendSMS, sendWhatsApp } = useMessaging();
   const { responsibles } = useCompany();
 
-  // Função para carregar as ações do Supabase
   const fetchActions = async () => {
     try {
       setIsLoading(true);
 
-      // Buscar todas as ações
       const { data: actionsData, error: actionsError } = await supabase
         .from('actions')
         .select('*')
@@ -68,7 +66,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw actionsError;
       }
 
-      // Buscar todas as notas das ações
       const { data: notesData, error: notesError } = await supabase
         .from('action_notes')
         .select('*');
@@ -77,7 +74,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw notesError;
       }
 
-      // Buscar todos os anexos
       const { data: attachmentsData, error: attachmentsError } = await supabase
         .from('action_attachments')
         .select('*');
@@ -86,9 +82,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw attachmentsError;
       }
 
-      // Mapeamento para o formato esperado pelo aplicativo
       const formattedActions: Action[] = actionsData.map(action => {
-        // Filtrar notas relacionadas a esta ação
         const actionNotes = notesData
           .filter(note => note.action_id === action.id)
           .map(note => ({
@@ -100,29 +94,28 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             isDeleted: note.is_deleted
           }));
 
-        // Filtrar anexos relacionados a esta ação
         const actionAttachments = attachmentsData
           .filter(attachment => attachment.action_id === action.id)
           .map(attachment => attachment.file_path);
 
         return {
           id: action.id,
-          subject: action.subject,
+          subject: action.title,
           description: action.description || '',
           status: action.status as 'pendente' | 'concluido' | 'atrasado',
           responsibleId: action.responsible_id,
-          startDate: new Date(action.start_date),
-          endDate: new Date(action.end_date),
+          startDate: new Date(action.created_at),
+          endDate: new Date(action.due_date),
           companyId: action.company_id,
           clientId: action.client_id,
           requesterId: action.requester_id,
-          completedAt: action.completed_at ? new Date(action.completed_at) : undefined,
+          completedAt: action.status === 'concluido' ? new Date() : undefined,
           attachments: actionAttachments,
           notes: actionNotes,
           createdAt: new Date(action.created_at),
           updatedAt: new Date(action.updated_at),
-          createdBy: action.created_by,
-          createdByName: action.created_by_name
+          createdBy: action.requester_id,
+          createdByName: ''
         };
       });
 
@@ -136,7 +129,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "destructive",
       });
       
-      // Carregar dados mock em caso de falha
       const savedActions = localStorage.getItem('actions');
       if (savedActions) {
         try {
@@ -165,11 +157,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // Configurar listener para atualizações em tempo real
   useEffect(() => {
     fetchActions();
 
-    // Configurar canais de escuta para atualizações em tempo real
     const actionsChannel = supabase
       .channel('schema-db-changes')
       .on(
@@ -225,13 +215,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return actions.filter(action => action.clientId === clientId);
   };
 
-  // Função para obter URL de visualização de um anexo
   const getAttachmentUrl = async (filePath: string): Promise<string> => {
     try {
       const { data, error } = await supabase
         .storage
         .from('action_attachments')
-        .createSignedUrl(filePath, 60 * 60); // 1 hora de expiração
+        .createSignedUrl(filePath, 60 * 60);
       
       if (error) {
         throw error;
@@ -257,21 +246,18 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const now = new Date();
       
-      // Criar nova ação no Supabase
       const { data, error } = await supabase
         .from('actions')
         .insert({
-          subject: actionData.subject,
+          title: actionData.subject,
           description: actionData.description,
           status: 'pendente',
           responsible_id: actionData.responsibleId,
-          start_date: actionData.startDate.toISOString(),
-          end_date: actionData.endDate.toISOString(),
+          created_at: now.toISOString(),
+          due_date: actionData.endDate.toISOString(),
           company_id: actionData.companyId,
           client_id: actionData.clientId || null,
-          requester_id: actionData.requesterId,
-          created_by: user.id,
-          created_by_name: user.name
+          requester_id: actionData.requesterId || user.id
         })
         .select()
         .single();
@@ -300,11 +286,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const { error } = await supabase
         .from('actions')
         .update({
-          subject: actionData.subject,
+          title: actionData.subject,
           description: actionData.description,
           responsible_id: actionData.responsibleId,
-          start_date: actionData.startDate.toISOString(),
-          end_date: actionData.endDate.toISOString(),
+          due_date: actionData.endDate.toISOString(),
           company_id: actionData.companyId,
           client_id: actionData.clientId || null,
           requester_id: actionData.requesterId,
@@ -339,7 +324,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .from('actions')
         .update({
           status,
-          completed_at: status === 'concluido' ? (completedAt || currentTime).toISOString() : null,
           updated_at: currentTime.toISOString()
         })
         .eq('id', id);
@@ -412,7 +396,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteActionNote = async (actionNoteId: string, actionId: string) => {
     try {
-      // Atualizar para marcação lógica de exclusão
       const { error } = await supabase
         .from('action_notes')
         .update({ is_deleted: true })
@@ -448,12 +431,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     try {
-      // Gerar nome único para o arquivo
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `${actionId}/${fileName}`;
       
-      // Upload do arquivo para o bucket do Storage
       const { error: uploadError } = await supabase
         .storage
         .from('action_attachments')
@@ -463,7 +444,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw uploadError;
       }
       
-      // Registrar o anexo no banco de dados
       const { error: dbError } = await supabase
         .from('action_attachments')
         .insert({
@@ -593,7 +573,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     try {
-      // Apagar todos os arquivos associados a esta ação no Storage
       const { data: attachments, error: fetchError } = await supabase
         .from('action_attachments')
         .select('file_path')
@@ -603,7 +582,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw fetchError;
       }
       
-      // Deletar arquivos do storage
       if (attachments && attachments.length > 0) {
         const filePaths = attachments.map(a => a.file_path);
         const { error: storageError } = await supabase
@@ -616,7 +594,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
-      // Excluir a ação (cascade vai remover notas e referências de anexos)
       const { error } = await supabase
         .from('actions')
         .delete()
