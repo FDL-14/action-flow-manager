@@ -86,6 +86,17 @@ export interface ActionNote {
   isDeleted: boolean;
 }
 
+export interface ActionAttachment {
+  id: string;
+  actionId: string;
+  filePath: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  createdBy: string;
+  createdAt: Date;
+}
+
 export interface Action {
   id: string;
   subject: string;

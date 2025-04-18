@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Download, FileText, Printer } from 'lucide-react';
+import { Download, FileText, Printer, File, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import WorkflowReportFilter from './WorkflowReportFilter';
@@ -14,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 const WorkflowReport = () => {
-  const { actions } = useActions();
+  const { actions, getAttachmentUrl } = useActions();
   const { responsibles, clients } = useCompany();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ const WorkflowReport = () => {
     showAttachments: true,
   });
   const [expandedActionId, setExpandedActionId] = useState<string | null>(null);
+  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, { path: string, url: string }[]>>({});
+  const [loadingAttachments, setLoadingAttachments] = useState<Record<string, boolean>>({});
 
   const filteredActions = actions.filter(action => {
     if (filters.status !== 'all' && action.status !== filters.status) {
@@ -63,6 +66,39 @@ const WorkflowReport = () => {
     const client = clients.find(c => c.id === id);
     return client ? client.name : 'N/A';
   };
+
+  // Carregar URLs de anexos quando um item é expandido
+  useEffect(() => {
+    const loadAttachmentUrls = async (actionId: string) => {
+      const action = actions.find(a => a.id === actionId);
+      if (!action || !action.attachments || action.attachments.length === 0) return;
+      
+      setLoadingAttachments(prev => ({ ...prev, [actionId]: true }));
+      
+      try {
+        const urlPromises = action.attachments.map(async (path) => {
+          const url = await getAttachmentUrl(path);
+          return { path, url };
+        });
+        
+        const urls = await Promise.all(urlPromises);
+        setAttachmentUrls(prev => ({ ...prev, [actionId]: urls }));
+      } catch (error) {
+        console.error("Erro ao carregar URLs de anexos:", error);
+        toast({
+          title: "Erro ao carregar anexos",
+          description: "Não foi possível carregar os anexos. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingAttachments(prev => ({ ...prev, [actionId]: false }));
+      }
+    };
+    
+    if (expandedActionId) {
+      loadAttachmentUrls(expandedActionId);
+    }
+  }, [expandedActionId, actions, getAttachmentUrl, toast]);
 
   const generatePDF = () => {
     try {
@@ -192,6 +228,37 @@ const WorkflowReport = () => {
     }
   };
 
+  const getFileName = (filePath: string) => {
+    // Extrai o nome do arquivo da URL
+    const parts = filePath.split('/');
+    return parts[parts.length - 1];
+  };
+
+  const getFileIcon = (fileUrl: string) => {
+    const extension = fileUrl.split('.').pop()?.toLowerCase();
+    
+    if (!extension) return <File className="h-4 w-4" />;
+    
+    // Verificar tipo de arquivo por extensão
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
+      return <img src={fileUrl} alt="Miniatura" className="h-8 w-8 object-cover rounded" />;
+    }
+    
+    if (['pdf'].includes(extension)) {
+      return <File className="h-4 w-4 text-red-500" />;
+    }
+    
+    if (['doc', 'docx'].includes(extension)) {
+      return <File className="h-4 w-4 text-blue-500" />;
+    }
+    
+    if (['xls', 'xlsx'].includes(extension)) {
+      return <File className="h-4 w-4 text-green-500" />;
+    }
+    
+    return <File className="h-4 w-4" />;
+  };
+
   return (
     <div className="space-y-6 print:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
@@ -315,7 +382,25 @@ const WorkflowReport = () => {
                                 <div>
                                   <h5 className="text-sm font-semibold mb-2">Anexos:</h5>
                                   <div className="pl-4">
-                                    <p className="text-sm">{action.attachments.length} arquivo(s) anexado(s)</p>
+                                    {loadingAttachments[action.id] ? (
+                                      <p className="text-sm text-gray-500">Carregando anexos...</p>
+                                    ) : (
+                                      <div className="grid grid-cols-1 gap-2">
+                                        {attachmentUrls[action.id]?.map((item, index) => (
+                                          <a 
+                                            key={index} 
+                                            href={item.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs flex items-center p-2 border rounded hover:bg-gray-50"
+                                          >
+                                            {getFileIcon(item.url)}
+                                            <span className="ml-2 truncate flex-1">{getFileName(item.path)}</span>
+                                            <ExternalLink className="h-3 w-3 text-gray-500 ml-1" />
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )}

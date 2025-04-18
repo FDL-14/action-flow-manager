@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
-import { UserRound, Trash2, Upload, Paperclip } from 'lucide-react';
+import { UserRound, Trash2, Upload, Paperclip, ExternalLink, File } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
@@ -30,13 +30,14 @@ interface ActionNotesProps {
 
 const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }) => {
   const { user } = useAuth();
-  const { addActionNote, deleteActionNote, addAttachment } = useActions();
+  const { addActionNote, deleteActionNote, addAttachment, getAttachmentUrl } = useActions();
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showCompleteButton, setShowCompleteButton] = useState(action.status !== 'concluido');
   const [addedNoteOrAttachment, setAddedNoteOrAttachment] = useState(false);
+  const [attachmentUrls, setAttachmentUrls] = useState<{ path: string, url: string }[]>([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,7 +48,36 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
 
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  // Carregar URLs de anexos
+  useEffect(() => {
+    const loadAttachmentUrls = async () => {
+      if (!action.attachments || action.attachments.length === 0) return;
+      
+      setIsLoadingAttachments(true);
+      try {
+        const urlPromises = action.attachments.map(async (path) => {
+          const url = await getAttachmentUrl(path);
+          return { path, url };
+        });
+        
+        const urls = await Promise.all(urlPromises);
+        setAttachmentUrls(urls);
+      } catch (error) {
+        console.error("Erro ao carregar URLs de anexos:", error);
+        toast({
+          title: "Erro ao carregar anexos",
+          description: "Não foi possível carregar os anexos. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingAttachments(false);
+      }
+    };
+    
+    loadAttachmentUrls();
+  }, [action.attachments, getAttachmentUrl, toast]);
+
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     if (!user) {
       toast({
         title: "Erro de autenticação",
@@ -58,7 +88,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
 
     try {
-      addActionNote(action.id, data.content);
+      await addActionNote(action.id, data.content);
       form.reset();
       
       if (action.status !== 'concluido') {
@@ -96,12 +126,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     setIsUploading(true);
 
     try {
-      const fileURL = URL.createObjectURL(selectedFile);
-      
-      addAttachment(action.id, fileURL);
-      
-      setUploadedFiles(prev => [...prev, fileURL]);
-      
+      await addAttachment(action.id, selectedFile);
       setSelectedFile(null);
 
       if (action.status !== 'concluido') {
@@ -110,12 +135,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       
       // Marca que o usuário adicionou um anexo nesta sessão
       setAddedNoteOrAttachment(true);
-      
-      toast({
-        title: "Arquivo anexado",
-        description: "O arquivo foi anexado com sucesso.",
-        variant: "default",
-      });
     } catch (error) {
       console.error("Erro ao fazer upload:", error);
       toast({
@@ -128,9 +147,9 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
   };
 
-  const handleDeleteNote = (noteId: string) => {
+  const handleDeleteNote = async (noteId: string) => {
     if (window.confirm("Tem certeza que deseja excluir esta anotação?")) {
-      deleteActionNote(noteId, action.id);
+      await deleteActionNote(noteId, action.id);
     }
   };
 
@@ -138,6 +157,37 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     if (onComplete) {
       onComplete();
     }
+  };
+
+  const getFileIcon = (fileUrl: string) => {
+    const extension = fileUrl.split('.').pop()?.toLowerCase();
+    
+    if (!extension) return <File className="h-4 w-4" />;
+    
+    // Verificar tipo de arquivo por extensão
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
+      return <img src={fileUrl} alt="Miniatura" className="h-8 w-8 object-cover rounded" />;
+    }
+    
+    if (['pdf'].includes(extension)) {
+      return <File className="h-4 w-4 text-red-500" />;
+    }
+    
+    if (['doc', 'docx'].includes(extension)) {
+      return <File className="h-4 w-4 text-blue-500" />;
+    }
+    
+    if (['xls', 'xlsx'].includes(extension)) {
+      return <File className="h-4 w-4 text-green-500" />;
+    }
+    
+    return <File className="h-4 w-4" />;
+  };
+
+  const getFileName = (filePath: string) => {
+    // Extrai o nome do arquivo da URL
+    const parts = filePath.split('/');
+    return parts[parts.length - 1];
   };
 
   return (
@@ -183,14 +233,27 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       {action.attachments && action.attachments.length > 0 && (
         <div className="mb-4">
           <h3 className="text-sm font-medium mb-2">Anexos ({action.attachments.length})</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {action.attachments.map((url, index) => (
-              <div key={index} className="text-xs flex items-center p-1 border rounded">
-                <Paperclip className="h-3 w-3 mr-1 text-gray-500" />
-                <span className="truncate">Anexo {index + 1}</span>
-              </div>
-            ))}
-          </div>
+          {isLoadingAttachments ? (
+            <div className="text-center py-2">
+              <p className="text-sm text-gray-500">Carregando anexos...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {attachmentUrls.map((item, index) => (
+                <a 
+                  key={index} 
+                  href={item.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs flex items-center p-2 border rounded hover:bg-gray-50"
+                >
+                  {getFileIcon(item.url)}
+                  <span className="ml-2 truncate flex-1">{getFileName(item.path)}</span>
+                  <ExternalLink className="h-3 w-3 text-gray-500 ml-1" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
