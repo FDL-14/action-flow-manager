@@ -3,7 +3,7 @@ import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Download, FileText, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, FileText, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import WorkflowReportFilter from './WorkflowReportFilter';
@@ -185,10 +185,6 @@ const WorkflowReport = () => {
   };
 
   const handleViewAction = (actionId: string) => {
-    navigate(`/actions?id=${actionId}`);
-  };
-
-  const toggleActionDetails = (actionId: string) => {
     if (expandedActionId === actionId) {
       setExpandedActionId(null);
     } else {
@@ -253,105 +249,88 @@ const WorkflowReport = () => {
               </TableHeader>
               <TableBody>
                 {filteredActions.map((action) => (
-                  <TableRow key={action.id}>
-                    <TableCell className="font-medium">{action.subject}</TableCell>
-                    <TableCell>{getResponsibleName(action.responsibleId)}</TableCell>
-                    <TableCell>{getClientName(action.clientId)}</TableCell>
-                    <TableCell>
-                      <span 
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          action.status === 'concluido' 
-                            ? 'bg-green-100 text-green-800' 
+                  <React.Fragment key={action.id}>
+                    <TableRow>
+                      <TableCell className="font-medium">{action.subject}</TableCell>
+                      <TableCell>{getResponsibleName(action.responsibleId)}</TableCell>
+                      <TableCell>{getClientName(action.clientId)}</TableCell>
+                      <TableCell>
+                        <span 
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            action.status === 'concluido' 
+                              ? 'bg-green-100 text-green-800' 
+                              : action.status === 'atrasado' 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
+                          {action.status === 'concluido' 
+                            ? 'Concluída' 
                             : action.status === 'atrasado' 
-                              ? 'bg-red-100 text-red-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                      >
-                        {action.status === 'concluido' 
-                          ? 'Concluída' 
-                          : action.status === 'atrasado' 
-                            ? 'Atrasada' 
-                            : 'Pendente'}
-                      </span>
-                    </TableCell>
-                    <TableCell>{format(new Date(action.startDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                    <TableCell>{format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                    <TableCell className="print:hidden">
-                      <div className="flex gap-2">
+                              ? 'Atrasada' 
+                              : 'Pendente'}
+                        </span>
+                      </TableCell>
+                      <TableCell>{format(new Date(action.startDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                      <TableCell>{format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                      <TableCell className="print:hidden">
                         <Button 
                           variant="ghost" 
                           size="sm" 
                           onClick={() => handleViewAction(action.id)}
                         >
-                          Ver
+                          {expandedActionId === action.id ? 'Fechar' : 'Ver'}
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleActionDetails(action.id)}
-                          className="flex items-center"
-                        >
-                          {expandedActionId === action.id ? (
-                            <>Fechar <ChevronUp className="ml-1 h-4 w-4" /></>
-                          ) : (
-                            <>Detalhe <ChevronDown className="ml-1 h-4 w-4" /></>
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                    </TableRow>
+                    {expandedActionId === action.id && (filters.showNotes || filters.showAttachments) && (
+                      <TableRow>
+                        <TableCell colSpan={7}>
+                          <Card className="mb-4 mt-2">
+                            <CardContent className="pt-6">
+                              <h4 className="text-lg font-bold mb-2">{action.subject}</h4>
+                              <p className="text-sm text-gray-500 mb-4">{action.description}</p>
+                              
+                              {filters.showNotes && action.notes.filter(note => !note.isDeleted).length > 0 && (
+                                <div className="mb-4">
+                                  <h5 className="text-sm font-semibold mb-2">Anotações:</h5>
+                                  <div className="space-y-2 pl-4 text-sm">
+                                    {action.notes
+                                      .filter(note => !note.isDeleted)
+                                      .map((note) => (
+                                        <div key={note.id} className="pb-2 border-b border-gray-100">
+                                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                            <span>
+                                              {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                            </span>
+                                          </div>
+                                          <p className="whitespace-pre-line">{note.content}</p>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {filters.showAttachments && action.attachments && action.attachments.length > 0 && (
+                                <div>
+                                  <h5 className="text-sm font-semibold mb-2">Anexos:</h5>
+                                  <div className="pl-4">
+                                    <p className="text-sm">{action.attachments.length} arquivo(s) anexado(s)</p>
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
           </div>
         )}
       </div>
-      
-      {(filters.showNotes || filters.showAttachments) && filteredActions.length > 0 && expandedActionId && (
-        <div className="space-y-4 mt-8">
-          <h3 className="text-xl font-bold border-b pb-2">Detalhes da Ação</h3>
-          
-          {filteredActions
-            .filter(action => action.id === expandedActionId)
-            .map((action) => (
-              <Card key={action.id} className="mb-4">
-                <CardContent className="pt-6">
-                  <h4 className="text-lg font-bold mb-2">{action.subject}</h4>
-                  <p className="text-sm text-gray-500 mb-4">{action.description}</p>
-                  
-                  {filters.showNotes && action.notes.filter(note => !note.isDeleted).length > 0 && (
-                    <div className="mb-4">
-                      <h5 className="text-sm font-semibold mb-2">Anotações:</h5>
-                      <div className="space-y-2 pl-4 text-sm">
-                        {action.notes
-                          .filter(note => !note.isDeleted)
-                          .map((note) => (
-                            <div key={note.id} className="pb-2 border-b border-gray-100">
-                              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>
-                                  {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                </span>
-                              </div>
-                              <p className="whitespace-pre-line">{note.content}</p>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {filters.showAttachments && action.attachments && action.attachments.length > 0 && (
-                    <div>
-                      <h5 className="text-sm font-semibold mb-2">Anexos:</h5>
-                      <div className="pl-4">
-                        <p className="text-sm">{action.attachments.length} arquivo(s) anexado(s)</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-        </div>
-      )}
     </div>
   );
 };
