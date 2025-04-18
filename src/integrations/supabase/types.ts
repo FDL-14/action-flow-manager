@@ -9,6 +9,82 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      action_attachments: {
+        Row: {
+          action_id: string | null
+          created_at: string | null
+          created_by: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+        }
+        Insert: {
+          action_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+        }
+        Update: {
+          action_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_attachments_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      action_notes: {
+        Row: {
+          action_id: string | null
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          is_deleted: boolean | null
+        }
+        Insert: {
+          action_id?: string | null
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_deleted?: boolean | null
+        }
+        Update: {
+          action_id?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_deleted?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_notes_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       actions: {
         Row: {
           client_id: string | null

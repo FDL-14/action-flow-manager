@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary, ActionAttachment } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';

@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -34,6 +33,46 @@ export interface Permission {
   canEditCompany: boolean;
   canDeleteCompany: boolean;
   viewOnlyAssignedActions: boolean;
+}
+
+export interface Action {
+  id: string;
+  subject: string;
+  description: string;
+  status: 'pendente' | 'concluido' | 'atrasado';
+  responsibleId: string;
+  startDate: Date;
+  endDate: Date;
+  companyId: string;
+  clientId?: string;
+  requesterId?: string;
+  completedAt?: Date;
+  attachments?: string[];
+  notes: ActionNote[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  createdByName?: string;
+}
+
+export interface ActionNote {
+  id: string;
+  actionId: string;
+  content: string;
+  createdBy: string;
+  createdAt: Date;
+  isDeleted: boolean;
+}
+
+export interface ActionAttachment {
+  id: string;
+  actionId: string;
+  filePath: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  createdBy: string;
+  createdAt: Date;
 }
 
 export interface Company {
@@ -75,46 +114,6 @@ export interface Responsible {
   updatedAt: Date;
   userId?: string; // The ID of the user associated with this responsible
   isSystemUser?: boolean; // Added flag to identify if this is a system user automatically added
-}
-
-export interface ActionNote {
-  id: string;
-  actionId: string;
-  content: string;
-  createdBy: string;
-  createdAt: Date;
-  isDeleted: boolean;
-}
-
-export interface ActionAttachment {
-  id: string;
-  actionId: string;
-  filePath: string;
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  createdBy: string;
-  createdAt: Date;
-}
-
-export interface Action {
-  id: string;
-  subject: string;
-  description: string;
-  status: 'pendente' | 'concluido' | 'atrasado';
-  responsibleId: string;
-  startDate: Date;
-  endDate: Date;
-  companyId: string;
-  clientId?: string;
-  requesterId?: string;
-  completedAt?: Date;
-  attachments?: string[];
-  notes: ActionNote[];
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy?: string;
-  createdByName?: string;
 }
 
 export interface ActionSummary {
