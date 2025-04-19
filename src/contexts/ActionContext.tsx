@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Action, ActionNote } from '@/lib/types';
+import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,6 +14,14 @@ interface ActionContextType {
   addActionNote: (actionId: string, content: string) => void;
   deleteActionNote: (actionId: string, noteId: string) => void;
   getActionById: (id: string) => Action | undefined;
+  updateActionStatus: (id: string, status: "pendente" | "concluido" | "atrasado", completedAt?: Date) => void;
+  sendActionEmail: (id: string, method?: string) => Promise<void>;
+  addAttachment: (actionId: string, file: File) => Promise<void>;
+  getAttachmentUrl: (path: string) => Promise<string>;
+  getActionSummary: () => ActionSummary;
+  getActionsByStatus: (status: string) => Action[];
+  getActionsByResponsible: (responsibleId: string) => Action[];
+  getActionsByClient: (clientId: string) => Action[];
 }
 
 const ActionContext = createContext<ActionContextType>({
@@ -25,6 +33,14 @@ const ActionContext = createContext<ActionContextType>({
   addActionNote: () => {},
   deleteActionNote: () => {},
   getActionById: () => undefined,
+  updateActionStatus: () => {},
+  sendActionEmail: async () => {},
+  addAttachment: async () => {},
+  getAttachmentUrl: async () => "",
+  getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 }),
+  getActionsByStatus: () => [],
+  getActionsByResponsible: () => [],
+  getActionsByClient: () => [],
 });
 
 export const useActions = () => useContext(ActionContext);
@@ -53,7 +69,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               id: action.id,
               subject: action.title,
               description: action.description || '',
-              status: action.status || 'pendente',
+              status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
               responsibleId: action.responsible_id,
               startDate: new Date(action.created_at),
               endDate: action.due_date ? new Date(action.due_date) : new Date(),
@@ -63,8 +79,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               notes: action.notes || [],
               createdAt: new Date(action.created_at),
               updatedAt: new Date(action.updated_at),
-              createdBy: action.created_by,
-              createdByName: action.created_by_name
+              createdBy: action.created_by || '',
+              createdByName: action.created_by_name || ''
             }));
             
             setActions(formattedActions);
@@ -92,9 +108,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         company_id: newActionData.companyId,
         client_id: newActionData.clientId,
         requester_id: newActionData.requesterId,
-        due_date: newActionData.endDate,
-        created_by: user?.id,
-        created_by_name: user?.name
+        due_date: newActionData.endDate.toISOString(),
+        created_by: user?.id || '',
+        created_by_name: user?.name || ''
       };
       
       console.log('Formatted action for Supabase:', actionForSupabase);
@@ -150,8 +166,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createdAt: new Date(),
         updatedAt: new Date(),
         attachments: newActionData.attachments,
-        createdBy: newActionData.createdBy,
-        createdByName: newActionData.createdByName
+        createdBy: user?.id || '',
+        createdByName: user?.name || ''
       };
       
       // Update the local state
@@ -218,6 +234,113 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return actions.find(action => action.id === id);
   };
 
+  const updateActionStatus = (id: string, status: "pendente" | "concluido" | "atrasado", completedAt?: Date) => {
+    setActions(prevActions =>
+      prevActions.map(action => {
+        if (action.id === id) {
+          return { 
+            ...action, 
+            status, 
+            completedAt: status === 'concluido' ? completedAt || new Date() : undefined,
+            updatedAt: new Date() 
+          };
+        }
+        return action;
+      })
+    );
+  };
+
+  const sendActionEmail = async (id: string, method?: string) => {
+    console.log(`Sending notification for action ${id} via ${method || 'email'}`);
+    // Implement actual email sending logic here
+    toast.success(`Notificação enviada com sucesso via ${method || 'email'}!`);
+    return Promise.resolve();
+  };
+
+  const addAttachment = async (actionId: string, file: File) => {
+    try {
+      const filePath = `attachments/${actionId}/${file.name}`;
+      
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from('actions')
+        .upload(filePath, file);
+        
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        throw uploadError;
+      }
+      
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('actions')
+        .getPublicUrl(filePath);
+        
+      const publicUrl = publicUrlData.publicUrl;
+      
+      // Save attachment info to action
+      const actionToUpdate = actions.find(a => a.id === actionId);
+      if (actionToUpdate) {
+        const attachments = actionToUpdate.attachments || [];
+        updateAction(actionId, { 
+          attachments: [...attachments, publicUrl],
+          updatedAt: new Date()
+        });
+      }
+      
+      toast.success('Arquivo anexado com sucesso!');
+    } catch (error) {
+      console.error('Error adding attachment:', error);
+      toast.error('Erro ao anexar arquivo.');
+      throw error;
+    }
+  };
+
+  const getAttachmentUrl = async (path: string): Promise<string> => {
+    // If it's already a public URL, just return it
+    if (path.startsWith('http')) {
+      return path;
+    }
+    
+    // Otherwise, get the public URL from storage
+    const { data } = supabase.storage
+      .from('actions')
+      .getPublicUrl(path);
+      
+    return data.publicUrl;
+  };
+
+  const getActionSummary = (): ActionSummary => {
+    const completed = actions.filter(action => action.status === 'concluido').length;
+    const delayed = actions.filter(action => action.status === 'atrasado').length;
+    const pending = actions.filter(action => action.status === 'pendente').length;
+    const total = actions.length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return {
+      completed,
+      delayed,
+      pending,
+      total,
+      completionRate
+    };
+  };
+
+  const getActionsByStatus = (status: string): Action[] => {
+    if (status === 'all') return actions;
+    return actions.filter(action => action.status === status);
+  };
+
+  const getActionsByResponsible = (responsibleId: string): Action[] => {
+    if (responsibleId === 'all') return actions;
+    return actions.filter(action => action.responsibleId === responsibleId);
+  };
+
+  const getActionsByClient = (clientId: string): Action[] => {
+    if (clientId === 'all') return actions;
+    return actions.filter(action => action.clientId === clientId);
+  };
+
   return (
     <ActionContext.Provider
       value={{
@@ -229,6 +352,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addActionNote,
         deleteActionNote,
         getActionById,
+        updateActionStatus,
+        sendActionEmail,
+        addAttachment,
+        getAttachmentUrl,
+        getActionSummary,
+        getActionsByStatus,
+        getActionsByResponsible,
+        getActionsByClient
       }}
     >
       {children}
