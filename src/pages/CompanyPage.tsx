@@ -86,6 +86,7 @@ const CompanyPage = () => {
         <CompanyList />
       </div>
 
+      {/* Edit existing company form */}
       <CompanyForm
         open={showCompanyForm}
         onOpenChange={setShowCompanyForm}
@@ -93,6 +94,7 @@ const CompanyPage = () => {
         isNewCompany={false}
       />
 
+      {/* Create new company form */}
       <CompanyForm
         open={showNewCompanyForm}
         onOpenChange={setShowNewCompanyForm}

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,12 +30,12 @@ const CompaniesPage = () => {
   const [companiesList, setCompaniesList] = useState<Company[]>([]);
 
   // Ensure companies are properly loaded
-  useState(() => {
+  useEffect(() => {
     if (companies && companies.length > 0) {
       console.log("Companies loaded:", companies.length);
-      setCompaniesList(companies);
+      setCompaniesList([...companies]);
     }
-  });
+  }, [companies]);
 
   const handleAddCompany = () => {
     setEditingCompany(null);

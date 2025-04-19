@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,15 @@ const CompanyList = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const { toast } = useToast();
+  const [companiesList, setCompaniesList] = useState<Company[]>([]);
+
+  // Update companies list when companies state changes
+  useEffect(() => {
+    if (companies && companies.length > 0) {
+      console.log("Companies list updated:", companies.length);
+      setCompaniesList([...companies]);
+    }
+  }, [companies]);
 
   const handleAddCompany = () => {
     setEditingCompany(null);
@@ -83,7 +92,7 @@ const CompanyList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {companies.map((companyItem) => (
+        {companiesList.map((companyItem) => (
           <Card key={companyItem.id} className="overflow-hidden">
             <CardHeader className="bg-gray-50">
               <div className="flex justify-between items-start">
@@ -157,6 +166,7 @@ const CompanyList = () => {
         open={showCompanyForm}
         onOpenChange={setShowCompanyForm}
         initialData={editingCompany}
+        isNewCompany={editingCompany === null}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

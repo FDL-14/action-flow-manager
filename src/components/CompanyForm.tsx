@@ -59,6 +59,19 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
   });
 
   useEffect(() => {
+    // Reset form when modal opens/closes
+    if (!open) {
+      form.reset({
+        name: '',
+        address: '',
+        cnpj: '',
+        phone: '',
+      });
+      setLogoPreview(null);
+      setLogoFile(null);
+      return;
+    }
+    
     const dataToUse = initialData || (isNewCompany ? null : company);
     
     if (dataToUse) {
@@ -83,7 +96,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
       });
       setLogoPreview(null);
     }
-  }, [initialData, company, form, isNewCompany]);
+  }, [initialData, company, form, isNewCompany, open]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
