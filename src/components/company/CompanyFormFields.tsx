@@ -9,14 +9,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-
-// Match FormValues type from CompanyForm exactly
-interface FormValues {
-  name: string;
-  address?: string;
-  cnpj?: string;
-  phone?: string;
-}
+import { FormValues } from '@/components/CompanyForm';
 
 interface CompanyFormFieldsProps {
   form: UseFormReturn<FormValues>;

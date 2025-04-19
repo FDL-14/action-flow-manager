@@ -26,6 +26,7 @@ interface CompanyFormProps {
   isNewCompany?: boolean;
 }
 
+// Make sure this schema matches the FormValues interface in CompanyFormFields.tsx
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   address: z.string().optional(),
@@ -33,7 +34,8 @@ const formSchema = z.object({
   phone: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+// Export this type to ensure consistency
+export type FormValues = z.infer<typeof formSchema>;
 
 const CompanyForm: React.FC<CompanyFormProps> = ({ 
   open, 
