@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -95,8 +96,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 notes: parsedNotes,
                 createdAt: new Date(action.created_at),
                 updatedAt: new Date(action.updated_at),
-                createdBy: action.created_by || '',
-                createdByName: action.created_by_name || ''
+                // Since these fields don't exist in the Supabase actions table, use default empty string
+                createdBy: '',  // Fixed: not using action.created_by
+                createdByName: '' // Fixed: not using action.created_by_name
               };
             });
             
