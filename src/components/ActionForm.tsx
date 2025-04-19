@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,7 +59,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [filteredClients, setFilteredClients] = useState(clients);
-  const [filteredRequesters, setFilteredRequesters] = useState(responsibles);
+  const [filteredRequesters, setFilteredRequesters] = useState<Array<{ id: string; name: string; email?: string; type?: string }>>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
   const { toast } = useToast();
 
@@ -78,34 +77,51 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     },
   });
 
-  // Filter clients and users based on selected company
   useEffect(() => {
+    const allRequesters = [...responsibles.filter(resp => 
+      resp.type === 'requester' || resp.role === 'Solicitante' || !resp.type
+    )];
+    
+    users.forEach(user => {
+      const alreadyIncluded = allRequesters.some(req => 
+        (req.userId && req.userId === user.id) || req.email === user.email
+      );
+      
+      if (!alreadyIncluded) {
+        allRequesters.push({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          type: 'user'
+        });
+      }
+    });
+    
     if (selectedCompanyId) {
-      // Filter clients based on selected company
       setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
       
-      // Filter requesters based on users related to this company
-      const companyRequesters = responsibles.filter(
-        resp => (resp.type === 'requester' || !resp.type) && 
-        (resp.companyId === selectedCompanyId || 
+      const companyRequesters = allRequesters.filter(
+        resp => !resp.companyId || 
+          resp.companyId === selectedCompanyId || 
           (resp.clientIds && resp.clientIds.some(id => 
             clients.some(c => c.id === id && c.companyId === selectedCompanyId)
-          )))
+          ))
       );
       
       setFilteredRequesters(companyRequesters);
     } else {
       setFilteredClients(clients);
-      setFilteredRequesters(responsibles.filter(r => r.type === 'requester' || !r.type));
+      setFilteredRequesters(allRequesters);
     }
-  }, [selectedCompanyId, clients, responsibles]);
+    
+    console.log('All possible requesters:', allRequesters);
+  }, [selectedCompanyId, clients, responsibles, users]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
       setUploadedFiles(prev => [...prev, ...newFiles]);
       
-      // Simulate file URLs for the mock attachments
       const newAttachments = newFiles.map(file => 
         URL.createObjectURL(file)
       );
@@ -118,7 +134,6 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     const newFiles = [...uploadedFiles];
     const newAttachments = [...attachments];
     
-    // Revoke object URL to avoid memory leaks
     URL.revokeObjectURL(newAttachments[index]);
     
     newFiles.splice(index, 1);
@@ -128,7 +143,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     setAttachments(newAttachments);
   };
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     if (!user) {
       toast({
         title: "Erro",
@@ -139,7 +154,36 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     }
 
     try {
-      addAction({
+      console.log('Submitting form with values:', values);
+      console.log('Uploaded files:', uploadedFiles);
+      
+      const uploadedAttachments: string[] = [];
+      
+      if (uploadedFiles.length > 0) {
+        for (const file of uploadedFiles) {
+          try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+            const filePath = `temp/${fileName}`;
+            
+            const { data, error } = await supabase
+              .storage
+              .from('action_attachments')
+              .upload(filePath, file);
+              
+            if (error) {
+              console.error('Error uploading file:', error);
+              throw error;
+            }
+            
+            uploadedAttachments.push(filePath);
+          } catch (error) {
+            console.error('Error uploading attachment:', error);
+          }
+        }
+      }
+      
+      await addAction({
         subject: values.subject,
         description: values.description,
         responsibleId: values.responsibleId,
@@ -148,12 +192,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         requesterId: values.requesterId,
         startDate: new Date(values.startDate),
         endDate: new Date(values.endDate),
-        attachments,
+        attachments: uploadedAttachments,
         createdBy: user.id,
         createdByName: user.name
       });
 
-      // Reset form and close dialog
       form.reset();
       setAttachments([]);
       setUploadedFiles([]);
@@ -174,7 +217,6 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     }
   };
 
-  // Get list of users for the selected company
   const getCompanyUsers = () => {
     if (!selectedCompanyId) return [];
     
@@ -222,7 +264,6 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                     onValueChange={(value) => {
                       field.onChange(value);
                       setSelectedCompanyId(value);
-                      // Reset selections when company changes
                       form.setValue('clientId', '');
                       form.setValue('responsibleId', '');
                       form.setValue('requesterId', '');
@@ -319,9 +360,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredRequesters.map((responsible) => (
-                        <SelectItem key={responsible.id} value={responsible.id}>
-                          {responsible.name}
+                      {filteredRequesters.map((requester) => (
+                        <SelectItem key={requester.id} value={requester.id}>
+                          {requester.name} {requester.type === 'user' ? '(Usuário)' : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>

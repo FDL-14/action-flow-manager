@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary, ActionAttachment } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -57,6 +56,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const fetchActions = async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching actions from Supabase...');
 
       const { data: actionsData, error: actionsError } = await supabase
         .from('actions')
@@ -64,14 +64,18 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .order('created_at', { ascending: false });
 
       if (actionsError) {
+        console.error('Error fetching actions:', actionsError);
         throw actionsError;
       }
+
+      console.log('Actions data fetched:', actionsData);
 
       const { data: notesData, error: notesError } = await supabase
         .from('action_notes')
         .select('*');
 
       if (notesError) {
+        console.error('Error fetching action notes:', notesError);
         throw notesError;
       }
 
@@ -80,10 +84,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .select('*');
 
       if (attachmentsError) {
+        console.error('Error fetching action attachments:', attachmentsError);
         throw attachmentsError;
       }
 
-      // Transformar os dados do Supabase para o formato da aplicação
       const formattedActions: Action[] = actionsData.map(action => {
         const actionNotes = notesData
           .filter(note => note.action_id === action.id)
@@ -102,12 +106,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         return {
           id: action.id,
-          subject: action.title,  // Mapeia title para subject
+          subject: action.title,
           description: action.description || '',
           status: action.status as 'pendente' | 'concluido' | 'atrasado',
           responsibleId: action.responsible_id,
-          startDate: new Date(action.created_at), // Usa created_at como startDate
-          endDate: new Date(action.due_date),     // Usa due_date como endDate
+          startDate: new Date(action.created_at),
+          endDate: new Date(action.due_date),
           companyId: action.company_id,
           clientId: action.client_id,
           requesterId: action.requester_id,
@@ -116,14 +120,15 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           notes: actionNotes,
           createdAt: new Date(action.created_at),
           updatedAt: new Date(action.updated_at),
-          createdBy: action.requester_id, // Usa requester_id como createdBy
-          createdByName: '' // Preencher com nome do solicitante se necessário
+          createdBy: action.requester_id,
+          createdByName: ''
         };
       });
 
+      console.log('Formatted actions:', formattedActions);
       setActions(formattedActions);
     } catch (error) {
-      console.error('Erro ao carregar ações do Supabase:', error);
+      console.error('Error loading actions from Supabase:', error);
       
       toast({
         title: "Erro ao carregar dados",
@@ -162,7 +167,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     fetchActions();
 
-    // Configurar escuta em tempo real para atualizações
     const actionsChannel = supabase
       .channel('schema-db-changes')
       .on(
@@ -172,7 +176,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           schema: 'public',
           table: 'actions',
         },
-        () => {
+        (payload) => {
+          console.log('Real-time update for actions:', payload);
           fetchActions();
         }
       )
@@ -183,7 +188,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           schema: 'public',
           table: 'action_notes',
         },
-        () => {
+        (payload) => {
+          console.log('Real-time update for action_notes:', payload);
           fetchActions();
         }
       )
@@ -194,7 +200,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           schema: 'public',
           table: 'action_attachments',
         },
-        () => {
+        (payload) => {
+          console.log('Real-time update for action_attachments:', payload);
           fetchActions();
         }
       )
@@ -220,21 +227,21 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const getAttachmentUrl = async (filePath: string): Promise<string> => {
     try {
-      console.log('Obtendo URL para arquivo:', filePath);
+      console.log('Getting URL for file:', filePath);
       const { data, error } = await supabase
         .storage
         .from('action_attachments')
-        .createSignedUrl(filePath, 60 * 60); // URL válida por 1 hora
+        .createSignedUrl(filePath, 60 * 60);
       
       if (error) {
-        console.error('Erro ao criar URL assinada:', error);
+        console.error('Error creating signed URL:', error);
         throw error;
       }
       
-      console.log('URL obtida com sucesso:', data.signedUrl);
+      console.log('URL obtained successfully:', data.signedUrl);
       return data.signedUrl;
     } catch (error) {
-      console.error('Erro ao obter URL do anexo:', error);
+      console.error('Error getting attachment URL:', error);
       return '';
     }
   };
@@ -250,18 +257,19 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
+      console.log('Adding new action to Supabase:', actionData);
       const now = new Date();
       
-      // Mapeia as propriedades da aplicação para as colunas do Supabase
       const { data, error } = await supabase
         .from('actions')
         .insert({
-          title: actionData.subject, // subject -> title
+          title: actionData.subject,
           description: actionData.description,
           status: 'pendente',
           responsible_id: actionData.responsibleId,
           created_at: now.toISOString(),
-          due_date: actionData.endDate.toISOString(), // endDate -> due_date
+          updated_at: now.toISOString(),
+          due_date: actionData.endDate.toISOString(),
           company_id: actionData.companyId,
           client_id: actionData.clientId || null,
           requester_id: actionData.requesterId || user.id
@@ -270,11 +278,23 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .single();
       
       if (error) {
-        console.error('Erro ao inserir ação no Supabase:', error);
+        console.error('Error inserting action into Supabase:', error);
         throw error;
       }
 
-      console.log('Ação adicionada com sucesso:', data);
+      if (actionData.attachments && actionData.attachments.length > 0) {
+        for (const attachment of actionData.attachments) {
+          console.log('Adding attachment record for new action');
+          await supabase
+            .from('action_attachments')
+            .insert({
+              action_id: data.id,
+              file_path: attachment,
+              file_name: 'Uploaded file',
+              created_by: user.id
+            });
+        }
+      }
       
       toast({
         title: "Ação adicionada",
@@ -282,10 +302,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "default",
       });
       
-      // Atualiza a lista de ações
       fetchActions();
     } catch (error) {
-      console.error('Erro ao adicionar ação:', error);
+      console.error('Error adding action:', error);
       toast({
         title: "Erro ao adicionar ação",
         description: "Não foi possível adicionar a nova ação. Tente novamente.",
@@ -296,14 +315,13 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateAction = async (id: string, actionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'createdBy' | 'createdByName'>) => {
     try {
-      // Mapeia as propriedades da aplicação para as colunas do Supabase
       const { error } = await supabase
         .from('actions')
         .update({
-          title: actionData.subject, // subject -> title
+          title: actionData.subject,
           description: actionData.description,
           responsible_id: actionData.responsibleId,
-          due_date: actionData.endDate.toISOString(), // endDate -> due_date
+          due_date: actionData.endDate.toISOString(),
           company_id: actionData.companyId,
           client_id: actionData.clientId || null,
           requester_id: actionData.requesterId,
@@ -312,13 +330,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .eq('id', id);
       
       if (error) {
-        console.error('Erro ao atualizar ação no Supabase:', error);
+        console.error('Error updating action in Supabase:', error);
         throw error;
       }
       
-      console.log('Ação atualizada com sucesso, ID:', id);
+      console.log('Action updated successfully, ID:', id);
       
-      // Atualiza a lista de ações
       fetchActions();
       
       toast({
@@ -327,7 +344,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "default",
       });
     } catch (error) {
-      console.error('Erro ao atualizar ação:', error);
+      console.error('Error updating action:', error);
       toast({
         title: "Erro ao atualizar ação",
         description: "Não foi possível atualizar a ação. Tente novamente.",
@@ -349,13 +366,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .eq('id', id);
       
       if (error) {
-        console.error('Erro ao atualizar status no Supabase:', error);
+        console.error('Error updating status in Supabase:', error);
         throw error;
       }
       
-      console.log('Status da ação atualizado com sucesso, ID:', id, 'Novo status:', status);
+      console.log('Action status updated successfully, ID:', id, 'New status:', status);
       
-      // Atualiza a lista de ações
       fetchActions();
       
       if (status === 'concluido') {
@@ -372,7 +388,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
     } catch (error) {
-      console.error('Erro ao atualizar status da ação:', error);
+      console.error('Error updating action status:', error);
       toast({
         title: "Erro ao atualizar status",
         description: "Não foi possível atualizar o status da ação. Tente novamente.",
@@ -392,7 +408,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     try {
-      console.log('Adicionando anotação para ação ID:', actionId);
+      console.log('Adding note for action ID:', actionId);
       
       const { data, error } = await supabase
         .from('action_notes')
@@ -404,13 +420,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       
       if (error) {
-        console.error('Erro ao inserir anotação no Supabase:', error);
+        console.error('Error inserting note in Supabase:', error);
         throw error;
       }
       
-      console.log('Anotação adicionada com sucesso');
+      console.log('Note added successfully');
       
-      // Atualiza a lista de ações para incluir a nova anotação
       fetchActions();
       
       toast({
@@ -419,7 +434,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "default",
       });
     } catch (error) {
-      console.error('Erro ao adicionar anotação:', error);
+      console.error('Error adding note:', error);
       toast({
         title: "Erro ao adicionar anotação",
         description: "Não foi possível adicionar a anotação. Tente novamente.",
@@ -430,22 +445,20 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteActionNote = async (actionNoteId: string, actionId: string) => {
     try {
-      console.log('Excluindo anotação ID:', actionNoteId);
+      console.log('Deleting note ID:', actionNoteId);
       
-      // Usamos soft delete, apenas marcando como excluída
       const { error } = await supabase
         .from('action_notes')
         .update({ is_deleted: true })
         .eq('id', actionNoteId);
       
       if (error) {
-        console.error('Erro ao excluir anotação no Supabase:', error);
+        console.error('Error deleting note in Supabase:', error);
         throw error;
       }
       
-      console.log('Anotação excluída com sucesso');
+      console.log('Note deleted successfully');
       
-      // Atualiza a lista de ações
       fetchActions();
       
       toast({
@@ -454,7 +467,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "destructive",
       });
     } catch (error) {
-      console.error('Erro ao excluir anotação:', error);
+      console.error('Error deleting note:', error);
       toast({
         title: "Erro ao remover anotação",
         description: "Não foi possível remover a anotação. Tente novamente.",
@@ -474,16 +487,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     try {
-      console.log('Iniciando upload de arquivo para ação ID:', actionId);
-      console.log('Arquivo:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size);
+      console.log('Starting file upload for action ID:', actionId);
+      console.log('File:', file.name, 'Type:', file.type, 'Size:', file.size);
       
-      // Gera um nome único para o arquivo
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `${actionId}/${fileName}`;
       
-      // Faz o upload do arquivo para o Storage do Supabase
-      console.log('Enviando arquivo para o storage, caminho:', filePath);
+      console.log('Sending file to storage, path:', filePath);
       const { error: uploadError, data: uploadData } = await supabase
         .storage
         .from('action_attachments')
@@ -493,13 +504,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       
       if (uploadError) {
-        console.error('Erro ao fazer upload para o Storage:', uploadError);
+        console.error('Error uploading to Storage:', uploadError);
         throw uploadError;
       }
       
-      console.log('Upload concluído com sucesso:', uploadData?.path);
+      console.log('Upload completed successfully:', uploadData?.path);
       
-      // Registra o anexo no banco de dados
       const { error: dbError } = await supabase
         .from('action_attachments')
         .insert({
@@ -512,13 +522,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       
       if (dbError) {
-        console.error('Erro ao registrar anexo no banco de dados:', dbError);
+        console.error('Error registering attachment in database:', dbError);
         throw dbError;
       }
       
-      console.log('Anexo registrado com sucesso no banco de dados');
+      console.log('Attachment successfully registered in database');
       
-      // Atualiza a lista de ações para incluir o novo anexo
       fetchActions();
       
       toast({
@@ -527,7 +536,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "default",
       });
     } catch (error) {
-      console.error('Erro ao adicionar anexo:', error);
+      console.error('Error adding attachment:', error);
       toast({
         title: "Erro ao anexar arquivo",
         description: "Não foi possível anexar o arquivo. Tente novamente.",
@@ -635,22 +644,20 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     try {
-      console.log('Excluindo ação ID:', id);
+      console.log('Deleting action ID:', id);
       
-      // Primeiro, busca os anexos para excluí-los do storage
       const { data: attachments, error: fetchError } = await supabase
         .from('action_attachments')
         .select('file_path')
         .eq('action_id', id);
         
       if (fetchError) {
-        console.error('Erro ao buscar anexos:', fetchError);
+        console.error('Error fetching attachments:', fetchError);
         throw fetchError;
       }
       
-      // Exclui os arquivos do storage se houver anexos
       if (attachments && attachments.length > 0) {
-        console.log(`Excluindo ${attachments.length} anexos do storage`);
+        console.log(`Deleting ${attachments.length} attachments from storage`);
         const filePaths = attachments.map(a => a.file_path);
         
         const { error: storageError } = await supabase
@@ -659,25 +666,22 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           .remove(filePaths);
           
         if (storageError) {
-          console.error('Erro ao excluir arquivos do storage:', storageError);
+          console.error('Error deleting files from storage:', storageError);
         }
       }
       
-      // Exclui a ação do banco de dados
-      // Obs: Devido às restrições de FK, isso deve excluir automaticamente as notas e referências de anexos
       const { error } = await supabase
         .from('actions')
         .delete()
         .eq('id', id);
       
       if (error) {
-        console.error('Erro ao excluir ação do banco de dados:', error);
+        console.error('Error deleting action from database:', error);
         throw error;
       }
       
-      console.log('Ação excluída com sucesso');
+      console.log('Action deleted successfully');
       
-      // Atualiza a lista de ações
       fetchActions();
       
       toast({
@@ -686,7 +690,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         variant: "default",
       });
     } catch (error) {
-      console.error('Erro ao excluir ação:', error);
+      console.error('Error deleting action:', error);
       toast({
         title: "Erro ao excluir ação",
         description: "Não foi possível excluir a ação. Tente novamente.",
