@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -65,23 +66,44 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           if (data) {
             // Transform the data to match our Action type
-            const formattedActions: Action[] = data.map(action => ({
-              id: action.id,
-              subject: action.title,
-              description: action.description || '',
-              status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
-              responsibleId: action.responsible_id,
-              startDate: new Date(action.created_at),
-              endDate: action.due_date ? new Date(action.due_date) : new Date(),
-              companyId: action.company_id,
-              clientId: action.client_id,
-              requesterId: action.requester_id,
-              notes: action.notes || [],
-              createdAt: new Date(action.created_at),
-              updatedAt: new Date(action.updated_at),
-              createdBy: action.created_by || '',
-              createdByName: action.created_by_name || ''
-            }));
+            const formattedActions: Action[] = data.map(action => {
+              // Parse notes - ensure it's converted to ActionNote[] format
+              let parsedNotes: ActionNote[] = [];
+              try {
+                // Check if notes is an array and has items
+                if (Array.isArray(action.notes)) {
+                  parsedNotes = action.notes.map((note: any) => ({
+                    id: note.id || String(Date.now()),
+                    actionId: action.id,
+                    content: note.content || '',
+                    createdBy: note.createdBy || 'system',
+                    createdAt: new Date(note.createdAt || Date.now()),
+                    isDeleted: note.isDeleted || false,
+                  }));
+                }
+              } catch (e) {
+                console.error('Error parsing notes:', e);
+                parsedNotes = [];
+              }
+
+              return {
+                id: action.id,
+                subject: action.title,
+                description: action.description || '',
+                status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
+                responsibleId: action.responsible_id,
+                startDate: new Date(action.created_at),
+                endDate: action.due_date ? new Date(action.due_date) : new Date(),
+                companyId: action.company_id,
+                clientId: action.client_id,
+                requesterId: action.requester_id,
+                notes: parsedNotes,
+                createdAt: new Date(action.created_at),
+                updatedAt: new Date(action.updated_at),
+                createdBy: action.created_by || '', // Handle missing field
+                createdByName: action.created_by_name || '' // Handle missing field
+              };
+            });
             
             setActions(formattedActions);
             console.log('Actions loaded from Supabase:', formattedActions);
@@ -109,6 +131,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         client_id: newActionData.clientId,
         requester_id: newActionData.requesterId,
         due_date: newActionData.endDate.toISOString(),
+        // Use empty keys if these fields don't exist in the Supabase 'actions' table schema
         created_by: user?.id || '',
         created_by_name: user?.name || ''
       };
