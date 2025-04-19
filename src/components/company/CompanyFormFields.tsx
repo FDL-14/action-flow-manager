@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
-// Match the FormValues type from CompanyForm where name is required
+// Match the FormValues type from CompanyForm exactly
 interface FormValues {
   name: string;
   address?: string;

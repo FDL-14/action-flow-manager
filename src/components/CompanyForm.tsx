@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,7 +73,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
     
     if (dataToUse) {
       form.reset({
-        name: dataToUse.name || '',
+        name: dataToUse.name || '', // Ensure name is always a string, never undefined
         address: dataToUse.address || '',
         cnpj: dataToUse.cnpj || '',
         phone: dataToUse.phone || '',
