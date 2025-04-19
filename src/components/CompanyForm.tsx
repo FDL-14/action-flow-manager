@@ -72,8 +72,11 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
     const dataToUse = initialData || (isNewCompany ? null : company);
     
     if (dataToUse) {
+      // Ensure name is always a string, never undefined
+      const companyName = dataToUse.name || '';
+      
       form.reset({
-        name: dataToUse.name || '', // Ensure name is always a string, never undefined
+        name: companyName,
         address: dataToUse.address || '',
         cnpj: dataToUse.cnpj || '',
         phone: dataToUse.phone || '',
