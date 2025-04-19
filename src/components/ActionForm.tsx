@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ActionFormProps {
   open: boolean;
@@ -92,7 +94,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
           id: user.id,
           name: user.name,
           email: user.email,
-          type: 'user'
+          type: 'requester' // Changed from 'user' to 'requester'
         });
       }
     });
