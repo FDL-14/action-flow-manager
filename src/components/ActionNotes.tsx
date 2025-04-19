@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
-import { UserRound, Trash2, Upload, Paperclip, ExternalLink, File } from 'lucide-react';
+import { UserRound, Trash2, Upload, Paperclip, ExternalLink, File, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
@@ -55,12 +55,14 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       
       setIsLoadingAttachments(true);
       try {
+        console.log('Carregando URLs para anexos:', action.attachments);
         const urlPromises = action.attachments.map(async (path) => {
           const url = await getAttachmentUrl(path);
           return { path, url };
         });
         
         const urls = await Promise.all(urlPromises);
+        console.log('URLs de anexos carregadas:', urls);
         setAttachmentUrls(urls);
       } catch (error) {
         console.error("Erro ao carregar URLs de anexos:", error);
@@ -126,6 +128,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     setIsUploading(true);
 
     try {
+      console.log('Enviando arquivo:', selectedFile.name);
       await addAttachment(action.id, selectedFile);
       setSelectedFile(null);
 
@@ -135,6 +138,19 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       
       // Marca que o usuário adicionou um anexo nesta sessão
       setAddedNoteOrAttachment(true);
+      
+      // Recarregar URLs de anexos após o upload ser concluído
+      if (action.attachments && action.attachments.length > 0) {
+        setIsLoadingAttachments(true);
+        const urlPromises = action.attachments.map(async (path) => {
+          const url = await getAttachmentUrl(path);
+          return { path, url };
+        });
+        
+        const urls = await Promise.all(urlPromises);
+        setAttachmentUrls(urls);
+        setIsLoadingAttachments(false);
+      }
     } catch (error) {
       console.error("Erro ao fazer upload:", error);
       toast({
@@ -185,7 +201,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   };
 
   const getFileName = (filePath: string) => {
-    // Extrai o nome do arquivo da URL
+    // Extrai o nome do arquivo da URL ou do caminho
     const parts = filePath.split('/');
     return parts[parts.length - 1];
   };
@@ -235,7 +251,10 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
           <h3 className="text-sm font-medium mb-2">Anexos ({action.attachments.length})</h3>
           {isLoadingAttachments ? (
             <div className="text-center py-2">
-              <p className="text-sm text-gray-500">Carregando anexos...</p>
+              <p className="text-sm text-gray-500 flex items-center justify-center">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Carregando anexos...
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-2">
@@ -304,9 +323,19 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                   size="sm"
                   onClick={handleFileUpload}
                   disabled={isUploading}
+                  className="flex items-center"
                 >
-                  <Upload className="h-4 w-4 mr-1" />
-                  {isUploading ? 'Enviando...' : 'Enviar'}
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-1" />
+                      Enviar
+                    </>
+                  )}
                 </Button>
               )}
             </div>

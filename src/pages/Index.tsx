@@ -11,9 +11,18 @@ const Index = () => {
   const { isAuthenticated, users, addUser } = useAuth();
   const { companies, addCompany } = useCompany();
 
-  // Função para inicializar os dados de exemplo
+  // Função para inicializar os dados de exemplo - modificada para verificar se já foram inicializados
   useEffect(() => {
+    // Verificar se já inicializou os dados
+    const alreadyInitialized = localStorage.getItem('data_initialized');
+    
     const initializeDefaultData = async () => {
+      // Se já inicializou os dados, não faz nada
+      if (alreadyInitialized === 'true') {
+        console.log("Dados já foram inicializados anteriormente, pulando inicialização");
+        return;
+      }
+      
       try {
         console.log("Inicializando dados padrão...");
         
@@ -85,6 +94,9 @@ const Index = () => {
             }
           }
         }
+        
+        // Marcar como inicializado depois de concluir
+        localStorage.setItem('data_initialized', 'true');
       } catch (error) {
         console.error("Erro ao inicializar dados padrão:", error);
         toast.error("Erro na inicialização", {
