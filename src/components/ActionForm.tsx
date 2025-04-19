@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -94,7 +93,13 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
           id: user.id,
           name: user.name,
           email: user.email,
-          type: 'requester' // Changed from 'user' to 'requester'
+          department: "User Department",
+          role: "User",
+          type: "requester",
+          companyId: selectedCompanyId || defaultCompany?.id || "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isSystemUser: true
         });
       }
     });
@@ -117,7 +122,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     }
     
     console.log('All possible requesters:', allRequesters);
-  }, [selectedCompanyId, clients, responsibles, users]);
+  }, [selectedCompanyId, clients, responsibles, users, defaultCompany]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
