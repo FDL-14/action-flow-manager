@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { mockActions } from '@/lib/mock-data';
@@ -50,7 +49,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [actions, setActions] = useState<Action[]>([]);
   const { user } = useAuth();
 
-  // Load actions from Supabase on initial load
   useEffect(() => {
     const fetchActions = async () => {
       if (user) {
@@ -65,12 +63,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
           
           if (data) {
-            // Transform the data to match our Action type
             const formattedActions: Action[] = data.map(action => {
-              // Parse notes - ensure it's converted to ActionNote[] format
               let parsedNotes: ActionNote[] = [];
               try {
-                // Check if notes is an array and has items
                 if (Array.isArray(action.notes)) {
                   parsedNotes = action.notes.map((note: any) => ({
                     id: note.id || String(Date.now()),
@@ -100,8 +95,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 notes: parsedNotes,
                 createdAt: new Date(action.created_at),
                 updatedAt: new Date(action.updated_at),
-                createdBy: action.created_by || '', // Handle missing field
-                createdByName: action.created_by_name || '' // Handle missing field
+                createdBy: action.created_by || '',
+                createdByName: action.created_by_name || ''
               };
             });
             
@@ -121,7 +116,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       console.log('Adding new action with data:', newActionData);
       
-      // Format the action data for Supabase
       const actionForSupabase = {
         title: newActionData.subject,
         description: newActionData.description,
@@ -130,15 +124,11 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         company_id: newActionData.companyId,
         client_id: newActionData.clientId,
         requester_id: newActionData.requesterId,
-        due_date: newActionData.endDate.toISOString(),
-        // Use empty keys if these fields don't exist in the Supabase 'actions' table schema
-        created_by: user?.id || '',
-        created_by_name: user?.name || ''
+        due_date: newActionData.endDate.toISOString()
       };
       
       console.log('Formatted action for Supabase:', actionForSupabase);
       
-      // Insert action into Supabase
       const { data: insertedAction, error } = await supabase
         .from('actions')
         .insert(actionForSupabase)
@@ -152,7 +142,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       console.log('Action inserted successfully:', insertedAction);
       
-      // Handle file uploads for attachments if any
       if (newActionData.attachments && newActionData.attachments.length > 0) {
         for (const filePath of newActionData.attachments) {
           const fileName = filePath.split('/').pop() || 'unknown-file';
@@ -173,7 +162,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
-      // Create new action with correct type
       const newAction: Action = {
         id: insertedAction.id,
         subject: newActionData.subject,
@@ -193,7 +181,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createdByName: user?.name || ''
       };
       
-      // Update the local state
       setActions(prevActions => [...prevActions, newAction]);
       toast.success('Ação criada com sucesso!');
     } catch (error) {
@@ -275,7 +262,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const sendActionEmail = async (id: string, method?: string) => {
     console.log(`Sending notification for action ${id} via ${method || 'email'}`);
-    // Implement actual email sending logic here
     toast.success(`Notificação enviada com sucesso via ${method || 'email'}!`);
     return Promise.resolve();
   };
@@ -284,7 +270,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const filePath = `attachments/${actionId}/${file.name}`;
       
-      // Upload file to storage
       const { error: uploadError } = await supabase.storage
         .from('actions')
         .upload(filePath, file);
@@ -294,14 +279,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw uploadError;
       }
       
-      // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from('actions')
         .getPublicUrl(filePath);
         
       const publicUrl = publicUrlData.publicUrl;
       
-      // Save attachment info to action
       const actionToUpdate = actions.find(a => a.id === actionId);
       if (actionToUpdate) {
         const attachments = actionToUpdate.attachments || [];
@@ -320,12 +303,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const getAttachmentUrl = async (path: string): Promise<string> => {
-    // If it's already a public URL, just return it
     if (path.startsWith('http')) {
       return path;
     }
     
-    // Otherwise, get the public URL from storage
     const { data } = supabase.storage
       .from('actions')
       .getPublicUrl(path);
