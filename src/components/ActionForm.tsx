@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -224,15 +225,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     }
   };
 
-  const getCompanyUsers = () => {
+  // This is the key change - use responsibles for the Responsável dropdown
+  // instead of filtering only for current company users
+  const getResponsibles = () => {
     if (!selectedCompanyId) return [];
-    
-    return users.filter(user => 
-      user.companyIds.includes(selectedCompanyId) || 
-      (user.clientIds && user.clientIds.some(id => 
-        clients.some(c => c.id === id && c.companyId === selectedCompanyId)
-      ))
-    );
+    return responsibles.filter(resp => resp.companyId === selectedCompanyId);
   };
 
   return (
@@ -339,9 +336,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {getCompanyUsers().map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name}
+                      {getResponsibles().map((responsible) => (
+                        <SelectItem key={responsible.id} value={responsible.id}>
+                          {responsible.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
