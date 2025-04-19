@@ -13,18 +13,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X } from 'lucide-react';
+import LogoUpload from './company/LogoUpload';
+import CompanyFormFields from './company/CompanyFormFields';
 
 interface CompanyFormProps {
   open: boolean;
@@ -42,7 +35,12 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialData, isNewCompany = false }) => {
+const CompanyForm: React.FC<CompanyFormProps> = ({ 
+  open, 
+  onOpenChange, 
+  initialData, 
+  isNewCompany = false 
+}) => {
   const { company, setCompany, updateCompanyLogo, addCompany, updateCompany } = useCompany();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -59,7 +57,6 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
   });
 
   useEffect(() => {
-    // Reset form when modal opens/closes
     if (!open) {
       form.reset({
         name: '',
@@ -114,7 +111,6 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
   const onSubmit = (values: FormValues) => {
     try {
       if (isNewCompany) {
-        // Create new company
         const newCompany: Omit<Company, 'id'> = {
           name: values.name,
           address: values.address,
@@ -130,7 +126,6 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
         
         addCompany(newCompany);
       } else if (initialData) {
-        // Update existing company that's not the main company
         const updatedCompany = {
           ...initialData,
           name: values.name,
@@ -143,7 +138,6 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
         
         updateCompany(updatedCompany);
       } else {
-        // Update main company
         const updatedCompany = {
           ...company!,
           name: values.name,
@@ -159,7 +153,6 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
           if (logoPreview) {
             updateCompanyLogo(logoPreview);
           } else {
-            // Remove logo
             const companyWithoutLogo = {
               ...updatedCompany,
               logo: undefined,
@@ -201,106 +194,12 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ open, onOpenChange, initialDa
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-4">
-              <div>
-                <FormLabel>Logo da Empresa</FormLabel>
-                <div className="mt-2 flex flex-col items-center">
-                  {logoPreview ? (
-                    <div className="relative w-40 h-40 mb-4">
-                      <img
-                        src={logoPreview}
-                        alt="Logo Preview"
-                        className="w-full h-full object-contain"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-0 right-0 h-6 w-6"
-                        onClick={removeLogo}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="border-2 border-dashed rounded-md p-8 mb-4 flex flex-col items-center justify-center">
-                      <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Nenhuma logo selecionada</p>
-                    </div>
-                  )}
-                  
-                  <input
-                    type="file"
-                    id="logo-upload"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                  />
-                  <label htmlFor="logo-upload">
-                    <Button type="button" variant="outline" asChild>
-                      <span>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Selecionar logo
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-              </div>
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Empresa</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Minha Empresa Ltda" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <LogoUpload
+                logoPreview={logoPreview}
+                onLogoChange={handleLogoChange}
+                onRemoveLogo={removeLogo}
               />
-
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Endereço</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Rua Exemplo, 123" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="cnpj"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CNPJ</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: 00.000.000/0001-00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: (00) 0000-0000" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <CompanyFormFields form={form} />
             </div>
 
             <DialogFooter>
