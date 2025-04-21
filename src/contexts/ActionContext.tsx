@@ -34,7 +34,7 @@ const ActionContext = createContext<ActionContextType>({
   getActionById: () => undefined,
   updateActionStatus: () => {},
   sendActionEmail: async () => {},
-  addAttachment: async () => "",
+  addAttachment: async () => {},
   getAttachmentUrl: async () => "",
   getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 }),
   getActionsByStatus: () => [],
@@ -440,7 +440,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return Promise.resolve();
   };
 
-  const addAttachment = async (actionId: string, file: File) => {
+  const addAttachment = async (actionId: string, file: File): Promise<void> => {
     try {
       const { error: bucketError } = await supabase.storage
         .createBucket('actions', {
