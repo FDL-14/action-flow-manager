@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -61,7 +60,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [filteredClients, setFilteredClients] = useState(clients);
-  const [filteredRequesters, setFilteredRequesters] = useState<Array<{ id: string; name: string; email?: string; type?: string }>>([]);
+  const [filteredRequesters, setFilteredRequesters] = useState<
+    Array<{ id: string; name: string; email?: string; type?: string; isUser?: boolean }>
+  >([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
   const { toast } = useToast();
 
@@ -80,50 +81,39 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   });
 
   useEffect(() => {
-    const allRequesters = [...responsibles.filter(resp => 
-      resp.type === 'requester' || resp.role === 'Solicitante' || !resp.type
-    )];
-    
-    users.forEach(user => {
-      const alreadyIncluded = allRequesters.some(req => 
-        (req.userId && req.userId === user.id) || req.email === user.email
-      );
-      
-      if (!alreadyIncluded) {
-        allRequesters.push({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          department: "User Department",
-          role: "User",
-          type: "requester",
-          companyId: selectedCompanyId || defaultCompany?.id || "",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          isSystemUser: true
-        });
-      }
-    });
-    
     if (selectedCompanyId) {
       setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
-      
-      const companyRequesters = allRequesters.filter(
-        resp => !resp.companyId || 
-          resp.companyId === selectedCompanyId || 
-          (resp.clientIds && resp.clientIds.some(id => 
-            clients.some(c => c.id === id && c.companyId === selectedCompanyId)
-          ))
-      );
-      
-      setFilteredRequesters(companyRequesters);
     } else {
       setFilteredClients(clients);
-      setFilteredRequesters(allRequesters);
     }
-    
-    console.log('All possible requesters:', allRequesters);
+
+    setFilteredRequesters(getCombinedResponsiblesAndUsers());
   }, [selectedCompanyId, clients, responsibles, users, defaultCompany]);
+
+  const getCombinedResponsiblesAndUsers = () => {
+    const responsiblesList = responsibles
+      .filter(r => selectedCompanyId ? r.companyId === selectedCompanyId : true)
+      .map(r => ({
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        type: "responsible",
+        isUser: false,
+      }));
+
+    const responsibleEmailsAndIds = new Set(responsiblesList.map(r => r.email || r.id));
+    const usersList = users.filter(u =>
+      !responsibleEmailsAndIds.has(u.email) && !responsibleEmailsAndIds.has(u.id)
+    ).map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      type: "user",
+      isUser: true,
+    }));
+
+    return [...responsiblesList, ...usersList];
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -223,13 +213,6 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         variant: "destructive",
       });
     }
-  };
-
-  // This is the key change - use responsibles for the Responsável dropdown
-  // instead of filtering only for current company users
-  const getResponsibles = () => {
-    if (!selectedCompanyId) return [];
-    return responsibles.filter(resp => resp.companyId === selectedCompanyId);
   };
 
   return (
@@ -336,9 +319,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {getResponsibles().map((responsible) => (
-                        <SelectItem key={responsible.id} value={responsible.id}>
-                          {responsible.name}
+                      {getCombinedResponsiblesAndUsers().map(person => (
+                        <SelectItem key={person.id} value={person.id}>
+                          {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -364,9 +347,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredRequesters.map((requester) => (
-                        <SelectItem key={requester.id} value={requester.id}>
-                          {requester.name} {requester.type === 'user' ? '(Usuário)' : ''}
+                      {filteredRequesters.map(person => (
+                        <SelectItem key={person.id} value={person.id}>
+                          {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
