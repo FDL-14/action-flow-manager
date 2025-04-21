@@ -154,7 +154,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
 
     try {
       console.log('Submitting form with values:', values);
-      console.log('Uploaded files:', uploadedFiles);
+      console.log('Selected company ID:', values.companyId);
       
       const uploadedAttachments: string[] = [];
       

@@ -155,6 +155,15 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Status fixo para novas ações, para garantir que siga a restrição do banco de dados
       const validStatus = 'pendente';
       
+      // Certificar que os IDs são UUIDs válidos
+      const company_id = newActionData.companyId ? 
+                        (newActionData.companyId.includes('-') ? 
+                          newActionData.companyId : 
+                          convertToUUID(newActionData.companyId)) : 
+                        null;
+                        
+      console.log('Company ID processado:', company_id);
+      
       // Preparar dados para o Supabase
       const actionForSupabase = {
         title: newActionData.subject,
@@ -165,11 +174,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                           newActionData.responsibleId : 
                           convertToUUID(newActionData.responsibleId)) : 
                         null,
-        company_id: newActionData.companyId ? 
-                    (newActionData.companyId.includes('-') ? 
-                      newActionData.companyId : 
-                      convertToUUID(newActionData.companyId)) : 
-                    null,
+        company_id: company_id,
         client_id: newActionData.clientId ? 
                   (newActionData.clientId.includes('-') ? 
                     newActionData.clientId : 
@@ -187,6 +192,21 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
       
       console.log('Ação formatada para Supabase:', actionForSupabase);
+      
+      // Exibir os IDs para debug
+      console.log('IDs originais:', {
+        companyId: newActionData.companyId,
+        clientId: newActionData.clientId,
+        responsibleId: newActionData.responsibleId,
+        requesterId: newActionData.requesterId
+      });
+      
+      console.log('IDs convertidos:', {
+        company_id: actionForSupabase.company_id,
+        client_id: actionForSupabase.client_id,
+        responsible_id: actionForSupabase.responsible_id,
+        requester_id: actionForSupabase.requester_id
+      });
       
       const { data: insertedAction, error } = await supabase
         .from('actions')
