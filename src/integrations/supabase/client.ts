@@ -49,17 +49,17 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
   const knownIds: {[key: string]: string} = {
     // Companies
     "1": "12f6f95b-eeca-411d-a098-221053ab9f03", // Total Data
-    "1745060635120": "12f6f95b-eeca-411d-a098-221053ab9f03",
+    "1745060635120": "12f6f95b-eeca-411d-a098-221053ab9f03", // Same Total Data company with different ID
     
     // Clients
     "1745268930996": "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
     
-    // Responsibles
-    "1745060635129": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7",
-    "1": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7", // João Silva
-    "2": "28a7ed6b-5c2a-4dd4-9aef-a8dca5c5b46e", // Maria Souza
-    "3": "65f8e32c-1a1d-49c1-b432-f77d6c529612", // Carlos Oliveira
-    "4": "b4a80976-86e0-4a74-8c5c-e5a0f3d35f5f", // Ana Santos
+    // Responsibles - using unique keys for each responsible
+    "1745060635129": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7", // João Silva with timestamp ID
+    "resp_1": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7", // João Silva with named ID
+    "resp_2": "28a7ed6b-5c2a-4dd4-9aef-a8dca5c5b46e", // Maria Souza
+    "resp_3": "65f8e32c-1a1d-49c1-b432-f77d6c529612", // Carlos Oliveira
+    "resp_4": "b4a80976-86e0-4a74-8c5c-e5a0f3d35f5f", // Ana Santos
     
     // Requesters
     "1745066913470": "8854bd89-6ef7-4419-9ee3-b968bc279f19",
