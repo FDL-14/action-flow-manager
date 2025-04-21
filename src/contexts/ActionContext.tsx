@@ -91,6 +91,11 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 parsedNotes = [];
               }
 
+              // Check if completed_at exists before trying to access it
+              const completedAt = 'completed_at' in action && action.completed_at 
+                ? new Date(action.completed_at as string) 
+                : undefined;
+
               return {
                 id: action.id,
                 subject: action.title || 'Sem título',
@@ -105,7 +110,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 notes: parsedNotes,
                 createdAt: new Date(action.created_at || Date.now()),
                 updatedAt: new Date(action.updated_at || Date.now()),
-                completedAt: action.completed_at ? new Date(action.completed_at) : undefined,
+                completedAt: completedAt,
                 createdBy: '',
                 createdByName: ''
               };
@@ -336,6 +341,11 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   parsedNotes = [];
                 }
   
+                // Check if completed_at exists before trying to access it
+                const completedAt = 'completed_at' in action && action.completed_at 
+                  ? new Date(action.completed_at as string) 
+                  : undefined;
+
                 return {
                   id: action.id,
                   subject: action.title || 'Sem título',
@@ -350,7 +360,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   notes: parsedNotes,
                   createdAt: new Date(action.created_at || Date.now()),
                   updatedAt: new Date(action.updated_at || Date.now()),
-                  completedAt: action.completed_at ? new Date(action.completed_at) : undefined,
+                  completedAt: completedAt,
                   createdBy: '',
                   createdByName: ''
                 };

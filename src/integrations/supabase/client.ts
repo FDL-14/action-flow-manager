@@ -29,7 +29,7 @@ export const supabase = createClient<Database>(
 // Custom types to help with conversion between application types and database types
 export type JsonObject = { [key: string]: any };
 
-// Função revisada para melhor tratamento de UUIDs
+// Updated function to handle UUID conversion correctly
 export const convertToUUID = (id: string | null | undefined): string | null => {
   // Se id for null ou undefined, retornar null
   if (id === null || id === undefined) {
