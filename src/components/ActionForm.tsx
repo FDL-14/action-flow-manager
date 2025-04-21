@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,6 +64,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     Array<{ id: string; name: string; email?: string; type?: string; isUser?: boolean }>
   >([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -80,6 +80,33 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
       endDate: '',
     },
   });
+
+  const validateCompanyExists = async (companyId: string): Promise<boolean> => {
+    try {
+      const existsLocally = companies.some(company => company.id === companyId);
+      
+      if (existsLocally) {
+        console.log(`Empresa ${companyId} encontrada localmente.`);
+        return true;
+      }
+      
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('id', companyId)
+        .limit(1);
+        
+      if (error) {
+        console.error('Erro ao verificar empresa:', error);
+        return false;
+      }
+      
+      return data && data.length > 0;
+    } catch (error) {
+      console.error('Erro ao validar empresa:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -143,20 +170,21 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!user) {
-      toast({
-        title: "Erro",
-        description: "Usuário não autenticado",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (submitting) return;
+    setSubmitting(true);
+    
     try {
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive",
+        });
+        return;
+      }
+
       console.log('Submitting form with values:', values);
-      console.log('Selected company ID:', values.companyId);
       
-      // Verificação adicional se a empresa foi selecionada
       if (!values.companyId || values.companyId.trim() === '') {
         toast({
           title: "Erro",
@@ -166,19 +194,22 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         return;
       }
       
-      // Verificar se a empresa selecionada existe
       const empresa = companies.find(c => c.id === values.companyId);
       if (!empresa) {
-        console.error(`Empresa com ID ${values.companyId} não encontrada`);
-        toast({
-          title: "Erro",
-          description: `Empresa com ID ${values.companyId} não encontrada`,
-          variant: "destructive",
-        });
-        return;
+        console.error(`Empresa com ID ${values.companyId} não encontrada localmente`);
+        
+        const empresaExiste = await validateCompanyExists(values.companyId);
+        if (!empresaExiste) {
+          toast({
+            title: "Erro",
+            description: `Empresa com ID ${values.companyId} não encontrada`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
       
-      console.log('Empresa selecionada:', empresa);
+      console.log('Empresa selecionada:', empresa || `ID: ${values.companyId} (verificada no banco)`);
       
       const uploadedAttachments: string[] = [];
       
@@ -206,7 +237,6 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         }
       }
       
-      // Validar datas antes de passar para addAction
       const startDate = new Date(values.startDate);
       const endDate = new Date(values.endDate);
       
@@ -214,11 +244,13 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         throw new Error("Datas inválidas");
       }
       
+      const companyIdToUse = empresa ? empresa.id : values.companyId;
+      
       await addAction({
         subject: values.subject,
         description: values.description,
         responsibleId: values.responsibleId,
-        companyId: values.companyId,
+        companyId: companyIdToUse,
         clientId: values.clientId || undefined,
         requesterId: values.requesterId,
         startDate,
@@ -245,6 +277,8 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         description: error.message || "Ocorreu um erro ao salvar a ação",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -484,10 +518,12 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Ação</Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Salvando...' : 'Salvar Ação'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
