@@ -29,6 +29,18 @@ export const supabase = createClient<Database>(
 // Custom types to help with conversion between application types and database types
 export type JsonObject = { [key: string]: any };
 
+// Helper function to convert timestamp IDs to UUIDs
+export const convertToUUID = (id: string): string => {
+  // Check if id is already a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(id)) {
+    return id;
+  }
+  
+  // Generate a deterministic UUID from the original ID to ensure consistency
+  return `00000000-0000-4000-a000-${id.padStart(12, '0').substring(0, 12)}`;
+};
+
 // Enable realtime changes for the actions table
 (async () => {
   try {

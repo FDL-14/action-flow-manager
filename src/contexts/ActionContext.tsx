@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
-import { supabase, JsonObject } from '@/integrations/supabase/client';
+import { supabase, JsonObject, convertToUUID } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 
@@ -34,7 +34,7 @@ const ActionContext = createContext<ActionContextType>({
   getActionById: () => undefined,
   updateActionStatus: () => {},
   sendActionEmail: async () => {},
-  addAttachment: async () => {},
+  addAttachment: async () => "",
   getAttachmentUrl: async () => "",
   getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 }),
   getActionsByStatus: () => [],
@@ -142,14 +142,15 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       console.log('Adicionando nova ação com dados:', newActionData);
       
+      // Convert timestamp IDs to UUIDs for Supabase
       const actionForSupabase = {
         title: newActionData.subject,
         description: newActionData.description,
         status: 'pendente',
-        responsible_id: newActionData.responsibleId,
-        company_id: newActionData.companyId,
-        client_id: newActionData.clientId,
-        requester_id: newActionData.requesterId,
+        responsible_id: newActionData.responsibleId.includes('-') ? newActionData.responsibleId : convertToUUID(newActionData.responsibleId),
+        company_id: newActionData.companyId.includes('-') ? newActionData.companyId : convertToUUID(newActionData.companyId),
+        client_id: newActionData.clientId ? (newActionData.clientId.includes('-') ? newActionData.clientId : convertToUUID(newActionData.clientId)) : null,
+        requester_id: newActionData.requesterId ? (newActionData.requesterId.includes('-') ? newActionData.requesterId : convertToUUID(newActionData.requesterId)) : null,
         due_date: newActionData.endDate.toISOString()
       };
       
@@ -223,11 +224,11 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (updatedData.subject) supabaseData.title = updatedData.subject;
       if (updatedData.description) supabaseData.description = updatedData.description;
       if (updatedData.status) supabaseData.status = updatedData.status;
-      if (updatedData.responsibleId) supabaseData.responsible_id = updatedData.responsibleId;
+      if (updatedData.responsibleId) supabaseData.responsible_id = updatedData.responsibleId.includes('-') ? updatedData.responsibleId : convertToUUID(updatedData.responsibleId);
       if (updatedData.endDate) supabaseData.due_date = updatedData.endDate.toISOString();
-      if (updatedData.companyId) supabaseData.company_id = updatedData.companyId;
-      if (updatedData.clientId) supabaseData.client_id = updatedData.clientId;
-      if (updatedData.requesterId) supabaseData.requester_id = updatedData.requesterId;
+      if (updatedData.companyId) supabaseData.company_id = updatedData.companyId.includes('-') ? updatedData.companyId : convertToUUID(updatedData.companyId);
+      if (updatedData.clientId) supabaseData.client_id = updatedData.clientId.includes('-') ? updatedData.clientId : convertToUUID(updatedData.clientId);
+      if (updatedData.requesterId) supabaseData.requester_id = updatedData.requesterId.includes('-') ? updatedData.requesterId : convertToUUID(updatedData.requesterId);
       
       if (updatedData.notes) {
         supabaseData.notes = convertNotesToJsonObjects(updatedData.notes);
