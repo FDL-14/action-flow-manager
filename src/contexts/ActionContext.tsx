@@ -142,11 +142,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       console.log('Adicionando nova ação com dados:', newActionData);
       
+      // Corrigir o status para exatamente corresponder às opções permitidas no banco de dados
+      const validStatus = 'pendente';
+      
       // Convert timestamp IDs to UUIDs for Supabase
       const actionForSupabase = {
         title: newActionData.subject,
         description: newActionData.description,
-        status: 'pendente',
+        status: validStatus,
         responsible_id: newActionData.responsibleId.includes('-') ? newActionData.responsibleId : convertToUUID(newActionData.responsibleId),
         company_id: newActionData.companyId.includes('-') ? newActionData.companyId : convertToUUID(newActionData.companyId),
         client_id: newActionData.clientId ? (newActionData.clientId.includes('-') ? newActionData.clientId : convertToUUID(newActionData.clientId)) : null,
@@ -193,7 +196,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         id: insertedAction.id,
         subject: newActionData.subject,
         description: newActionData.description,
-        status: 'pendente',
+        status: validStatus as "pendente" | "concluido" | "atrasado",
         responsibleId: newActionData.responsibleId,
         startDate: newActionData.startDate,
         endDate: newActionData.endDate,
@@ -436,7 +439,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const sendActionEmail = async (id: string, method?: string) => {
     console.log(`Enviando notificação para ação ${id} via ${method || 'email'}`);
-    toast.success(`Notificação enviada com sucesso via ${method || 'email'}!`);
+    toast.success(`Notificação enviada com sucesso via ${method || 'email'}`);
     return Promise.resolve();
   };
 
@@ -496,7 +499,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch (error) {
       console.error('Erro ao adicionar anexo:', error);
       toast.error('Erro ao anexar arquivo.');
-      throw error;
     }
   };
 

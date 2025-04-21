@@ -37,8 +37,14 @@ export const convertToUUID = (id: string): string => {
     return id;
   }
   
-  // Generate a deterministic UUID from the original ID to ensure consistency
-  return `00000000-0000-4000-a000-${id.padStart(12, '0').substring(0, 12)}`;
+  // Check if it's a numeric string and format it as a UUID
+  if (/^\d+$/.test(id)) {
+    // Generate a deterministic UUID from the original ID to ensure consistency
+    return `00000000-0000-4000-a000-${id.padStart(12, '0').substring(0, 12)}`;
+  }
+  
+  // If it's not a UUID or numeric string, return it as is
+  return id;
 };
 
 // Enable realtime changes for the actions table

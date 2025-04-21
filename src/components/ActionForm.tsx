@@ -181,6 +181,13 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         }
       }
       
+      const startDate = new Date(values.startDate);
+      const endDate = new Date(values.endDate);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error("Datas inválidas");
+      }
+      
       await addAction({
         subject: values.subject,
         description: values.description,
@@ -188,8 +195,8 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         companyId: values.companyId,
         clientId: values.clientId || undefined,
         requesterId: values.requesterId,
-        startDate: new Date(values.startDate),
-        endDate: new Date(values.endDate),
+        startDate,
+        endDate,
         attachments: uploadedAttachments,
         createdBy: user.id,
         createdByName: user.name
@@ -205,11 +212,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         description: "A ação foi criada com sucesso!",
         variant: "default",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving action:', error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao salvar a ação",
+        description: error.message || "Ocorreu um erro ao salvar a ação",
         variant: "destructive",
       });
     }
