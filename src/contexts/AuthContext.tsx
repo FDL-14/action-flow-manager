@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -84,7 +83,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Perfis carregados do Supabase:', profiles);
           
           const loadedUsers: User[] = profiles.map(profile => {
-            // Ensure role is either 'user' or 'master', defaulting to 'user' if invalid
             const userRole: 'user' | 'master' = 
               profile.role === 'master' ? 'master' : 'user';
               
@@ -242,7 +240,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           view_only_assigned_actions: profile.role !== 'master'
         };
 
-        // Convert profile.role to the correct type, ensuring it's either 'user' or 'master'
         const safeRole: 'user' | 'master' = profile.role === 'master' ? 'master' : 'user';
 
         const userObject: User = {
@@ -324,7 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return loginWithLocalStorage(normalizedCPF, password);
     } catch (error) {
       console.error('Erro no login:', error);
-      return loginWithLocalStorage(normalizedCPF, password);
+      return loginWithLocalStorage(normalizeCPF(cpf), password);
     }
   };
 
@@ -444,7 +441,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Perfil inserido com sucesso:', insertedProfile);
       
-      // Create a permission object from userData.permissions or defaults
       const defaultPermission = createPermission(userData.role, userData.permissions);
       
       const permissionsToInsert = {
@@ -486,7 +482,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         permissions: [defaultPermission]
       };
       
-      // Ensure all users have the correct type
       const typedUsers: User[] = [...users, newUser];
       setUsers(typedUsers);
       localStorage.setItem('users', JSON.stringify(typedUsers));
@@ -624,10 +619,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const localUser = localUsers.find((u: any) => u.id === userData.id);
       const localPassword = localUser?.password;
       
-      // Create a properly typed updates
       const updatedUsers: User[] = users.map(u => {
         if (u.id === userData.id) {
-          // Create permission object properly
           const userPermission = createPermission(userData.role, userData.permissions);
           return {
             ...u,
@@ -736,10 +729,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // For Supabase, we'll just update the local password since there's no password column
-      // We're not actually storing the password in Supabase for this application
-      
-      // Update only the users in local storage with proper typing
       const updatedUsers: User[] = users.map(u => {
         if (u.id === userId) {
           return {
@@ -780,10 +769,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetUserPassword = async (userId: string) => {
     try {
-      // For Supabase, we don't actually store passwords there for this app
-      // Just update local storage
-      
-      // Update with proper typing
       const updatedUsers: User[] = users.map(u => {
         if (u.id === userId) {
           return {
