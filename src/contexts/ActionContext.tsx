@@ -152,10 +152,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error("Data de término inválida");
       }
       
-      // Corrigir o status para exatamente corresponder às opções permitidas no banco de dados
+      // Status fixo para novas ações, para garantir que siga a restrição do banco de dados
       const validStatus = 'pendente';
       
-      // Convert timestamp IDs to UUIDs for Supabase
+      // Preparar dados para o Supabase
       const actionForSupabase = {
         title: newActionData.subject,
         description: newActionData.description,
@@ -180,7 +180,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         newActionData.requesterId : 
                         convertToUUID(newActionData.requesterId)) : 
                       null,
-        due_date: newActionData.endDate.toISOString()
+        due_date: newActionData.endDate.toISOString(),
+        notes: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
       
       console.log('Ação formatada para Supabase:', actionForSupabase);
@@ -198,6 +201,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       console.log('Ação inserida com sucesso:', insertedAction);
       
+      // Processar anexos, se houver
       if (newActionData.attachments && newActionData.attachments.length > 0) {
         for (const filePath of newActionData.attachments) {
           const fileName = filePath.split('/').pop() || 'unknown-file';
@@ -205,7 +209,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             action_id: insertedAction.id,
             file_path: filePath,
             file_name: fileName,
-            created_by: user?.id
+            created_by: user?.id || 'system'
           };
           
           const { error: attachmentError } = await supabase
@@ -218,6 +222,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
+      // Criar objeto de ação para o estado local
       const newAction: Action = {
         id: insertedAction.id,
         subject: newActionData.subject,
@@ -237,6 +242,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createdByName: user?.name || ''
       };
       
+      // Atualizar estado
       setActions(prevActions => [...prevActions, newAction]);
       toast.success('Ação criada com sucesso!');
     } catch (error: any) {
