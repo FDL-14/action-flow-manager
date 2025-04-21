@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, JsonObject } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 
@@ -49,7 +48,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [actions, setActions] = useState<Action[]>([]);
   const { user } = useAuth();
 
-  // Carregar ações do Supabase quando o usuário estiver autenticado
   useEffect(() => {
     const fetchActions = async () => {
       if (user) {
@@ -96,7 +94,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 notes: parsedNotes,
                 createdAt: new Date(action.created_at),
                 updatedAt: new Date(action.updated_at),
-                // Definir valores padrão para campos que podem não existir no Supabase
                 createdBy: '',  // Fixed: not using action.created_by
                 createdByName: '' // Fixed: not using action.created_by_name
               };
@@ -113,7 +110,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     fetchActions();
     
-    // Configurar listener para mudanças em tempo real nas ações
     const channel = supabase
       .channel('public:actions')
       .on('postgres_changes', { 
@@ -130,6 +126,17 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  const convertNotesToJsonObjects = (notes: ActionNote[]): JsonObject[] => {
+    return notes.map(note => ({
+      id: note.id,
+      actionId: note.actionId,
+      content: note.content,
+      createdBy: note.createdBy,
+      createdAt: note.createdAt instanceof Date ? note.createdAt.toISOString() : note.createdAt,
+      isDeleted: note.isDeleted
+    }));
+  };
 
   const addAction = async (newActionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -211,7 +218,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateAction = async (id: string, updatedData: Partial<Action>) => {
     try {
-      // Preparar dados para atualização no Supabase
       const supabaseData: any = {};
       
       if (updatedData.subject) supabaseData.title = updatedData.subject;
@@ -223,24 +229,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (updatedData.clientId) supabaseData.client_id = updatedData.clientId;
       if (updatedData.requesterId) supabaseData.requester_id = updatedData.requesterId;
       
-      // For notes, we need to serialize to a format that Supabase can store
       if (updatedData.notes) {
-        // Convert ActionNote[] to a JSON-compatible object array
-        const jsonNotes = updatedData.notes.map(note => ({
-          id: note.id,
-          actionId: note.actionId,
-          content: note.content,
-          createdBy: note.createdBy,
-          createdAt: note.createdAt.toISOString(),
-          isDeleted: note.isDeleted
-        }));
-        supabaseData.notes = jsonNotes;
+        supabaseData.notes = convertNotesToJsonObjects(updatedData.notes);
       }
       
-      // Adicionar timestamp de atualização
       supabaseData.updated_at = new Date().toISOString();
       
-      // Atualizar no Supabase
       const { error } = await supabase
         .from('actions')
         .update(supabaseData)
@@ -251,7 +245,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
       
-      // Atualizar estado local
       setActions(prevActions =>
         prevActions.map(action => {
           if (action.id === id) {
@@ -270,7 +263,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteAction = async (id: string) => {
     try {
-      // Excluir do Supabase
       const { error } = await supabase
         .from('actions')
         .delete()
@@ -281,7 +273,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
       
-      // Atualizar estado local
       setActions(prevActions => prevActions.filter(action => action.id !== id));
       toast.success('Ação excluída com sucesso!');
     } catch (error) {
@@ -301,7 +292,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isDeleted: false,
       };
       
-      // Inserir nota na tabela action_notes
       const { error: noteError } = await supabase
         .from('action_notes')
         .insert({
@@ -315,22 +305,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw noteError;
       }
       
-      // Buscar ação atual para atualizar notas
       const action = actions.find(a => a.id === actionId);
       if (action) {
         const updatedNotes = [...action.notes, newNote];
         
-        // Convert ActionNote[] to a JSON-compatible format for Supabase
-        const jsonNotes = updatedNotes.map(note => ({
-          id: note.id,
-          actionId: note.actionId,
-          content: note.content,
-          createdBy: note.createdBy,
-          createdAt: note.createdAt instanceof Date ? note.createdAt.toISOString() : note.createdAt,
-          isDeleted: note.isDeleted
-        }));
+        const jsonNotes = convertNotesToJsonObjects(updatedNotes);
         
-        // Atualizar notas na tabela de ações
         const { error: updateError } = await supabase
           .from('actions')
           .update({ notes: jsonNotes })
@@ -341,7 +321,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
-      // Atualizar estado local
       setActions(prevActions =>
         prevActions.map(action => {
           if (action.id === actionId) {
@@ -360,7 +339,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteActionNote = async (actionId: string, noteId: string) => {
     try {
-      // Marcar nota como excluída na tabela action_notes
       const { error: noteError } = await supabase
         .from('action_notes')
         .update({ is_deleted: true })
@@ -370,17 +348,17 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Erro ao marcar nota como excluída no Supabase:', noteError);
       }
       
-      // Buscar ação atual para atualizar notas
       const action = actions.find(a => a.id === actionId);
       if (action) {
         const updatedNotes = action.notes.map(note =>
           note.id === noteId ? { ...note, isDeleted: true } : note
         );
         
-        // Atualizar notas na tabela de ações
+        const jsonNotes = convertNotesToJsonObjects(updatedNotes);
+        
         const { error: updateError } = await supabase
           .from('actions')
-          .update({ notes: updatedNotes })
+          .update({ notes: jsonNotes })
           .eq('id', actionId);
           
         if (updateError) {
@@ -388,7 +366,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
-      // Atualizar estado local
       setActions(prevActions =>
         prevActions.map(action => {
           if (action.id === actionId) {
@@ -416,7 +393,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateActionStatus = async (id: string, status: "pendente" | "concluido" | "atrasado", completedAt?: Date) => {
     try {
-      // Preparar dados para atualização
       const updateData: any = {
         status: status,
         updated_at: new Date().toISOString()
@@ -426,7 +402,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updateData.completed_at = completedAt.toISOString();
       }
       
-      // Atualizar no Supabase
       const { error } = await supabase
         .from('actions')
         .update(updateData)
@@ -437,7 +412,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
       
-      // Atualizar estado local
       setActions(prevActions =>
         prevActions.map(action => {
           if (action.id === id) {
@@ -467,7 +441,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addAttachment = async (actionId: string, file: File) => {
     try {
-      // Criar bucket de armazenamento se não existir
       const { error: bucketError } = await supabase.storage
         .createBucket('actions', {
           public: true
@@ -477,7 +450,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Erro ao criar bucket:', bucketError);
       }
       
-      // Fazer upload do arquivo
       const filePath = `attachments/${actionId}/${file.name}`;
       
       const { error: uploadError } = await supabase.storage
@@ -489,14 +461,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw uploadError;
       }
       
-      // Obter URL pública do arquivo
       const { data: publicUrlData } = supabase.storage
         .from('actions')
         .getPublicUrl(filePath);
         
       const publicUrl = publicUrlData.publicUrl;
       
-      // Salvar informações do anexo
       const { error: attachmentError } = await supabase
         .from('action_attachments')
         .insert({
@@ -512,7 +482,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Erro ao salvar informações do anexo:', attachmentError);
       }
       
-      // Atualizar ação local
       const actionToUpdate = actions.find(a => a.id === actionId);
       if (actionToUpdate) {
         const attachments = actionToUpdate.attachments || [];

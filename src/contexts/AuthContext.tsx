@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/types';
+import { User, Permission } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,23 +18,7 @@ interface AuthContextType {
     role: 'user' | 'master'; 
     companyIds: string[];
     clientIds?: string[];
-    permissions?: {
-      canCreate: boolean;
-      canEdit: boolean;
-      canDelete: boolean;
-      canMarkComplete: boolean;
-      canMarkDelayed: boolean;
-      canAddNotes: boolean;
-      canViewReports: boolean;
-      viewAllActions: boolean;
-      canEditUser: boolean;
-      canEditAction: boolean;
-      canEditClient: boolean;
-      canDeleteClient: boolean;
-      canEditCompany?: boolean;
-      canDeleteCompany?: boolean;
-      viewOnlyAssignedActions: boolean;
-    }
+    permissions?: any
   }) => Promise<boolean>;
   updateUser: (userData: { 
     id: string;
@@ -44,23 +28,7 @@ interface AuthContextType {
     role: 'user' | 'master';
     companyIds: string[];
     clientIds?: string[];
-    permissions?: {
-      canCreate: boolean;
-      canEdit: boolean;
-      canDelete: boolean;
-      canMarkComplete: boolean;
-      canMarkDelayed: boolean;
-      canAddNotes: boolean;
-      canViewReports: boolean;
-      viewAllActions: boolean;
-      canEditUser: boolean;
-      canEditAction: boolean;
-      canEditClient: boolean;
-      canDeleteClient: boolean;
-      canEditCompany?: boolean;
-      canDeleteCompany?: boolean;
-      viewOnlyAssignedActions: boolean;
-    }
+    permissions?: any
   }) => Promise<boolean>;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   resetUserPassword: (userId: string) => void;
@@ -404,6 +372,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const createPermission = (role: 'user' | 'master', customPermission?: any): Permission => {
+    const defaultPermissions: Permission = {
+      id: "default",
+      name: "Default Permissions",
+      description: "Default user permissions",
+      canCreate: role === 'master',
+      canEdit: role === 'master',
+      canDelete: role === 'master',
+      canMarkComplete: true,
+      canMarkDelayed: true,
+      canAddNotes: true,
+      canViewReports: role === 'master',
+      viewAllActions: role === 'master',
+      canEditUser: role === 'master',
+      canEditAction: role === 'master',
+      canEditClient: role === 'master',
+      canDeleteClient: role === 'master',
+      canEditCompany: role === 'master',
+      canDeleteCompany: role === 'master',
+      viewOnlyAssignedActions: role !== 'master',
+    };
+    
+    if (customPermission) {
+      return {
+        ...defaultPermissions,
+        ...customPermission,
+      };
+    }
+    
+    return defaultPermissions;
+  };
+
   const addUser = async (userData: { 
     name: string; 
     cpf: string; 
@@ -411,38 +411,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: 'user' | 'master';
     companyIds: string[];
     clientIds?: string[];
-    permissions?: {
-      canCreate: boolean;
-      canEdit: boolean;
-      canDelete: boolean;
-      canMarkComplete: boolean;
-      canMarkDelayed: boolean;
-      canAddNotes: boolean;
-      canViewReports: boolean;
-      viewAllActions: boolean;
-      canEditUser: boolean;
-      canEditAction: boolean;
-      canEditClient: boolean;
-      canDeleteClient: boolean;
-      canEditCompany?: boolean;
-      canDeleteCompany?: boolean;
-      viewOnlyAssignedActions: boolean;
-    }
+    permissions?: any
   }): Promise<boolean> => {
     try {
       const userId = Date.now().toString();
       
+      const profileData = {
+        id: userId,
+        name: userData.name,
+        cpf: userData.cpf,
+        email: userData.email || `${userData.cpf}@example.com`,
+        role: userData.role,
+        company_ids: userData.companyIds,
+        client_ids: userData.clientIds || []
+      };
+      
       const { data: insertedProfile, error } = await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          name: userData.name,
-          cpf: userData.cpf,
-          email: userData.email || `${userData.cpf}@example.com`,
-          role: userData.role,
-          company_ids: userData.companyIds,
-          client_ids: userData.clientIds || []
-        })
+        .insert(profileData)
         .select()
         .single();
       
@@ -453,41 +439,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Perfil inserido com sucesso:', insertedProfile);
       
-      const defaultPermissions = {
-        canCreate: userData.role === 'master',
-        canEdit: userData.role === 'master',
-        canDelete: userData.role === 'master',
-        canMarkComplete: true,
-        canMarkDelayed: true,
-        canAddNotes: true,
-        canViewReports: userData.role === 'master',
-        viewAllActions: userData.role === 'master',
-        canEditUser: userData.role === 'master',
-        canEditAction: userData.role === 'master',
-        canEditClient: userData.role === 'master',
-        canDeleteClient: userData.role === 'master',
-        canEditCompany: userData.role === 'master',
-        canDeleteCompany: userData.role === 'master',
-        viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
-      };
+      const permission = createPermission(userData.role, userData.permissions);
       
       const permissionsToInsert = {
         user_id: insertedProfile.id,
-        can_create: userData.permissions?.canCreate ?? defaultPermissions.canCreate,
-        can_edit: userData.permissions?.canEdit ?? defaultPermissions.canEdit,
-        can_delete: userData.permissions?.canDelete ?? defaultPermissions.canDelete,
-        can_mark_complete: userData.permissions?.canMarkComplete ?? defaultPermissions.canMarkComplete,
-        can_mark_delayed: userData.permissions?.canMarkDelayed ?? defaultPermissions.canMarkDelayed,
-        can_add_notes: userData.permissions?.canAddNotes ?? defaultPermissions.canAddNotes,
-        can_view_reports: userData.permissions?.canViewReports ?? defaultPermissions.canViewReports,
-        view_all_actions: userData.permissions?.viewAllActions ?? defaultPermissions.viewAllActions,
-        can_edit_user: userData.permissions?.canEditUser ?? defaultPermissions.canEditUser,
-        can_edit_action: userData.permissions?.canEditAction ?? defaultPermissions.canEditAction,
-        can_edit_client: userData.permissions?.canEditClient ?? defaultPermissions.canEditClient,
-        can_delete_client: userData.permissions?.canDeleteClient ?? defaultPermissions.canDeleteClient,
-        can_edit_company: userData.permissions?.canEditCompany ?? defaultPermissions.canEditCompany,
-        can_delete_company: userData.permissions?.canDeleteCompany ?? defaultPermissions.canDeleteCompany,
-        view_only_assigned_actions: userData.permissions?.viewOnlyAssignedActions ?? defaultPermissions.viewOnlyAssignedActions
+        can_create: permission.canCreate,
+        can_edit: permission.canEdit,
+        can_delete: permission.canDelete,
+        can_mark_complete: permission.canMarkComplete,
+        can_mark_delayed: permission.canMarkDelayed,
+        can_add_notes: permission.canAddNotes,
+        can_view_reports: permission.canViewReports,
+        view_all_actions: permission.viewAllActions,
+        can_edit_user: permission.canEditUser,
+        can_edit_action: permission.canEditAction,
+        can_edit_client: permission.canEditClient,
+        can_delete_client: permission.canDeleteClient,
+        can_edit_company: permission.canEditCompany,
+        can_delete_company: permission.canDeleteCompany,
+        view_only_assigned_actions: permission.viewOnlyAssignedActions
       };
       
       const { error: permissionsError } = await supabase
@@ -498,24 +468,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Erro ao inserir permissões no Supabase:', permissionsError);
       }
       
-      const localUserData = {
-        ...insertedProfile,
-        password: '@54321',
+      const newUser: User = {
+        id: insertedProfile.id,
+        name: userData.name,
+        cpf: userData.cpf,
+        email: userData.email || `${userData.cpf}@example.com`,
         role: userData.role,
-        permissions: [{
-          id: "default",
-          name: "Default Permissions",
-          description: "Default user permissions",
-          ...defaultPermissions,
-          ...(userData.permissions || {})
-        }]
+        companyIds: userData.companyIds,
+        clientIds: userData.clientIds || [],
+        password: '@54321',
+        permissions: [permission]
       };
       
-      setUsers(prevUsers => {
-        const updatedUsers = [...prevUsers, localUserData];
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-        return updatedUsers;
-      });
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      localStorage.setItem('users', JSON.stringify([...users, newUser]));
       
       toast({
         title: "Usuário criado",
@@ -539,23 +505,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    const defaultPermissions = {
-      canCreate: userData.role === 'master',
-      canEdit: userData.role === 'master',
-      canDelete: userData.role === 'master',
-      canMarkComplete: true,
-      canMarkDelayed: true,
-      canAddNotes: true,
-      canViewReports: userData.role === 'master',
-      viewAllActions: userData.role === 'master',
-      canEditUser: userData.role === 'master',
-      canEditAction: userData.role === 'master',
-      canEditClient: userData.role === 'master',
-      canDeleteClient: userData.role === 'master',
-      canEditCompany: userData.role === 'master',
-      canDeleteCompany: userData.role === 'master',
-      viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
-    };
+    const permission = createPermission(userData.role, userData.permissions);
 
     const newUser: User = {
       id: Date.now().toString(),
@@ -565,19 +515,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: userData.role,
       companyIds: userData.companyIds,
       clientIds: userData.clientIds || [],
-      permissions: [
-        {
-          id: "default",
-          name: "Default Permissions",
-          description: "Default user permissions",
-          ...defaultPermissions,
-          ...(userData.permissions || {}),
-          canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
-            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-          canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
-            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
-        }
-      ]
+      permissions: [permission]
     };
 
     const updatedUsers = [...users, newUser];
@@ -600,23 +538,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: 'user' | 'master';
     companyIds: string[];
     clientIds?: string[];
-    permissions?: {
-      canCreate: boolean;
-      canEdit: boolean;
-      canDelete: boolean;
-      canMarkComplete: boolean;
-      canMarkDelayed: boolean;
-      canAddNotes: boolean;
-      canViewReports: boolean;
-      viewAllActions: boolean;
-      canEditUser: boolean;
-      canEditAction: boolean;
-      canEditClient: boolean;
-      canDeleteClient: boolean;
-      canEditCompany?: boolean;
-      canDeleteCompany?: boolean;
-      viewOnlyAssignedActions: boolean;
-    }
+    permissions?: any
   }): Promise<boolean> => {
     try {
       const { data: existingProfiles, error: checkError } = await supabase
@@ -639,16 +561,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
+      const profileData = {
+        name: userData.name,
+        cpf: userData.cpf,
+        email: userData.email,
+        role: userData.role,
+        company_ids: userData.companyIds,
+        client_ids: userData.clientIds || []
+      };
+      
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({
-          name: userData.name,
-          cpf: userData.cpf,
-          email: userData.email,
-          role: userData.role,
-          company_ids: userData.companyIds,
-          client_ids: userData.clientIds || []
-        })
+        .update(profileData)
         .eq('id', userData.id);
         
       if (updateError) {
@@ -657,84 +581,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (userData.permissions) {
-        const defaultPermissions = {
-          canCreate: userData.role === 'master',
-          canEdit: userData.role === 'master',
-          canDelete: userData.role === 'master',
-          canMarkComplete: true,
-          canMarkDelayed: true,
-          canAddNotes: true,
-          canViewReports: userData.role === 'master',
-          viewAllActions: userData.role === 'master',
-          canEditUser: userData.role === 'master',
-          canEditAction: userData.role === 'master',
-          canEditClient: userData.role === 'master',
-          canDeleteClient: userData.role === 'master',
-          canEditCompany: userData.role === 'master',
-          canDeleteCompany: userData.role === 'master',
-          viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
-        };
+        const permission = createPermission(userData.role, userData.permissions);
         
-        const updatedPermissions = {
+        const permissionsData = {
           user_id: userData.id,
-          can_create: userData.permissions.canCreate !== undefined ? 
-            userData.permissions.canCreate : defaultPermissions.canCreate,
-          can_edit: userData.permissions.canEdit !== undefined ? 
-            userData.permissions.canEdit : defaultPermissions.canEdit,
-          can_delete: userData.permissions.canDelete !== undefined ? 
-            userData.permissions.canDelete : defaultPermissions.canDelete,
-          can_mark_complete: userData.permissions.canMarkComplete !== undefined ? 
-            userData.permissions.canMarkComplete : defaultPermissions.canMarkComplete,
-          can_mark_delayed: userData.permissions.canMarkDelayed !== undefined ? 
-            userData.permissions.canMarkDelayed : defaultPermissions.canMarkDelayed,
-          can_add_notes: userData.permissions.canAddNotes !== undefined ? 
-            userData.permissions.canAddNotes : defaultPermissions.canAddNotes,
-          can_view_reports: userData.permissions.canViewReports !== undefined ? 
-            userData.permissions.canViewReports : defaultPermissions.canViewReports,
-          view_all_actions: userData.permissions.viewAllActions !== undefined ? 
-            userData.permissions.viewAllActions : defaultPermissions.viewAllActions,
-          can_edit_user: userData.permissions.canEditUser !== undefined ? 
-            userData.permissions.canEditUser : defaultPermissions.canEditUser,
-          can_edit_action: userData.permissions.canEditAction !== undefined ? 
-            userData.permissions.canEditAction : defaultPermissions.canEditAction,
-          can_edit_client: userData.permissions.canEditClient !== undefined ? 
-            userData.permissions.canEditClient : defaultPermissions.canEditClient,
-          can_delete_client: userData.permissions.canDeleteClient !== undefined ? 
-            userData.permissions.canDeleteClient : defaultPermissions.canDeleteClient,
-          can_edit_company: userData.permissions.canEditCompany !== undefined ? 
-            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-          can_delete_company: userData.permissions.canDeleteCompany !== undefined ? 
-            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
-          view_only_assigned_actions: userData.permissions.viewOnlyAssignedActions !== undefined ? 
-            userData.permissions.viewOnlyAssignedActions : defaultPermissions.viewOnlyAssignedActions,
+          can_create: permission.canCreate,
+          can_edit: permission.canEdit,
+          can_delete: permission.canDelete,
+          can_mark_complete: permission.canMarkComplete,
+          can_mark_delayed: permission.canMarkDelayed,
+          can_add_notes: permission.canAddNotes,
+          can_view_reports: permission.canViewReports,
+          view_all_actions: permission.viewAllActions,
+          can_edit_user: permission.canEditUser,
+          can_edit_action: permission.canEditAction,
+          can_edit_client: permission.canEditClient,
+          can_delete_client: permission.canDeleteClient,
+          can_edit_company: permission.canEditCompany,
+          can_delete_company: permission.canDeleteCompany,
+          view_only_assigned_actions: permission.viewOnlyAssignedActions
         };
         
-        const { data: existingPermissions, error: permCheckError } = await supabase
+        const { error: permUpdateError } = await supabase
           .from('user_permissions')
-          .select('id')
+          .update(permissionsData)
           .eq('user_id', userData.id);
           
-        if (permCheckError && permCheckError.code !== 'PGRST116') {
-          console.error('Erro ao verificar permissões existentes:', permCheckError);
-        }
-        
-        if (existingPermissions && existingPermissions.length > 0) {
-          const { error: permUpdateError } = await supabase
-            .from('user_permissions')
-            .update(updatedPermissions)
-            .eq('user_id', userData.id);
-            
-          if (permUpdateError) {
-            console.error('Erro ao atualizar permissões:', permUpdateError);
-          }
-        } else {
-          const { error: permInsertError } = await supabase
-            .from('user_permissions')
-            .insert(updatedPermissions);
-            
-          if (permInsertError) {
-            console.error('Erro ao inserir permissões:', permInsertError);
-          }
+        if (permUpdateError) {
+          console.error('Erro ao atualizar permissões:', permUpdateError);
         }
       }
       
@@ -753,12 +627,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             companyIds: userData.companyIds,
             clientIds: userData.clientIds || [],
             password: password,
-            permissions: [{
-              id: "default",
-              name: "Default Permissions",
-              description: "Default user permissions",
-              ...(userData.permissions || {})
-            }]
+            permissions: [permission]
           };
           return updatedUser;
         }
@@ -798,35 +667,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
+    const permission = createPermission(userData.role, userData.permissions);
+
     const updatedUsers = users.map(user => {
       if (user.id === userData.id) {
-        const defaultPermissions = {
-          canCreate: userData.role === 'master',
-          canEdit: userData.role === 'master',
-          canDelete: userData.role === 'master',
-          canMarkComplete: true,
-          canMarkDelayed: true,
-          canAddNotes: true,
-          canViewReports: userData.role === 'master',
-          viewAllActions: userData.role === 'master',
-          canEditUser: userData.role === 'master',
-          canEditAction: userData.role === 'master',
-          canEditClient: userData.role === 'master',
-          canDeleteClient: userData.role === 'master',
-          canEditCompany: userData.role === 'master',
-          canDeleteCompany: userData.role === 'master',
-          viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
-        };
-
-        const updatedPermissions = {
-          ...defaultPermissions,
-          ...(userData.permissions || {}),
-          canEditCompany: userData.permissions?.canEditCompany !== undefined ? 
-            userData.permissions.canEditCompany : defaultPermissions.canEditCompany,
-          canDeleteCompany: userData.permissions?.canDeleteCompany !== undefined ? 
-            userData.permissions.canDeleteCompany : defaultPermissions.canDeleteCompany,
-        };
-
         return {
           ...user,
           name: userData.name,
@@ -835,14 +679,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: userData.role,
           companyIds: userData.companyIds,
           clientIds: userData.clientIds || user.clientIds || [],
-          permissions: [
-            {
-              id: "default",
-              name: "Default Permissions",
-              description: "Default user permissions",
-              ...updatedPermissions
-            }
-          ]
+          permissions: [permission]
         };
       }
       return user;

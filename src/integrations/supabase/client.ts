@@ -26,6 +26,9 @@ export const supabase = createClient<Database>(
   }
 );
 
+// Custom types to help with conversion between application types and database types
+export type JsonObject = { [key: string]: any };
+
 // Enable realtime changes for the actions table
 (async () => {
   try {
