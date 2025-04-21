@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { supabase, JsonObject, convertToUUID } from '@/integrations/supabase/client';
@@ -155,13 +154,15 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Status fixo para novas ações, para garantir que siga a restrição do banco de dados
       const validStatus = 'pendente';
       
-      // Certificar que os IDs são UUIDs válidos
-      const company_id = newActionData.companyId ? 
-                        (newActionData.companyId.includes('-') ? 
-                          newActionData.companyId : 
-                          convertToUUID(newActionData.companyId)) : 
-                        null;
-                        
+      // Garantir que company_id seja um UUID válido verificando com o BD
+      // Caso não seja, ele será convertido para null, o que fará o insert falhar com erro compreensível
+      const company_id = convertToUUID(newActionData.companyId);
+      
+      if (!company_id) {
+        console.error('Company ID inválido ou nulo');
+        throw new Error("ID da empresa inválido");
+      }
+      
       console.log('Company ID processado:', company_id);
       
       // Preparar dados para o Supabase
@@ -169,22 +170,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         title: newActionData.subject,
         description: newActionData.description,
         status: validStatus,
-        responsible_id: newActionData.responsibleId ? 
-                        (newActionData.responsibleId.includes('-') ? 
-                          newActionData.responsibleId : 
-                          convertToUUID(newActionData.responsibleId)) : 
-                        null,
+        responsible_id: convertToUUID(newActionData.responsibleId),
         company_id: company_id,
-        client_id: newActionData.clientId ? 
-                  (newActionData.clientId.includes('-') ? 
-                    newActionData.clientId : 
-                    convertToUUID(newActionData.clientId)) : 
-                  null,
-        requester_id: newActionData.requesterId ? 
-                      (newActionData.requesterId.includes('-') ? 
-                        newActionData.requesterId : 
-                        convertToUUID(newActionData.requesterId)) : 
-                      null,
+        client_id: convertToUUID(newActionData.clientId),
+        requester_id: convertToUUID(newActionData.requesterId),
         due_date: newActionData.endDate.toISOString(),
         notes: [],
         created_at: new Date().toISOString(),
@@ -207,6 +196,11 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         responsible_id: actionForSupabase.responsible_id,
         requester_id: actionForSupabase.requester_id
       });
+      
+      // Validar company_id antes de enviar
+      if (!actionForSupabase.company_id) {
+        throw new Error("É necessário selecionar uma empresa válida");
+      }
       
       const { data: insertedAction, error } = await supabase
         .from('actions')

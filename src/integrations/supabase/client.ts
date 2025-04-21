@@ -30,21 +30,29 @@ export const supabase = createClient<Database>(
 export type JsonObject = { [key: string]: any };
 
 // Helper function to convert timestamp IDs to UUIDs
-export const convertToUUID = (id: string): string => {
+export const convertToUUID = (id: string | null | undefined): string | null => {
+  // Se o id for nulo ou undefined, retornar null
+  if (id === null || id === undefined) {
+    return null;
+  }
+  
   // Check if id is already a valid UUID
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(id)) {
+    console.log(`ID ${id} já é um UUID válido`);
     return id;
   }
   
   // Check if it's a numeric string and format it as a UUID
   if (/^\d+$/.test(id)) {
+    console.log(`Convertendo ID numérico ${id} para UUID`);
     // Generate a deterministic UUID from the original ID to ensure consistency
     return `00000000-0000-4000-a000-${id.padStart(12, '0').substring(0, 12)}`;
   }
   
-  // If it's not a UUID or numeric string, return it as is
-  return id;
+  // Se não for um UUID válido nem um valor numérico, gerar um UUID novo
+  console.log(`ID ${id} não é válido, gerando novo UUID`);
+  return crypto.randomUUID();
 };
 
 // Enable realtime changes for the actions table

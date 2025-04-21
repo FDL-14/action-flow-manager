@@ -156,6 +156,30 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
       console.log('Submitting form with values:', values);
       console.log('Selected company ID:', values.companyId);
       
+      // Verificar se a empresa foi selecionada
+      if (!values.companyId) {
+        toast({
+          title: "Erro",
+          description: "Selecione uma empresa",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Verificar se a empresa selecionada existe no banco
+      const empresa = companies.find(c => c.id === values.companyId);
+      if (!empresa) {
+        console.error(`Empresa com ID ${values.companyId} não encontrada`);
+        toast({
+          title: "Erro",
+          description: `Empresa com ID ${values.companyId} não encontrada`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('Empresa selecionada:', empresa);
+      
       const uploadedAttachments: string[] = [];
       
       if (uploadedFiles.length > 0) {
@@ -182,7 +206,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         }
       }
       
-      // Validate dates before passing to addAction
+      // Validar datas antes de passar para addAction
       const startDate = new Date(values.startDate);
       const endDate = new Date(values.endDate);
       
