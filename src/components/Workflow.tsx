@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -20,6 +19,8 @@ const Workflow: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('Actions no componente Workflow:', actions);
+    
     const sortedActions = [...actions].sort((a, b) => {
       const statusPriority = {
         atrasado: 0,
@@ -39,6 +40,7 @@ const Workflow: React.FC = () => {
       ? sortedActions 
       : sortedActions.filter(action => action.status === filterStatus);
     
+    console.log('Ações filtradas para exibição:', filteredActions);
     setWorkflowItems(filteredActions);
   }, [actions, filterStatus]);
 
@@ -83,7 +85,6 @@ const Workflow: React.FC = () => {
 
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Criar link de download com fetch para tratar como blob
       fetch(url)
         .then(response => {
           if (!response.ok) {
@@ -92,15 +93,12 @@ const Workflow: React.FC = () => {
           return response.blob();
         })
         .then(blob => {
-          // Criar URL do objeto blob
           const blobUrl = window.URL.createObjectURL(blob);
           
-          // Criar elemento âncora temporário para o download
           const a = document.createElement('a');
           a.style.display = 'none';
           a.href = blobUrl;
           
-          // Adicionar a extensão do arquivo se não existir no nome
           const extension = url.split('.').pop()?.toLowerCase();
           const hasExtension = filename.includes('.');
           
@@ -110,14 +108,11 @@ const Workflow: React.FC = () => {
           
           a.download = filename;
           
-          // Adicionar ao DOM, clicar e remover
           document.body.appendChild(a);
           a.click();
           
-          // Pequeno timeout para garantir que o download inicie antes de remover
           setTimeout(() => {
             document.body.removeChild(a);
-            // Liberar objeto URL
             window.URL.revokeObjectURL(blobUrl);
           }, 100);
           
@@ -154,6 +149,7 @@ const Workflow: React.FC = () => {
   };
 
   const getWorkflowTimeline = () => {
+    console.log('Renderizando timeline com', workflowItems.length, 'itens');
     return workflowItems.map(action => (
       <div key={action.id} className="workflow-item mb-4">
         <div className="flex">
@@ -361,6 +357,10 @@ const Workflow: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
+      
+      <div className="p-4 bg-gray-50 rounded-lg mt-4 text-sm">
+        <p className="text-gray-600">Dica: Se ações foram criadas mas não aparecem, tente atualizar a página.</p>
+      </div>
     </div>
   );
 };

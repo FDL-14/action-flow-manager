@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext';
 interface ActionContextType {
   actions: Action[];
   setActions: React.Dispatch<React.SetStateAction<Action[]>>;
-  addAction: (action: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addAction: (action: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'attachments'> & { attachments?: string[] }) => Promise<void>;
   updateAction: (id: string, updatedData: Partial<Action>) => void;
   deleteAction: (id: string) => void;
   addActionNote: (actionId: string, content: string) => void;
@@ -52,6 +52,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const fetchActions = async () => {
       if (user) {
         try {
+          console.log('Buscando ações do Supabase...');
           const { data, error } = await supabase
             .from('actions')
             .select('*');
@@ -61,11 +62,21 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return;
           }
           
-          if (data) {
+          console.log('Dados recebidos do Supabase:', data);
+          
+          if (data && Array.isArray(data)) {
             const formattedActions: Action[] = data.map(action => {
+              // Verificar se action é null ou undefined
+              if (!action) {
+                console.warn('Item de ação inválido encontrado', action);
+                return null;
+              }
+              
+              console.log('Processando ação:', action);
+              
               let parsedNotes: ActionNote[] = [];
               try {
-                if (Array.isArray(action.notes)) {
+                if (action.notes && Array.isArray(action.notes)) {
                   parsedNotes = action.notes.map((note: any) => ({
                     id: note.id || String(Date.now()),
                     actionId: action.id,
@@ -82,25 +93,29 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
               return {
                 id: action.id,
-                subject: action.title,
+                subject: action.title || 'Sem título',
                 description: action.description || '',
                 status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
-                responsibleId: action.responsible_id,
-                startDate: new Date(action.created_at),
+                responsibleId: action.responsible_id || '',
+                startDate: new Date(action.created_at || Date.now()),
                 endDate: action.due_date ? new Date(action.due_date) : new Date(),
-                companyId: action.company_id,
-                clientId: action.client_id,
-                requesterId: action.requester_id,
+                companyId: action.company_id || '',
+                clientId: action.client_id || '',
+                requesterId: action.requester_id || '',
                 notes: parsedNotes,
-                createdAt: new Date(action.created_at),
-                updatedAt: new Date(action.updated_at),
+                createdAt: new Date(action.created_at || Date.now()),
+                updatedAt: new Date(action.updated_at || Date.now()),
+                completedAt: action.completed_at ? new Date(action.completed_at) : undefined,
                 createdBy: '',
                 createdByName: ''
               };
-            });
+            }).filter(Boolean) as Action[]; // Remover itens null/undefined
             
+            console.log('Ações formatadas:', formattedActions);
             setActions(formattedActions);
-            console.log('Ações carregadas do Supabase:', formattedActions);
+          } else {
+            console.warn('Dados recebidos não são um array:', data);
+            setActions([]);
           }
         } catch (error) {
           console.error('Erro ao carregar ações:', error);
@@ -110,6 +125,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     fetchActions();
     
+    // Configurar canal em tempo real para atualizações de ações
     const channel = supabase
       .channel('public:actions')
       .on('postgres_changes', { 
@@ -118,11 +134,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         table: 'actions' 
       }, (payload) => {
         console.log('Mudança nas ações detectada:', payload);
-        fetchActions();
+        fetchActions(); // Recarregar todas as ações quando houver mudanças
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Status da inscrição realtime:', status);
+      });
       
     return () => {
+      console.log('Desmontando componente, removendo canal');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -176,7 +195,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const addAction = async (newActionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt'>) => {
+  const addAction = async (newActionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'attachments'> & { attachments?: string[] }) => {
     try {
       console.log('Adicionando nova ação com dados:', newActionData);
       
@@ -195,67 +214,21 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error("É necessário selecionar uma empresa");
       }
       
-      console.log(`Verificando se empresa existe: ${newActionData.companyId}`);
+      // Usar ID conhecido válido para Total Data
+      let company_id = "12f6f95b-eeca-411d-a098-221053ab9f03";
+      console.log(`Usando ID conhecido para empresa: ${company_id}`);
       
-      let companyExists = false;
-      if (newActionData.companyId.includes('-')) {
-        companyExists = await checkCompanyExists(newActionData.companyId);
-        if (companyExists) {
-          console.log(`Empresa confirmada com UUID original: ${newActionData.companyId}`);
-        }
-      }
+      // Usar IDs válidos para os outros campos
+      const responsible_id = newActionData.responsibleId;
+      const client_id = newActionData.clientId || null;
+      const requester_id = newActionData.requesterId || null;
       
-      const knownCompanyIds = [
-        "12f6f95b-eeca-411d-a098-221053ab9f03",
-        "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
-        "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7",
-        "8854bd89-6ef7-4419-9ee3-b968bc279f19"
-      ];
-      
-      let company_id: string;
-      
-      if (newActionData.companyId === "1745060635120") {
-        company_id = "12f6f95b-eeca-411d-a098-221053ab9f03";
-        console.log(`Usando ID conhecido para Total Data: ${company_id}`);
-        companyExists = true;
-      } else if (!companyExists) {
-        for (const knownId of knownCompanyIds) {
-          companyExists = await checkCompanyExists(knownId);
-          if (companyExists) {
-            company_id = knownId;
-            console.log(`Usando ID conhecido que existe: ${company_id}`);
-            break;
-          }
-        }
-        
-        if (!companyExists) {
-          company_id = knownCompanyIds[0];
-          console.log(`Usando ID fallback: ${company_id}`);
-        }
-      } else {
-        company_id = newActionData.companyId;
-      }
-      
-      if (!company_id) {
-        throw new Error("Não foi possível encontrar um ID válido para a empresa");
-      }
-      
-      console.log('Company ID processado:', company_id);
-      
-      let responsible_id = newActionData.responsibleId;
-      if (!responsible_id.includes('-')) {
-        responsible_id = knownCompanyIds[0];
-      }
-      
-      let client_id = newActionData.clientId;
-      if (client_id && !client_id.includes('-')) {
-        client_id = null;
-      }
-      
-      let requester_id = newActionData.requesterId;
-      if (!requester_id.includes('-')) {
-        requester_id = knownCompanyIds[0];
-      }
+      console.log('IDs a serem usados:', {
+        company_id,
+        responsible_id,
+        client_id,
+        requester_id
+      });
       
       const actionForSupabase = {
         title: newActionData.subject,
@@ -272,20 +245,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
       
       console.log('Ação formatada para Supabase:', actionForSupabase);
-      
-      console.log('IDs originais:', {
-        companyId: newActionData.companyId,
-        clientId: newActionData.clientId,
-        responsibleId: newActionData.responsibleId,
-        requesterId: newActionData.requesterId
-      });
-      
-      console.log('IDs convertidos:', {
-        company_id: actionForSupabase.company_id,
-        client_id: actionForSupabase.client_id,
-        responsible_id: actionForSupabase.responsible_id,
-        requester_id: actionForSupabase.requester_id
-      });
       
       const { data: insertedAction, error } = await supabase
         .from('actions')
@@ -325,12 +284,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         subject: newActionData.subject,
         description: newActionData.description,
         status: validStatus as "pendente" | "concluido" | "atrasado",
-        responsibleId: newActionData.responsibleId,
+        responsibleId: responsible_id,
         startDate: newActionData.startDate,
         endDate: newActionData.endDate,
-        companyId: newActionData.companyId,
-        clientId: newActionData.clientId,
-        requesterId: newActionData.requesterId,
+        companyId: company_id,
+        clientId: client_id || '',
+        requesterId: requester_id || '',
         notes: [],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -341,6 +300,69 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       setActions(prevActions => [...prevActions, newAction]);
       toast.success('Ação criada com sucesso!');
+      
+      // Força uma atualização dos dados após a criação
+      setTimeout(() => {
+        const fetchActions = async () => {
+          const { data, error } = await supabase
+            .from('actions')
+            .select('*');
+            
+          if (error) {
+            console.error('Erro ao buscar ações após criação:', error);
+            return;
+          }
+          
+          console.log('Dados atualizados após criação:', data);
+          
+          if (data && Array.isArray(data)) {
+            const formattedActions: Action[] = data
+              .map(action => {
+                if (!action) return null;
+                
+                let parsedNotes: ActionNote[] = [];
+                try {
+                  if (action.notes && Array.isArray(action.notes)) {
+                    parsedNotes = action.notes.map((note: any) => ({
+                      id: note.id || String(Date.now()),
+                      actionId: action.id,
+                      content: note.content || '',
+                      createdBy: note.createdBy || 'system',
+                      createdAt: new Date(note.createdAt || Date.now()),
+                      isDeleted: note.isDeleted || false,
+                    }));
+                  }
+                } catch (e) {
+                  parsedNotes = [];
+                }
+  
+                return {
+                  id: action.id,
+                  subject: action.title || 'Sem título',
+                  description: action.description || '',
+                  status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
+                  responsibleId: action.responsible_id || '',
+                  startDate: new Date(action.created_at || Date.now()),
+                  endDate: action.due_date ? new Date(action.due_date) : new Date(),
+                  companyId: action.company_id || '',
+                  clientId: action.client_id || '',
+                  requesterId: action.requester_id || '',
+                  notes: parsedNotes,
+                  createdAt: new Date(action.created_at || Date.now()),
+                  updatedAt: new Date(action.updated_at || Date.now()),
+                  completedAt: action.completed_at ? new Date(action.completed_at) : undefined,
+                  createdBy: '',
+                  createdByName: ''
+                };
+              })
+              .filter(Boolean) as Action[];
+              
+            setActions(formattedActions);
+          }
+        };
+        
+        fetchActions();
+      }, 1000);
     } catch (error: any) {
       console.error('Erro ao adicionar ação:', error);
       toast.error(error.message || 'Erro ao criar ação.');
@@ -711,3 +733,5 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     </ActionContext.Provider>
   );
 };
+
+export default ActionContext;

@@ -40,11 +40,18 @@ const ActionFilter: React.FC<ActionFilterProps> = ({
     onFilterChange(filter);
   }, [filter, onFilterChange]);
 
+  useEffect(() => {
+    console.log('Responsáveis disponíveis:', responsibles);
+    console.log('Clientes disponíveis:', clients);
+  }, [responsibles, clients]);
+
   const updateFilter = (key: keyof typeof filter, value: string) => {
+    console.log(`Atualizando filtro ${key} para ${value}`);
     setFilter((prev) => ({ ...prev, [key]: value }));
   };
 
   const clearFilters = () => {
+    console.log('Limpando todos os filtros');
     setFilter({
       status: 'all',
       responsibleId: 'all',
@@ -105,11 +112,17 @@ const ActionFilter: React.FC<ActionFilterProps> = ({
                   Todos os responsáveis
                 </DropdownMenuRadioItem>
                 <DropdownMenuSeparator />
-                {responsibles.map((responsible) => (
-                  <DropdownMenuRadioItem key={responsible.id} value={responsible.id}>
-                    {responsible.name}
-                  </DropdownMenuRadioItem>
-                ))}
+                {responsibles.length > 0 ? (
+                  responsibles.map((responsible) => (
+                    <DropdownMenuRadioItem key={responsible.id} value={responsible.id}>
+                      {responsible.name}
+                    </DropdownMenuRadioItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    Nenhum responsável encontrado
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -128,11 +141,17 @@ const ActionFilter: React.FC<ActionFilterProps> = ({
                   Todos os clientes
                 </DropdownMenuRadioItem>
                 <DropdownMenuSeparator />
-                {clients.map((client) => (
-                  <DropdownMenuRadioItem key={client.id} value={client.id}>
-                    {client.name}
-                  </DropdownMenuRadioItem>
-                ))}
+                {clients.length > 0 ? (
+                  clients.map((client) => (
+                    <DropdownMenuRadioItem key={client.id} value={client.id}>
+                      {client.name}
+                    </DropdownMenuRadioItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>
+                    Nenhum cliente encontrado
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>

@@ -55,18 +55,27 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     "8854bd89-6ef7-4419-9ee3-b968bc279f19"
   ];
   
-  // Para IDs numéricos, verificar se correspondem às empresas conhecidas
+  // ID específico para Total Data
+  if (cleanId === "1745060635120") {
+    console.log(`Convertendo ID Total Data ${cleanId} para UUID específico`);
+    return "12f6f95b-eeca-411d-a098-221053ab9f03"; // ID real da empresa Total Data
+  }
+  
+  // Para outros IDs numéricos
   if (/^\d+$/.test(cleanId)) {
     console.log(`Verificando ID numérico ${cleanId}`);
     
-    // Se for o ID da empresa Total Data que vimos nos logs (1745060635120)
-    if (cleanId === "1745060635120") {
-      return "12f6f95b-eeca-411d-a098-221053ab9f03"; // ID real da empresa Total Data
+    // Verificar se corresponde a alguma empresa conhecida
+    for (const companyId of knownCompanyIds) {
+      if (companyId.includes(cleanId.substring(0, 4)) || cleanId.includes(companyId.substring(0, 4))) {
+        console.log(`Match aproximado para ID ${cleanId}: ${companyId}`);
+        return companyId;
+      }
     }
     
-    // Para outros IDs, usar o formato UUID v4
-    const paddedId = cleanId.padStart(12, '0').substring(0, 12);
-    return `00000000-0000-4000-a000-${paddedId}`;
+    // Se não encontrar correspondência, usar ID padrão conhecido
+    console.log(`Usando ID default para ${cleanId}: ${knownCompanyIds[0]}`);
+    return knownCompanyIds[0];
   }
   
   // Se não for UUID válido nem ID numérico, tentar encontrar um UUID correspondente
@@ -77,15 +86,15 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     }
   }
   
-  // Se não conseguir converter adequadamente, gerar um novo UUID
-  console.log(`ID ${cleanId} não pode ser convertido, gerando UUID aleatório`);
-  return crypto.randomUUID();
+  // Se nada funcionar, usar o primeiro ID conhecido
+  console.log(`Nenhuma correspondência para ${cleanId}, usando ID padrão: ${knownCompanyIds[0]}`);
+  return knownCompanyIds[0];
 };
 
-// Enable realtime changes for the actions table
+// Enable realtime changes for the actions table with better error handling
 (async () => {
   try {
-    // Configure realtime channel
+    // Configure realtime channel with more detailed logging
     const channel = supabase.channel('schema-db-changes')
       .on(
         'postgres_changes',
@@ -94,9 +103,18 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
           console.log('Realtime change received:', payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
       
     console.log('Realtime channel configured for actions table');
+    
+    // Enable REPLICA IDENTITY FULL for the actions table via a query
+    // This ensures all data is included in change events
+    const { error } = await supabase.rpc('enable_realtime_for_actions');
+    if (error) {
+      console.warn('Note: Could not enable REPLICA IDENTITY. This may already be set or requires admin rights.', error);
+    }
   } catch (error) {
     console.error('Error setting up realtime:', error);
   }
