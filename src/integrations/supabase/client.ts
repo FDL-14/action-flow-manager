@@ -109,12 +109,9 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
       
     console.log('Realtime channel configured for actions table');
     
-    // Enable REPLICA IDENTITY FULL for the actions table via a query
-    // This ensures all data is included in change events
-    const { error } = await supabase.rpc('enable_realtime_for_actions');
-    if (error) {
-      console.warn('Note: Could not enable REPLICA IDENTITY. This may already be set or requires admin rights.', error);
-    }
+    // Fix: Remove the RPC call that's causing the type error
+    // Instead, log a message about enabling realtime
+    console.log('Note: For full realtime functionality, make sure REPLICA IDENTITY is set to FULL for the actions table');
   } catch (error) {
     console.error('Error setting up realtime:', error);
   }
