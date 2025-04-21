@@ -5,11 +5,37 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 import { additionalCompanies, additionalUsers, defaultMasterUser } from '@/lib/mock-data';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated, users, addUser } = useAuth();
   const { companies, addCompany } = useCompany();
+
+  // Verificar se o Supabase está conectado
+  useEffect(() => {
+    const checkSupabaseConnection = async () => {
+      try {
+        const { data, error } = await supabase.from('actions').select('count').limit(1);
+        
+        if (error) {
+          console.error('Erro ao conectar ao Supabase:', error);
+          toast.error('Erro de conexão com o banco de dados', {
+            description: 'Utilizando modo offline. Algumas funcionalidades podem estar indisponíveis.'
+          });
+        } else {
+          console.log('Conectado ao Supabase com sucesso!');
+          toast.success('Conectado ao banco de dados', {
+            description: 'Sistema online. Todas as mudanças serão sincronizadas.'
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao verificar conexão com Supabase:', error);
+      }
+    };
+    
+    checkSupabaseConnection();
+  }, []);
 
   // Função para inicializar os dados de exemplo - modificada para verificar se já foram inicializados
   useEffect(() => {

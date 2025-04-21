@@ -9,4 +9,39 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(
+  SUPABASE_URL, 
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storage: localStorage
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
+  }
+);
+
+// Habilitar alterações em tempo real para a tabela de ações
+(async () => {
+  try {
+    // Configurar canal de realtime
+    const channel = supabase.channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'actions' },
+        (payload) => {
+          console.log('Realtime change received:', payload);
+        }
+      )
+      .subscribe();
+      
+    console.log('Realtime channel configured for actions table');
+  } catch (error) {
+    console.error('Error setting up realtime:', error);
+  }
+})();
