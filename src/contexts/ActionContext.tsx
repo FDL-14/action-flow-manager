@@ -222,7 +222,20 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (updatedData.companyId) supabaseData.company_id = updatedData.companyId;
       if (updatedData.clientId) supabaseData.client_id = updatedData.clientId;
       if (updatedData.requesterId) supabaseData.requester_id = updatedData.requesterId;
-      if (updatedData.notes) supabaseData.notes = updatedData.notes;
+      
+      // For notes, we need to serialize to a format that Supabase can store
+      if (updatedData.notes) {
+        // Convert ActionNote[] to a JSON-compatible object array
+        const jsonNotes = updatedData.notes.map(note => ({
+          id: note.id,
+          actionId: note.actionId,
+          content: note.content,
+          createdBy: note.createdBy,
+          createdAt: note.createdAt.toISOString(),
+          isDeleted: note.isDeleted
+        }));
+        supabaseData.notes = jsonNotes;
+      }
       
       // Adicionar timestamp de atualização
       supabaseData.updated_at = new Date().toISOString();
@@ -307,10 +320,20 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (action) {
         const updatedNotes = [...action.notes, newNote];
         
+        // Convert ActionNote[] to a JSON-compatible format for Supabase
+        const jsonNotes = updatedNotes.map(note => ({
+          id: note.id,
+          actionId: note.actionId,
+          content: note.content,
+          createdBy: note.createdBy,
+          createdAt: note.createdAt instanceof Date ? note.createdAt.toISOString() : note.createdAt,
+          isDeleted: note.isDeleted
+        }));
+        
         // Atualizar notas na tabela de ações
         const { error: updateError } = await supabase
           .from('actions')
-          .update({ notes: updatedNotes })
+          .update({ notes: jsonNotes })
           .eq('id', actionId);
           
         if (updateError) {

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -99,18 +98,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
 
-  // Carregar usuários do Supabase ou localStorage
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        // Primeiro tenta carregar do Supabase
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('*');
 
         if (error) {
           console.error('Erro ao carregar perfis do Supabase:', error);
-          // Se falhar, carrega do localStorage como fallback
           loadFromLocalStorage();
           return;
         }
@@ -118,36 +114,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (profiles && profiles.length > 0) {
           console.log('Perfis carregados do Supabase:', profiles);
           
-          // Converter perfis do Supabase para o formato de usuários da aplicação
           const loadedUsers: User[] = profiles.map(profile => {
-            // Buscar permissões do usuário
+            const userRole: 'user' | 'master' = 
+              profile.role === 'master' ? 'master' : 'user';
+              
             return {
               id: profile.id,
               name: profile.name,
               cpf: profile.cpf || '',
               email: profile.email || `${profile.cpf}@example.com`,
-              role: profile.role as 'user' | 'master' || 'user',
+              role: userRole,
               companyIds: profile.company_ids || ['1'],
               clientIds: profile.client_ids || [],
+              password: undefined,
               permissions: [{
                 id: "default",
                 name: "Default Permissions",
                 description: "Default user permissions",
-                canCreate: profile.role === 'master',
-                canEdit: profile.role === 'master',
-                canDelete: profile.role === 'master',
+                canCreate: userRole === 'master',
+                canEdit: userRole === 'master',
+                canDelete: userRole === 'master',
                 canMarkComplete: true,
                 canMarkDelayed: true,
                 canAddNotes: true,
-                canViewReports: profile.role === 'master',
-                viewAllActions: profile.role === 'master',
-                canEditUser: profile.role === 'master',
-                canEditAction: profile.role === 'master',
-                canEditClient: profile.role === 'master',
-                canDeleteClient: profile.role === 'master',
-                canEditCompany: profile.role === 'master',
-                canDeleteCompany: profile.role === 'master',
-                viewOnlyAssignedActions: profile.role !== 'master',
+                canViewReports: userRole === 'master',
+                viewAllActions: userRole === 'master',
+                canEditUser: userRole === 'master',
+                canEditAction: userRole === 'master',
+                canEditClient: userRole === 'master',
+                canDeleteClient: userRole === 'master',
+                canEditCompany: userRole === 'master',
+                canDeleteCompany: userRole === 'master',
+                viewOnlyAssignedActions: userRole !== 'master',
               }]
             };
           });
@@ -183,7 +181,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const parsedUsers = JSON.parse(savedUsers);
           
           const updatedUsers = parsedUsers.map((u: User) => {
-            // Ensure users have proper email, companyIds, clientIds
             const updatedUser = {
               ...u,
               email: u.email || `${u.cpf}@example.com`,
@@ -191,7 +188,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               clientIds: u.clientIds || []
             };
             
-            // Ensure all users have the required permission properties
             if (updatedUser.permissions && updatedUser.permissions.length > 0) {
               updatedUser.permissions = updatedUser.permissions.map(permission => ({
                 ...permission,
@@ -209,24 +205,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Erro ao analisar usuários do localStorage:', error);
         }
       } else {
-        // Initialize with default master user
         setUsers([defaultMasterUser]);
         localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
       }
     };
 
-    // Inicializar carregando usuários
     loadUsers();
 
-    // Configurar listener para mudanças de autenticação do Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Evento de autenticação:', event, session);
         if (session) {
-          // Atualizar estado de autenticação quando o usuário fizer login
           fetchUserProfile(session.user.id);
         } else {
-          // Limpar estado quando o usuário fizer logout
           setUser(null);
           setIsAuthenticated(false);
           localStorage.removeItem('user');
@@ -241,26 +232,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      // Buscar perfil do usuário do Supabase
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-
+        
       if (error) {
         console.error('Erro ao buscar perfil do usuário:', error);
         return;
       }
 
       if (profile) {
-        // Buscar permissões do usuário
         const { data: permissions, error: permissionsError } = await supabase
           .from('user_permissions')
           .select('*')
           .eq('user_id', userId)
           .single();
-
+        
         if (permissionsError && permissionsError.code !== 'PGRST116') {
           console.error('Erro ao buscar permissões do usuário:', permissionsError);
         }
@@ -322,18 +311,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Função para normalizar CPF (remover caracteres não numéricos)
   const normalizeCPF = (cpf: string): string => {
     return cpf.replace(/\D/g, '');
   };
 
   const login = async (cpf: string, password: string): Promise<boolean> => {
     try {
-      // Normaliza o CPF removendo pontos, traços e espaços
       const normalizedCPF = normalizeCPF(cpf);
       console.log("Tentando login com CPF normalizado:", normalizedCPF);
       
-      // Primeiro, tenta autenticar com Supabase
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -341,15 +327,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (profilesError) {
         console.error('Erro ao buscar perfil:', profilesError);
-        // Fallback para login local
         return loginWithLocalStorage(normalizedCPF, password);
       }
       
       if (profiles && profiles.length > 0) {
         const profile = profiles[0];
         
-        // Verifica a senha (em uma aplicação real, usaria autenticação adequada)
-        if (password === '@54321' || password === profile.password) {
+        const localProfiles = JSON.parse(localStorage.getItem('users') || '[]');
+        const localProfile = localProfiles.find((p: any) => p.id === profile.id);
+        
+        if (password === '@54321' || (localProfile && password === localProfile.password)) {
           await fetchUserProfile(profile.id);
           
           toast({
@@ -361,20 +348,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Se falhou no Supabase, tenta login local
       return loginWithLocalStorage(normalizedCPF, password);
     } catch (error) {
       console.error('Erro no login:', error);
       return loginWithLocalStorage(normalizedCPF, password);
     }
   };
-  
+
   const loginWithLocalStorage = (normalizedCPF: string, password: string): boolean => {
-    // Verifica se há usuário com este CPF normalizado
     const foundUser = users.find(u => normalizeCPF(u.cpf) === normalizedCPF);
     
     if (foundUser && (password === '@54321' || password === foundUser.password)) {
-      // Ensure user has all required permission properties before login
       const updatedUser = {
         ...foundUser,
         permissions: foundUser.permissions.map(permission => ({
@@ -405,13 +389,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      // Tenta fazer logout no Supabase
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Erro ao fazer logout do Supabase:', error);
     }
     
-    // Limpa estado local de qualquer forma
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('user');
@@ -448,7 +430,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }): Promise<boolean> => {
     try {
-      // Primeiro tenta adicionar no Supabase
       const userId = Date.now().toString();
       
       const { data: insertedProfile, error } = await supabase
@@ -467,13 +448,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Erro ao inserir perfil no Supabase:', error);
-        // Fallback para salvar localmente
         return addUserToLocalStorage(userData);
       }
       
       console.log('Perfil inserido com sucesso:', insertedProfile);
       
-      // Adicionar permissões do usuário
       const defaultPermissions = {
         canCreate: userData.role === 'master',
         canEdit: userData.role === 'master',
@@ -492,7 +471,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         viewOnlyAssignedActions: userData.role !== 'master' && !userData.permissions?.viewAllActions,
       };
       
-      // Incluir permissões específicas se fornecidas
       const permissionsToInsert = {
         user_id: insertedProfile.id,
         can_create: userData.permissions?.canCreate ?? defaultPermissions.canCreate,
@@ -518,11 +496,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (permissionsError) {
         console.error('Erro ao inserir permissões no Supabase:', permissionsError);
-        // Continue mesmo com erro nas permissões, pois usaremos os valores padrão
       }
       
-      // Atualizar state local e localStorage
-      loadUserFromProfile(insertedProfile.id);
+      const localUserData = {
+        ...insertedProfile,
+        password: '@54321',
+        role: userData.role,
+        permissions: [{
+          id: "default",
+          name: "Default Permissions",
+          description: "Default user permissions",
+          ...defaultPermissions,
+          ...(userData.permissions || {})
+        }]
+      };
+      
+      setUsers(prevUsers => {
+        const updatedUsers = [...prevUsers, localUserData];
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        return updatedUsers;
+      });
       
       toast({
         title: "Usuário criado",
@@ -532,11 +525,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error) {
       console.error('Erro ao adicionar usuário:', error);
-      // Fallback para salvar localmente
       return addUserToLocalStorage(userData);
     }
   };
-  
+
   const addUserToLocalStorage = (userData: any): boolean => {
     if (users.some(u => normalizeCPF(u.cpf) === normalizeCPF(userData.cpf))) {
       toast({
@@ -599,98 +591,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     return true;
   };
-  
-  const loadUserFromProfile = async (profileId: string) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single();
-        
-      if (error) {
-        console.error('Erro ao carregar perfil atualizado:', error);
-        return;
-      }
-      
-      // Buscar permissões
-      const { data: permissions, error: permissionsError } = await supabase
-        .from('user_permissions')
-        .select('*')
-        .eq('user_id', profileId)
-        .single();
-        
-      if (permissionsError && permissionsError.code !== 'PGRST116') {
-        console.error('Erro ao buscar permissões:', permissionsError);
-      }
-      
-      // Criar ou atualizar usuário local
-      const userPermissions = permissions || {
-        can_create: profile.role === 'master',
-        can_edit: profile.role === 'master',
-        can_delete: profile.role === 'master',
-        can_mark_complete: true,
-        can_mark_delayed: true,
-        can_add_notes: true,
-        can_view_reports: profile.role === 'master',
-        view_all_actions: profile.role === 'master',
-        can_edit_user: profile.role === 'master',
-        can_edit_action: profile.role === 'master',
-        can_edit_client: profile.role === 'master',
-        can_delete_client: profile.role === 'master',
-        can_edit_company: profile.role === 'master',
-        can_delete_company: profile.role === 'master',
-        view_only_assigned_actions: profile.role !== 'master'
-      };
-      
-      const userObject: User = {
-        id: profile.id,
-        name: profile.name,
-        cpf: profile.cpf || '',
-        email: profile.email || `${profile.cpf}@example.com`,
-        role: profile.role || 'user',
-        companyIds: profile.company_ids || ['1'],
-        clientIds: profile.client_ids || [],
-        permissions: [{
-          id: "default",
-          name: "Default Permissions",
-          description: "Default user permissions",
-          canCreate: userPermissions.can_create,
-          canEdit: userPermissions.can_edit,
-          canDelete: userPermissions.can_delete,
-          canMarkComplete: userPermissions.can_mark_complete,
-          canMarkDelayed: userPermissions.can_mark_delayed,
-          canAddNotes: userPermissions.can_add_notes,
-          canViewReports: userPermissions.can_view_reports,
-          viewAllActions: userPermissions.view_all_actions,
-          canEditUser: userPermissions.can_edit_user,
-          canEditAction: userPermissions.can_edit_action,
-          canEditClient: userPermissions.can_edit_client,
-          canDeleteClient: userPermissions.can_delete_client,
-          canEditCompany: userPermissions.can_edit_company,
-          canDeleteCompany: userPermissions.can_delete_company,
-          viewOnlyAssignedActions: userPermissions.view_only_assigned_actions,
-        }]
-      };
-      
-      // Atualizar lista de usuários local
-      setUsers(prevUsers => {
-        const updatedUsers = [...prevUsers];
-        const existingUserIndex = updatedUsers.findIndex(u => u.id === userObject.id);
-        
-        if (existingUserIndex >= 0) {
-          updatedUsers[existingUserIndex] = userObject;
-        } else {
-          updatedUsers.push(userObject);
-        }
-        
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-        return updatedUsers;
-      });
-    } catch (error) {
-      console.error('Erro ao processar usuário após adição:', error);
-    }
-  };
 
   const updateUser = async (userData: { 
     id: string;
@@ -719,7 +619,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }): Promise<boolean> => {
     try {
-      // Verificar se já existe outro usuário com este CPF
       const { data: existingProfiles, error: checkError } = await supabase
         .from('profiles')
         .select('id')
@@ -728,7 +627,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (checkError) {
         console.error('Erro ao verificar CPF existente:', checkError);
-        // Fallback para atualização local
         return updateUserInLocalStorage(userData);
       }
       
@@ -741,7 +639,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Atualizar perfil no Supabase
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -756,11 +653,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (updateError) {
         console.error('Erro ao atualizar perfil:', updateError);
-        // Fallback para atualização local
         return updateUserInLocalStorage(userData);
       }
       
-      // Atualizar permissões
       if (userData.permissions) {
         const defaultPermissions = {
           canCreate: userData.role === 'master',
@@ -814,7 +709,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             userData.permissions.viewOnlyAssignedActions : defaultPermissions.viewOnlyAssignedActions,
         };
         
-        // Verificar se já existem permissões para este usuário
         const { data: existingPermissions, error: permCheckError } = await supabase
           .from('user_permissions')
           .select('id')
@@ -825,7 +719,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (existingPermissions && existingPermissions.length > 0) {
-          // Atualizar permissões existentes
           const { error: permUpdateError } = await supabase
             .from('user_permissions')
             .update(updatedPermissions)
@@ -835,7 +728,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Erro ao atualizar permissões:', permUpdateError);
           }
         } else {
-          // Inserir novas permissões
           const { error: permInsertError } = await supabase
             .from('user_permissions')
             .insert(updatedPermissions);
@@ -846,12 +738,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Carregar usuário atualizado
-      await loadUserFromProfile(userData.id);
+      const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
+      const localUser = localUsers.find((u: any) => u.id === userData.id);
+      const password = localUser?.password;
       
-      // Atualizar usuário atual se necessário
+      const updatedUsers = users.map(u => {
+        if (u.id === userData.id) {
+          const updatedUser = {
+            ...u,
+            name: userData.name,
+            cpf: userData.cpf,
+            email: userData.email,
+            role: userData.role,
+            companyIds: userData.companyIds,
+            clientIds: userData.clientIds || [],
+            password: password,
+            permissions: [{
+              id: "default",
+              name: "Default Permissions",
+              description: "Default user permissions",
+              ...(userData.permissions || {})
+            }]
+          };
+          return updatedUser;
+        }
+        return u;
+      });
+      
+      setUsers(updatedUsers);
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+      
       if (user && user.id === userData.id) {
-        const updatedUserData = users.find(u => u.id === userData.id);
+        const updatedUserData = updatedUsers.find(u => u.id === userData.id);
         if (updatedUserData) {
           setUser(updatedUserData);
           localStorage.setItem('user', JSON.stringify(updatedUserData));
@@ -866,11 +784,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error) {
       console.error('Erro na atualização de usuário:', error);
-      // Fallback para atualização local
       return updateUserInLocalStorage(userData);
     }
   };
-  
+
   const updateUserInLocalStorage = (userData: any): boolean => {
     if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
       toast({
@@ -972,7 +889,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Tenta atualizar a senha no Supabase
       const { error } = await supabase
         .from('profiles')
         .update({ password: newPassword })
@@ -980,10 +896,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (error) {
         console.error('Erro ao atualizar senha no Supabase:', error);
-        // Continua com atualização local
       }
       
-      // Sempre atualiza localmente
       const updatedUsers = users.map(u => {
         if (u.id === userId) {
           return {
@@ -1024,7 +938,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetUserPassword = async (userId: string) => {
     try {
-      // Tenta redefinir senha no Supabase
       const { error } = await supabase
         .from('profiles')
         .update({ password: undefined })
@@ -1032,10 +945,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (error) {
         console.error('Erro ao redefinir senha no Supabase:', error);
-        // Continua com redefinição local
       }
       
-      // Sempre atualiza localmente
       const updatedUsers = users.map(u => {
         if (u.id === userId) {
           return {
@@ -1067,17 +978,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const canUserEditResponsibles = () => {
     if (!user) return false;
     
-    // Admin or master can always edit
     if (user.role === 'master') return true;
     
-    // Check for specific permission
     return user.permissions.some(p => p.canEdit);
   };
 
   const canUserDeleteResponsibles = () => {
     if (!user) return false;
     
-    // Only admin/master can delete
     return user.role === 'master';
   };
 

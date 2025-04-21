@@ -26,10 +26,10 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Habilitar alterações em tempo real para a tabela de ações
+// Enable realtime changes for the actions table
 (async () => {
   try {
-    // Configurar canal de realtime
+    // Configure realtime channel
     const channel = supabase.channel('schema-db-changes')
       .on(
         'postgres_changes',
