@@ -29,7 +29,7 @@ export const supabase = createClient<Database>(
 // Custom types to help with conversion between application types and database types
 export type JsonObject = { [key: string]: any };
 
-// Updated function to handle UUID conversion correctly
+// Improved function to handle UUID conversion correctly
 export const convertToUUID = (id: string | null | undefined): string | null => {
   // If id is null or undefined, return null
   if (id === null || id === undefined) {
@@ -42,69 +42,73 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
   // Check if the ID is already a valid UUID (standard format)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(cleanId)) {
-    console.log(`ID ${cleanId} is already a valid UUID`);
     return cleanId;
   }
   
-  // Check if the ID corresponds to a known UUID of companies in the system
-  // This is a list of real IDs from the database that we've seen in logs
-  const knownCompanyIds = [
-    "12f6f95b-eeca-411d-a098-221053ab9f03",
-    "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
-    "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7",
-    "8854bd89-6ef7-4419-9ee3-b968bc279f19"
-  ];
-  
-  // Specific ID for Total Data
-  if (cleanId === "1745060635120") {
-    console.log(`Converting Total Data ID ${cleanId} to specific UUID`);
-    return "12f6f95b-eeca-411d-a098-221053ab9f03"; // Real ID for Total Data company
-  }
-  
-  // For clients and responsibles
-  if (cleanId === "1745268930996") {
-    console.log(`Converting Client ID ${cleanId} to UUID`);
-    return "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0"; // Mapping this specific ID to a known UUID
-  }
-  
-  if (cleanId === "1745060635129") {
-    console.log(`Converting Responsible ID ${cleanId} to UUID`);
-    return "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7"; // Mapping this specific ID to a known UUID
-  }
-  
-  if (cleanId === "1745066913470") {
-    console.log(`Converting Requester ID ${cleanId} to UUID`);
-    return "8854bd89-6ef7-4419-9ee3-b968bc279f19"; // Mapping this specific ID to a known UUID
-  }
-  
-  // For other numeric IDs
-  if (/^\d+$/.test(cleanId)) {
-    console.log(`Checking numeric ID ${cleanId}`);
+  // Known UUIDs for the database
+  const knownIds = {
+    // Companies
+    "1": "12f6f95b-eeca-411d-a098-221053ab9f03", // Total Data
+    "1745060635120": "12f6f95b-eeca-411d-a098-221053ab9f03",
     
-    // Check if it corresponds to any known company
-    for (const companyId of knownCompanyIds) {
-      if (companyId.includes(cleanId.substring(0, 4)) || cleanId.includes(companyId.substring(0, 4))) {
-        console.log(`Approximate match for ID ${cleanId}: ${companyId}`);
-        return companyId;
-      }
-    }
+    // Clients
+    "1745268930996": "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
     
-    // If no match is found, use a known default ID
-    console.log(`Using default ID for ${cleanId}: ${knownCompanyIds[0]}`);
-    return knownCompanyIds[0];
+    // Responsibles
+    "1745060635129": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7",
+    
+    // Requesters
+    "1745066913470": "8854bd89-6ef7-4419-9ee3-b968bc279f19",
+  };
+  
+  // Check if we have a direct mapping for this ID
+  if (knownIds[cleanId]) {
+    console.log(`Using known UUID mapping for ${cleanId}: ${knownIds[cleanId]}`);
+    return knownIds[cleanId];
   }
   
-  // If it's not a valid UUID or numeric ID, try to find a corresponding UUID
-  for (const companyId of knownCompanyIds) {
-    if (companyId.includes(cleanId) || cleanId.includes(companyId.substring(0, 8))) {
-      console.log(`Approximate match found for ID ${cleanId}: ${companyId}`);
-      return companyId;
+  // For simple numeric IDs like "1", "2", "3", etc.
+  // Generate a deterministic UUID-like string for consistent mapping
+  if (/^\d+$/.test(cleanId) && parseInt(cleanId) < 100) {
+    // First try to use a known mapping if it exists
+    const clientUUID = `c5f9ed6d-8936-4989-9ee8-dddee5ccf3a${parseInt(cleanId).toString().padStart(2, '0')}`;
+    console.log(`Converting simple numeric ID ${cleanId} to UUID: ${clientUUID}`);
+    return clientUUID;
+  }
+  
+  // If numeric but not simple, or non-mappable, generate a deterministic UUID
+  // We use a default UUID format and replace certain parts with the ID
+  const defaultUUID = "00000000-0000-4000-a000-000000000000";
+  let idPart = cleanId;
+  
+  // For very long IDs, truncate to avoid overflow
+  if (idPart.length > 12) {
+    idPart = idPart.substring(0, 12);
+  }
+  
+  // Pad with zeros if too short
+  if (idPart.length < 12) {
+    idPart = idPart.padStart(12, '0');
+  }
+  
+  // Generate a deterministic UUID
+  const idPartChars = idPart.split('');
+  let uuid = defaultUUID.split('');
+  
+  // Replace parts of the UUID with the ID characters
+  for (let i = 0; i < idPartChars.length && i < 12; i++) {
+    // Place characters at specific positions to maintain UUID format
+    if (i < 8) {
+      uuid[i] = idPartChars[i];
+    } else if (i < 12) {
+      uuid[i + 9] = idPartChars[i]; // Skip the hyphens
     }
   }
   
-  // If nothing works, use the first known ID
-  console.log(`No match for ${cleanId}, using default ID: ${knownCompanyIds[0]}`);
-  return knownCompanyIds[0];
+  const resultUUID = uuid.join('');
+  console.log(`Generated deterministic UUID for ${cleanId}: ${resultUUID}`);
+  
+  return resultUUID;
 };
 
 // Enable realtime changes for the actions table with better error handling

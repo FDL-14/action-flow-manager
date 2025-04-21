@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
 import { useCompanyState } from '@/hooks/use-company-state';
 import { useCompanyOperations } from '@/hooks/use-company-operations';
+import { supabase, convertToUUID } from '@/integrations/supabase/client';
 
 interface CompanyContextType {
   company: Company | null;
@@ -55,6 +56,47 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [clients, setClients] = React.useState<Client[]>(mockClients);
   const [responsibles, setResponsibles] = React.useState<Responsible[]>(mockResponsibles);
 
+  // Carrega clientes do localStorage ou Supabase
+  React.useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        // Tenta buscar clientes do Supabase
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*');
+          
+        if (error) {
+          console.error("Erro ao buscar clientes do Supabase:", error);
+          
+          // Tenta buscar clientes do localStorage como fallback
+          const storedClients = localStorage.getItem('clients');
+          if (storedClients) {
+            setClients(JSON.parse(storedClients));
+          }
+        } else if (data && data.length > 0) {
+          // Mapeia os dados do Supabase para o formato local
+          const formattedClients = data.map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.contact_email || undefined,
+            phone: c.contact_phone || undefined,
+            address: undefined,
+            cnpj: undefined,
+            companyId: c.company_id || '',
+            createdAt: new Date(c.created_at),
+            updatedAt: new Date(c.updated_at)
+          }));
+          
+          setClients(formattedClients);
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar clientes:", error);
+      }
+    };
+    
+    fetchClients();
+  }, []);
+
   React.useEffect(() => {
     try {
       if (clients && clients.length > 0) {
@@ -85,24 +127,96 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [responsibles, toastUI]);
 
-  const addClient = (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!company) return;
     
-    const newClient: Client = {
-      id: Date.now().toString(),
-      companyId: clientData.companyId || company.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...clientData
-    };
-    
-    setClients([...clients, newClient]);
-    
-    toastUI({
-      title: "Client added",
-      description: `Client ${clientData.name} has been added successfully.`,
-      variant: "default",
-    });
+    try {
+      console.log("Adicionando novo cliente:", clientData);
+      
+      // Prepare client data for Supabase
+      const companyId = convertToUUID(clientData.companyId || company.id);
+      
+      if (!companyId) {
+        throw new Error("ID da empresa inválido");
+      }
+      
+      // Primeiro tenta salvar no Supabase
+      const { data: supabaseClient, error } = await supabase
+        .from('clients')
+        .insert({
+          name: clientData.name,
+          contact_email: clientData.email,
+          contact_phone: clientData.phone,
+          company_id: companyId
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Erro ao salvar cliente no Supabase:", error);
+        
+        // Fallback para salvar localmente em caso de erro
+        const newClient: Client = {
+          id: Date.now().toString(),
+          companyId: clientData.companyId || company.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...clientData
+        };
+        
+        setClients(prev => [...prev, newClient]);
+        
+        toastUI({
+          title: "Cliente adicionado localmente",
+          description: `Cliente ${clientData.name} foi adicionado localmente.`,
+          variant: "default",
+        });
+      } else {
+        // Cliente salvo com sucesso no Supabase
+        console.log("Cliente salvo no Supabase:", supabaseClient);
+        
+        // Mapeia o cliente do Supabase para o formato local
+        const newClient: Client = {
+          id: supabaseClient.id,
+          name: supabaseClient.name,
+          email: supabaseClient.contact_email || undefined,
+          phone: supabaseClient.contact_phone || undefined,
+          address: undefined,
+          cnpj: undefined,
+          companyId: supabaseClient.company_id || company.id,
+          createdAt: new Date(supabaseClient.created_at),
+          updatedAt: new Date(supabaseClient.updated_at)
+        };
+        
+        // Atualiza o estado local
+        setClients(prev => [...prev, newClient]);
+        
+        toastUI({
+          title: "Cliente adicionado",
+          description: `Cliente ${clientData.name} foi adicionado com sucesso.`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar cliente:", error);
+      
+      // Fallback de segurança em caso de erro
+      const newClient: Client = {
+        id: Date.now().toString(),
+        companyId: clientData.companyId || company.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...clientData
+      };
+      
+      setClients(prev => [...prev, newClient]);
+      
+      toastUI({
+        title: "Erro ao salvar",
+        description: "Cliente salvo localmente, mas ocorreu um erro com o banco de dados.",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateClient = (updatedClient: Client) => {
@@ -114,7 +228,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setClients(updatedClients);
     
-    toast.success("Client updated successfully!");
+    toast.success("Cliente atualizado com sucesso!");
   };
 
   const deleteClient = (id: string) => {
@@ -122,7 +236,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setClients(clients.filter(c => c.id !== id));
     
-    toast.success("Client deleted successfully!");
+    toast.success("Cliente excluído com sucesso!");
   };
 
   const addResponsible = (responsibleData: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
