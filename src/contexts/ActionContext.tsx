@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { supabase, JsonObject, convertToUUID } from '@/integrations/supabase/client';
@@ -142,6 +143,15 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       console.log('Adicionando nova ação com dados:', newActionData);
       
+      // Validar datas
+      if (!(newActionData.startDate instanceof Date) || isNaN(newActionData.startDate.getTime())) {
+        throw new Error("Data de início inválida");
+      }
+      
+      if (!(newActionData.endDate instanceof Date) || isNaN(newActionData.endDate.getTime())) {
+        throw new Error("Data de término inválida");
+      }
+      
       // Corrigir o status para exatamente corresponder às opções permitidas no banco de dados
       const validStatus = 'pendente';
       
@@ -150,10 +160,26 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         title: newActionData.subject,
         description: newActionData.description,
         status: validStatus,
-        responsible_id: newActionData.responsibleId.includes('-') ? newActionData.responsibleId : convertToUUID(newActionData.responsibleId),
-        company_id: newActionData.companyId.includes('-') ? newActionData.companyId : convertToUUID(newActionData.companyId),
-        client_id: newActionData.clientId ? (newActionData.clientId.includes('-') ? newActionData.clientId : convertToUUID(newActionData.clientId)) : null,
-        requester_id: newActionData.requesterId ? (newActionData.requesterId.includes('-') ? newActionData.requesterId : convertToUUID(newActionData.requesterId)) : null,
+        responsible_id: newActionData.responsibleId ? 
+                        (newActionData.responsibleId.includes('-') ? 
+                          newActionData.responsibleId : 
+                          convertToUUID(newActionData.responsibleId)) : 
+                        null,
+        company_id: newActionData.companyId ? 
+                    (newActionData.companyId.includes('-') ? 
+                      newActionData.companyId : 
+                      convertToUUID(newActionData.companyId)) : 
+                    null,
+        client_id: newActionData.clientId ? 
+                  (newActionData.clientId.includes('-') ? 
+                    newActionData.clientId : 
+                    convertToUUID(newActionData.clientId)) : 
+                  null,
+        requester_id: newActionData.requesterId ? 
+                      (newActionData.requesterId.includes('-') ? 
+                        newActionData.requesterId : 
+                        convertToUUID(newActionData.requesterId)) : 
+                      null,
         due_date: newActionData.endDate.toISOString()
       };
       
@@ -167,7 +193,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       if (error) {
         console.error('Erro ao inserir ação no Supabase:', error);
-        throw error;
+        throw new Error(`Erro ao salvar ação: ${error.message}`);
       }
       
       console.log('Ação inserida com sucesso:', insertedAction);
@@ -213,9 +239,9 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       setActions(prevActions => [...prevActions, newAction]);
       toast.success('Ação criada com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao adicionar ação:', error);
-      toast.error('Erro ao criar ação.');
+      toast.error(error.message || 'Erro ao criar ação.');
       throw error;
     }
   };
@@ -445,32 +471,49 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addAttachment = async (actionId: string, file: File): Promise<void> => {
     try {
-      const { error: bucketError } = await supabase.storage
-        .createBucket('actions', {
-          public: true
-        });
+      // Verificar se o bucket existe ou criá-lo
+      const bucketName = 'action_attachments';
       
-      if (bucketError && bucketError.message !== 'Bucket already exists') {
-        console.error('Erro ao criar bucket:', bucketError);
+      const { data: bucketExists } = await supabase
+        .storage
+        .getBucket(bucketName);
+        
+      if (!bucketExists) {
+        const { error: bucketError } = await supabase
+          .storage
+          .createBucket(bucketName, {
+            public: true,
+            fileSizeLimit: 10485760, // 10MB
+          });
+          
+        if (bucketError) {
+          console.error('Erro ao criar bucket:', bucketError);
+          throw new Error(`Erro ao criar bucket: ${bucketError.message}`);
+        }
       }
       
-      const filePath = `attachments/${actionId}/${file.name}`;
+      // Upload do arquivo
+      const filePath = `${actionId}/${Date.now()}_${file.name}`;
       
-      const { error: uploadError } = await supabase.storage
-        .from('actions')
+      const { error: uploadError } = await supabase
+        .storage
+        .from(bucketName)
         .upload(filePath, file);
         
       if (uploadError) {
         console.error('Erro ao fazer upload do arquivo:', uploadError);
-        throw uploadError;
+        throw new Error(`Erro ao fazer upload: ${uploadError.message}`);
       }
       
-      const { data: publicUrlData } = supabase.storage
-        .from('actions')
+      // Obter URL pública do arquivo
+      const { data: publicUrlData } = supabase
+        .storage
+        .from(bucketName)
         .getPublicUrl(filePath);
         
       const publicUrl = publicUrlData.publicUrl;
       
+      // Registrar anexo no banco de dados
       const { error: attachmentError } = await supabase
         .from('action_attachments')
         .insert({
@@ -479,13 +522,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           file_name: file.name,
           file_size: file.size,
           file_type: file.type,
-          created_by: user?.id
+          created_by: user?.id || 'unknown'
         });
         
       if (attachmentError) {
         console.error('Erro ao salvar informações do anexo:', attachmentError);
       }
       
+      // Atualizar a ação com o novo anexo
       const actionToUpdate = actions.find(a => a.id === actionId);
       if (actionToUpdate) {
         const attachments = actionToUpdate.attachments || [];
@@ -496,9 +540,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       
       toast.success('Arquivo anexado com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao adicionar anexo:', error);
-      toast.error('Erro ao anexar arquivo.');
+      toast.error(error.message || 'Erro ao anexar arquivo.');
+      // Não propagando o erro para compatibilizar com a assinatura Promise<void>
     }
   };
 
@@ -508,7 +553,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     const { data } = supabase.storage
-      .from('actions')
+      .from('action_attachments')
       .getPublicUrl(path);
       
     return data.publicUrl;

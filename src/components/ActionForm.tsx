@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -181,6 +182,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         }
       }
       
+      // Validate dates before passing to addAction
       const startDate = new Date(values.startDate);
       const endDate = new Date(values.endDate);
       
