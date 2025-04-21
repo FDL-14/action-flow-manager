@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Perfis carregados do Supabase:', profiles);
           
           const loadedUsers: User[] = profiles.map(profile => {
+            // Ensure role is either 'user' or 'master', defaulting to 'user' if invalid
             const userRole: 'user' | 'master' = 
               profile.role === 'master' ? 'master' : 'user';
               
@@ -240,12 +242,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           view_only_assigned_actions: profile.role !== 'master'
         };
 
+        // Convert profile.role to the correct type, ensuring it's either 'user' or 'master'
+        const safeRole: 'user' | 'master' = profile.role === 'master' ? 'master' : 'user';
+
         const userObject: User = {
           id: profile.id,
           name: profile.name,
           cpf: profile.cpf || '',
           email: profile.email || '',
-          role: profile.role || 'user',
+          role: safeRole,
           companyIds: profile.company_ids || ['1'],
           clientIds: profile.client_ids || [],
           permissions: [{
@@ -439,25 +444,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Perfil inserido com sucesso:', insertedProfile);
       
-      const permission = createPermission(userData.role, userData.permissions);
+      // Create a permission object from userData.permissions or defaults
+      const defaultPermission = createPermission(userData.role, userData.permissions);
       
       const permissionsToInsert = {
         user_id: insertedProfile.id,
-        can_create: permission.canCreate,
-        can_edit: permission.canEdit,
-        can_delete: permission.canDelete,
-        can_mark_complete: permission.canMarkComplete,
-        can_mark_delayed: permission.canMarkDelayed,
-        can_add_notes: permission.canAddNotes,
-        can_view_reports: permission.canViewReports,
-        view_all_actions: permission.viewAllActions,
-        can_edit_user: permission.canEditUser,
-        can_edit_action: permission.canEditAction,
-        can_edit_client: permission.canEditClient,
-        can_delete_client: permission.canDeleteClient,
-        can_edit_company: permission.canEditCompany,
-        can_delete_company: permission.canDeleteCompany,
-        view_only_assigned_actions: permission.viewOnlyAssignedActions
+        can_create: defaultPermission.canCreate,
+        can_edit: defaultPermission.canEdit,
+        can_delete: defaultPermission.canDelete,
+        can_mark_complete: defaultPermission.canMarkComplete,
+        can_mark_delayed: defaultPermission.canMarkDelayed,
+        can_add_notes: defaultPermission.canAddNotes,
+        can_view_reports: defaultPermission.canViewReports,
+        view_all_actions: defaultPermission.viewAllActions,
+        can_edit_user: defaultPermission.canEditUser,
+        can_edit_action: defaultPermission.canEditAction,
+        can_edit_client: defaultPermission.canEditClient,
+        can_delete_client: defaultPermission.canDeleteClient,
+        can_edit_company: defaultPermission.canEditCompany,
+        can_delete_company: defaultPermission.canDeleteCompany,
+        view_only_assigned_actions: defaultPermission.viewOnlyAssignedActions
       };
       
       const { error: permissionsError } = await supabase
@@ -477,11 +483,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         companyIds: userData.companyIds,
         clientIds: userData.clientIds || [],
         password: '@54321',
-        permissions: [permission]
+        permissions: [defaultPermission]
       };
       
-      setUsers(prevUsers => [...prevUsers, newUser]);
-      localStorage.setItem('users', JSON.stringify([...users, newUser]));
+      // Ensure all users have the correct type
+      const typedUsers: User[] = [...users, newUser];
+      setUsers(typedUsers);
+      localStorage.setItem('users', JSON.stringify(typedUsers));
       
       toast({
         title: "Usuário criado",
@@ -581,25 +589,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (userData.permissions) {
-        const permission = createPermission(userData.role, userData.permissions);
+        const defaultPermission = createPermission(userData.role, userData.permissions);
         
         const permissionsData = {
           user_id: userData.id,
-          can_create: permission.canCreate,
-          can_edit: permission.canEdit,
-          can_delete: permission.canDelete,
-          can_mark_complete: permission.canMarkComplete,
-          can_mark_delayed: permission.canMarkDelayed,
-          can_add_notes: permission.canAddNotes,
-          can_view_reports: permission.canViewReports,
-          view_all_actions: permission.viewAllActions,
-          can_edit_user: permission.canEditUser,
-          can_edit_action: permission.canEditAction,
-          can_edit_client: permission.canEditClient,
-          can_delete_client: permission.canDeleteClient,
-          can_edit_company: permission.canEditCompany,
-          can_delete_company: permission.canDeleteCompany,
-          view_only_assigned_actions: permission.viewOnlyAssignedActions
+          can_create: defaultPermission.canCreate,
+          can_edit: defaultPermission.canEdit,
+          can_delete: defaultPermission.canDelete,
+          can_mark_complete: defaultPermission.canMarkComplete,
+          can_mark_delayed: defaultPermission.canMarkDelayed,
+          can_add_notes: defaultPermission.canAddNotes,
+          can_view_reports: defaultPermission.canViewReports,
+          view_all_actions: defaultPermission.viewAllActions,
+          can_edit_user: defaultPermission.canEditUser,
+          can_edit_action: defaultPermission.canEditAction,
+          can_edit_client: defaultPermission.canEditClient,
+          can_delete_client: defaultPermission.canDeleteClient,
+          can_edit_company: defaultPermission.canEditCompany,
+          can_delete_company: defaultPermission.canDeleteCompany,
+          view_only_assigned_actions: defaultPermission.viewOnlyAssignedActions
         };
         
         const { error: permUpdateError } = await supabase
@@ -614,11 +622,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
       const localUser = localUsers.find((u: any) => u.id === userData.id);
-      const password = localUser?.password;
+      const localPassword = localUser?.password;
       
-      const updatedUsers = users.map(u => {
+      // Create a properly typed updates
+      const updatedUsers: User[] = users.map(u => {
         if (u.id === userData.id) {
-          const updatedUser = {
+          // Create permission object properly
+          const userPermission = createPermission(userData.role, userData.permissions);
+          return {
             ...u,
             name: userData.name,
             cpf: userData.cpf,
@@ -626,10 +637,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: userData.role,
             companyIds: userData.companyIds,
             clientIds: userData.clientIds || [],
-            password: password,
-            permissions: [permission]
+            password: localPassword,
+            permissions: [userPermission]
           };
-          return updatedUser;
         }
         return u;
       });
@@ -726,16 +736,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ password: newPassword })
-        .eq('id', userId);
-        
-      if (error) {
-        console.error('Erro ao atualizar senha no Supabase:', error);
-      }
+      // For Supabase, we'll just update the local password since there's no password column
+      // We're not actually storing the password in Supabase for this application
       
-      const updatedUsers = users.map(u => {
+      // Update only the users in local storage with proper typing
+      const updatedUsers: User[] = users.map(u => {
         if (u.id === userId) {
           return {
             ...u,
@@ -775,16 +780,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetUserPassword = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ password: undefined })
-        .eq('id', userId);
-        
-      if (error) {
-        console.error('Erro ao redefinir senha no Supabase:', error);
-      }
+      // For Supabase, we don't actually store passwords there for this app
+      // Just update local storage
       
-      const updatedUsers = users.map(u => {
+      // Update with proper typing
+      const updatedUsers: User[] = users.map(u => {
         if (u.id === userId) {
           return {
             ...u,
