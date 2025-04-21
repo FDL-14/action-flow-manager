@@ -156,8 +156,8 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
       console.log('Submitting form with values:', values);
       console.log('Selected company ID:', values.companyId);
       
-      // Verificar se a empresa foi selecionada
-      if (!values.companyId) {
+      // Verificação adicional se a empresa foi selecionada
+      if (!values.companyId || values.companyId.trim() === '') {
         toast({
           title: "Erro",
           description: "Selecione uma empresa",
@@ -166,7 +166,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         return;
       }
       
-      // Verificar se a empresa selecionada existe no banco
+      // Verificar se a empresa selecionada existe
       const empresa = companies.find(c => c.id === values.companyId);
       if (!empresa) {
         console.error(`Empresa com ID ${values.companyId} não encontrada`);

@@ -151,29 +151,42 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error("Data de término inválida");
       }
       
-      // Status fixo para novas ações, para garantir que siga a restrição do banco de dados
+      // Status fixo para novas ações
       const validStatus = 'pendente';
       
-      // Garantir que company_id seja um UUID válido verificando com o BD
-      // Caso não seja, ele será convertido para null, o que fará o insert falhar com erro compreensível
-      const company_id = convertToUUID(newActionData.companyId);
+      // Garantir que os IDs sejam convertidos corretamente
+      let company_id: string | null = null;
+      
+      // Verificação especial para company_id, já que é crucial
+      if (!newActionData.companyId) {
+        console.error('companyId é obrigatório mas não foi fornecido');
+        throw new Error("É necessário selecionar uma empresa");
+      }
+      
+      // Tenta converter companyId para UUID
+      company_id = convertToUUID(newActionData.companyId);
       
       if (!company_id) {
-        console.error('Company ID inválido ou nulo');
-        throw new Error("ID da empresa inválido");
+        console.error('Conversão do company_id falhou');
+        throw new Error("ID da empresa é inválido");
       }
       
       console.log('Company ID processado:', company_id);
       
-      // Preparar dados para o Supabase
+      // Converter outros IDs para UUID
+      const responsible_id = convertToUUID(newActionData.responsibleId);
+      const client_id = newActionData.clientId ? convertToUUID(newActionData.clientId) : null;
+      const requester_id = convertToUUID(newActionData.requesterId);
+      
+      // Preparar dados para o Supabase com IDs devidamente convertidos
       const actionForSupabase = {
         title: newActionData.subject,
         description: newActionData.description,
         status: validStatus,
-        responsible_id: convertToUUID(newActionData.responsibleId),
-        company_id: company_id,
-        client_id: convertToUUID(newActionData.clientId),
-        requester_id: convertToUUID(newActionData.requesterId),
+        responsible_id: responsible_id,
+        company_id: company_id,  // Usando o ID já convertido
+        client_id: client_id,
+        requester_id: requester_id,
         due_date: newActionData.endDate.toISOString(),
         notes: [],
         created_at: new Date().toISOString(),
@@ -182,7 +195,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       console.log('Ação formatada para Supabase:', actionForSupabase);
       
-      // Exibir os IDs para debug
+      // Debug IDs
       console.log('IDs originais:', {
         companyId: newActionData.companyId,
         clientId: newActionData.clientId,
@@ -197,11 +210,37 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         requester_id: actionForSupabase.requester_id
       });
       
-      // Validar company_id antes de enviar
+      // Verificação adicional do company_id antes de enviar
       if (!actionForSupabase.company_id) {
         throw new Error("É necessário selecionar uma empresa válida");
       }
       
+      // Consultar a tabela companies para verificar se o ID existe
+      const { data: companyExists, error: companyCheckError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('id', actionForSupabase.company_id)
+        .single();
+        
+      if (companyCheckError) {
+        console.error('Erro ao verificar empresa:', companyCheckError);
+        // Não lançar erro aqui, pois pode ser que o erro seja porque não encontrou
+      }
+      
+      if (!companyExists) {
+        console.error(`Empresa com ID ${actionForSupabase.company_id} não encontrada no banco de dados`);
+        
+        // Tentar consultar todas as empresas para debug
+        const { data: allCompanies } = await supabase
+          .from('companies')
+          .select('id, name');
+          
+        console.log('Empresas disponíveis no banco de dados:', allCompanies);
+        
+        throw new Error(`Empresa com ID ${actionForSupabase.company_id} não encontrada no banco de dados`);
+      }
+      
+      // Proceder com a inserção
       const { data: insertedAction, error } = await supabase
         .from('actions')
         .insert(actionForSupabase)

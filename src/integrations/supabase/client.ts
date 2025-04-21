@@ -29,29 +29,35 @@ export const supabase = createClient<Database>(
 // Custom types to help with conversion between application types and database types
 export type JsonObject = { [key: string]: any };
 
-// Helper function to convert timestamp IDs to UUIDs
+// Helper function to convert timestamp IDs to UUIDs - REVISED for better UUID handling
 export const convertToUUID = (id: string | null | undefined): string | null => {
-  // Se o id for nulo ou undefined, retornar null
+  // If id is null or undefined, return null
   if (id === null || id === undefined) {
     return null;
   }
   
+  // Clean up the ID by removing any formatting that might cause issues
+  const cleanId = id.toString().trim();
+  
   // Check if id is already a valid UUID
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (uuidRegex.test(id)) {
-    console.log(`ID ${id} já é um UUID válido`);
-    return id;
+  if (uuidRegex.test(cleanId)) {
+    console.log(`ID ${cleanId} já é um UUID válido`);
+    return cleanId;
   }
   
-  // Check if it's a numeric string and format it as a UUID
-  if (/^\d+$/.test(id)) {
-    console.log(`Convertendo ID numérico ${id} para UUID`);
-    // Generate a deterministic UUID from the original ID to ensure consistency
-    return `00000000-0000-4000-a000-${id.padStart(12, '0').substring(0, 12)}`;
+  // If it's a numeric string, create a UUID-v4 style ID
+  if (/^\d+$/.test(cleanId)) {
+    console.log(`Convertendo ID numérico ${cleanId} para UUID`);
+    
+    // Return the ID in the format expected by Supabase, ensuring it's a proper UUID
+    // Length is 36 characters total: 8-4-4-4-12
+    const paddedId = cleanId.padStart(12, '0').substring(0, 12);
+    return `00000000-0000-4000-a000-${paddedId}`;
   }
   
-  // Se não for um UUID válido nem um valor numérico, gerar um UUID novo
-  console.log(`ID ${id} não é válido, gerando novo UUID`);
+  // If it's not a valid UUID or numeric value, generate a new UUID
+  console.log(`ID ${cleanId} não é válido, gerando novo UUID`);
   return crypto.randomUUID();
 };
 
