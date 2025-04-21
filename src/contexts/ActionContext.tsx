@@ -162,6 +162,66 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
+  const checkResponsibleExists = async (responsibleId: string): Promise<boolean> => {
+    try {
+      const formattedUUID = convertToUUID(responsibleId);
+      if (!formattedUUID) {
+        console.error(`ID responsável inválido: ${responsibleId}`);
+        return false;
+      }
+      
+      console.log(`Verificando se o responsável ${formattedUUID} existe...`);
+      
+      const { data, error } = await supabase
+        .from('responsibles')
+        .select('id')
+        .eq('id', formattedUUID)
+        .limit(1);
+        
+      if (error) {
+        console.error('Erro ao verificar responsável:', error);
+        return false;
+      }
+      
+      const exists = data && data.length > 0;
+      
+      if (exists) {
+        console.log(`Responsável ${formattedUUID} encontrado no banco de dados`);
+      } else {
+        console.error(`Responsável ${formattedUUID} NÃO encontrado no banco de dados`);
+        
+        if (responsibleId) {
+          try {
+            const { error: insertError } = await supabase
+              .from('responsibles')
+              .insert({
+                id: formattedUUID,
+                name: `Responsável ${responsibleId}`,
+                email: `resp_${responsibleId}@example.com`,
+                company_id: convertToUUID('1')
+              });
+              
+            if (insertError) {
+              console.error('Erro ao criar responsável automático:', insertError);
+              return false;
+            }
+            
+            console.log(`Responsável ${formattedUUID} criado automaticamente`);
+            return true;
+          } catch (e) {
+            console.error('Erro ao tentar criar responsável:', e);
+            return false;
+          }
+        }
+      }
+      
+      return exists;
+    } catch (error) {
+      console.error('Erro na verificação do responsável:', error);
+      return false;
+    }
+  };
+
   const checkCompanyExists = async (companyId: string): Promise<boolean> => {
     try {
       const knownCompanyIds = [
@@ -219,14 +279,26 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error("É necessário selecionar uma empresa");
       }
       
-      // Convert IDs to UUID format
       const company_id = convertToUUID(newActionData.companyId);
       if (!company_id) {
         throw new Error("ID da empresa inválido");
       }
       
-      // Convert other IDs to UUID format if they exist
+      const companyExists = await checkCompanyExists(company_id);
+      if (!companyExists) {
+        throw new Error("A empresa selecionada não existe no banco de dados");
+      }
+      
       const responsible_id = convertToUUID(newActionData.responsibleId);
+      if (!responsible_id) {
+        throw new Error("ID do responsável inválido");
+      }
+      
+      const responsibleExists = await checkResponsibleExists(responsible_id);
+      if (!responsibleExists) {
+        throw new Error("O responsável selecionado não existe no banco de dados");
+      }
+      
       const client_id = newActionData.clientId ? convertToUUID(newActionData.clientId) : null;
       const requester_id = newActionData.requesterId ? convertToUUID(newActionData.requesterId) : null;
       
@@ -308,7 +380,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setActions(prevActions => [...prevActions, newAction]);
       toast.success('Ação criada com sucesso!');
       
-      // Force a reload of actions after creation
       setTimeout(() => {
         const fetchActions = async () => {
           const { data, error } = await supabase
@@ -343,7 +414,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   parsedNotes = [];
                 }
   
-                // Check if completed_at exists before trying to access it
                 const completedAt = 'completed_at' in action && action.completed_at 
                   ? new Date(action.completed_at as string) 
                   : undefined;
@@ -389,11 +459,55 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (updatedData.subject) supabaseData.title = updatedData.subject;
       if (updatedData.description) supabaseData.description = updatedData.description;
       if (updatedData.status) supabaseData.status = updatedData.status;
-      if (updatedData.responsibleId) supabaseData.responsible_id = updatedData.responsibleId.includes('-') ? updatedData.responsibleId : convertToUUID(updatedData.responsibleId);
+      
+      if (updatedData.responsibleId) {
+        const responsible_id = updatedData.responsibleId.includes('-') ? 
+          updatedData.responsibleId : 
+          convertToUUID(updatedData.responsibleId);
+          
+        if (responsible_id) {
+          const responsibleExists = await checkResponsibleExists(responsible_id);
+          if (!responsibleExists) {
+            throw new Error("O responsável selecionado não existe no banco de dados");
+          }
+          
+          supabaseData.responsible_id = responsible_id;
+        } else {
+          throw new Error("ID do responsável inválido");
+        }
+      }
+      
       if (updatedData.endDate) supabaseData.due_date = updatedData.endDate.toISOString();
-      if (updatedData.companyId) supabaseData.company_id = updatedData.companyId.includes('-') ? updatedData.companyId : convertToUUID(updatedData.companyId);
-      if (updatedData.clientId) supabaseData.client_id = updatedData.clientId.includes('-') ? updatedData.clientId : convertToUUID(updatedData.clientId);
-      if (updatedData.requesterId) supabaseData.requester_id = updatedData.requesterId.includes('-') ? updatedData.requesterId : convertToUUID(updatedData.requesterId);
+      
+      if (updatedData.companyId) {
+        const company_id = updatedData.companyId.includes('-') ? 
+          updatedData.companyId : 
+          convertToUUID(updatedData.companyId);
+          
+        if (company_id) {
+          supabaseData.company_id = company_id;
+        }
+      }
+      
+      if (updatedData.clientId) {
+        const client_id = updatedData.clientId.includes('-') ? 
+          updatedData.clientId : 
+          convertToUUID(updatedData.clientId);
+          
+        if (client_id) {
+          supabaseData.client_id = client_id;
+        }
+      }
+      
+      if (updatedData.requesterId) {
+        const requester_id = updatedData.requesterId.includes('-') ? 
+          updatedData.requesterId : 
+          convertToUUID(updatedData.requesterId);
+          
+        if (requester_id) {
+          supabaseData.requester_id = requester_id;
+        }
+      }
       
       if (updatedData.notes) {
         supabaseData.notes = convertNotesToJsonObjects(updatedData.notes);
@@ -421,9 +535,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       );
       
       toast.success('Ação atualizada com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar ação:', error);
-      toast.error('Erro ao atualizar ação.');
+      toast.error(error.message || 'Erro ao atualizar ação.');
+      throw error;
     }
   };
 

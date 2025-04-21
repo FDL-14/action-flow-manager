@@ -29,7 +29,7 @@ export const supabase = createClient<Database>(
 // Custom types to help with conversion between application types and database types
 export type JsonObject = { [key: string]: any };
 
-// Improved function to handle UUID conversion correctly
+// Improved function to handle UUID conversion correctly with better error handling
 export const convertToUUID = (id: string | null | undefined): string | null => {
   // If id is null or undefined, return null
   if (id === null || id === undefined) {
@@ -39,14 +39,20 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
   // Clean the ID, removing formatting that could cause problems
   const cleanId = id.toString().trim();
   
+  // Skip conversion if empty string
+  if (cleanId === '') {
+    console.warn('Empty ID provided to convertToUUID');
+    return null;
+  }
+  
   // Check if the ID is already a valid UUID (standard format)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(cleanId)) {
     return cleanId;
   }
   
-  // Known UUIDs for the database
-  const knownIds = {
+  // Known UUIDs for the database - expanded with more mappings
+  const knownIds: {[key: string]: string} = {
     // Companies
     "1": "12f6f95b-eeca-411d-a098-221053ab9f03", // Total Data
     "1745060635120": "12f6f95b-eeca-411d-a098-221053ab9f03",
@@ -56,6 +62,10 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     
     // Responsibles
     "1745060635129": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7",
+    "1": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7", // João Silva
+    "2": "28a7ed6b-5c2a-4dd4-9aef-a8dca5c5b46e", // Maria Souza
+    "3": "65f8e32c-1a1d-49c1-b432-f77d6c529612", // Carlos Oliveira
+    "4": "b4a80976-86e0-4a74-8c5c-e5a0f3d35f5f", // Ana Santos
     
     // Requesters
     "1745066913470": "8854bd89-6ef7-4419-9ee3-b968bc279f19",
@@ -76,39 +86,53 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     return clientUUID;
   }
   
-  // If numeric but not simple, or non-mappable, generate a deterministic UUID
-  // We use a default UUID format and replace certain parts with the ID
-  const defaultUUID = "00000000-0000-4000-a000-000000000000";
-  let idPart = cleanId;
-  
-  // For very long IDs, truncate to avoid overflow
-  if (idPart.length > 12) {
-    idPart = idPart.substring(0, 12);
-  }
-  
-  // Pad with zeros if too short
-  if (idPart.length < 12) {
-    idPart = idPart.padStart(12, '0');
-  }
-  
-  // Generate a deterministic UUID
-  const idPartChars = idPart.split('');
-  let uuid = defaultUUID.split('');
-  
-  // Replace parts of the UUID with the ID characters
-  for (let i = 0; i < idPartChars.length && i < 12; i++) {
-    // Place characters at specific positions to maintain UUID format
-    if (i < 8) {
-      uuid[i] = idPartChars[i];
-    } else if (i < 12) {
-      uuid[i + 9] = idPartChars[i]; // Skip the hyphens
+  try {
+    // For single character IDs, create a special pattern
+    if (cleanId.length === 1) {
+      const charCode = cleanId.charCodeAt(0);
+      const hexVal = charCode.toString(16).padStart(2, '0');
+      const specialUUID = `aaaaaaaa-bbbb-4ccc-8ddd-${hexVal}${hexVal}${hexVal}${hexVal}${hexVal}${hexVal}`;
+      console.log(`Converting single character ID ${cleanId} to UUID: ${specialUUID}`);
+      return specialUUID;
     }
+    
+    // If numeric but not simple, or non-mappable, generate a deterministic UUID
+    // We use a default UUID format and replace certain parts with the ID
+    const defaultUUID = "00000000-0000-4000-a000-000000000000";
+    let idPart = cleanId;
+    
+    // For very long IDs, truncate to avoid overflow
+    if (idPart.length > 12) {
+      idPart = idPart.substring(0, 12);
+    }
+    
+    // Pad with zeros if too short
+    if (idPart.length < 12) {
+      idPart = idPart.padStart(12, '0');
+    }
+    
+    // Generate a deterministic UUID
+    const idPartChars = idPart.split('');
+    let uuid = defaultUUID.split('');
+    
+    // Replace parts of the UUID with the ID characters
+    for (let i = 0; i < idPartChars.length && i < 12; i++) {
+      // Place characters at specific positions to maintain UUID format
+      if (i < 8) {
+        uuid[i] = idPartChars[i];
+      } else if (i < 12) {
+        uuid[i + 9] = idPartChars[i]; // Skip the hyphens
+      }
+    }
+    
+    const resultUUID = uuid.join('');
+    console.log(`Generated deterministic UUID for ${cleanId}: ${resultUUID}`);
+    
+    return resultUUID;
+  } catch (error) {
+    console.error(`Error converting ID ${cleanId} to UUID:`, error);
+    return null;
   }
-  
-  const resultUUID = uuid.join('');
-  console.log(`Generated deterministic UUID for ${cleanId}: ${resultUUID}`);
-  
-  return resultUUID;
 };
 
 // Enable realtime changes for the actions table with better error handling
