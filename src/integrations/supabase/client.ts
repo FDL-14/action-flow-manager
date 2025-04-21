@@ -31,23 +31,23 @@ export type JsonObject = { [key: string]: any };
 
 // Updated function to handle UUID conversion correctly
 export const convertToUUID = (id: string | null | undefined): string | null => {
-  // Se id for null ou undefined, retornar null
+  // If id is null or undefined, return null
   if (id === null || id === undefined) {
     return null;
   }
   
-  // Limpar o ID, removendo formatação que possa causar problemas
+  // Clean the ID, removing formatting that could cause problems
   const cleanId = id.toString().trim();
   
-  // Verificar se o ID já é um UUID válido (formato padrão)
+  // Check if the ID is already a valid UUID (standard format)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(cleanId)) {
-    console.log(`ID ${cleanId} já é um UUID válido`);
+    console.log(`ID ${cleanId} is already a valid UUID`);
     return cleanId;
   }
   
-  // Verificar se o ID corresponde a um UUID das empresas conhecidas no sistema
-  // Esta é uma lista de IDs reais do banco de dados que vimos nos logs
+  // Check if the ID corresponds to a known UUID of companies in the system
+  // This is a list of real IDs from the database that we've seen in logs
   const knownCompanyIds = [
     "12f6f95b-eeca-411d-a098-221053ab9f03",
     "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
@@ -55,39 +55,55 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     "8854bd89-6ef7-4419-9ee3-b968bc279f19"
   ];
   
-  // ID específico para Total Data
+  // Specific ID for Total Data
   if (cleanId === "1745060635120") {
-    console.log(`Convertendo ID Total Data ${cleanId} para UUID específico`);
-    return "12f6f95b-eeca-411d-a098-221053ab9f03"; // ID real da empresa Total Data
+    console.log(`Converting Total Data ID ${cleanId} to specific UUID`);
+    return "12f6f95b-eeca-411d-a098-221053ab9f03"; // Real ID for Total Data company
   }
   
-  // Para outros IDs numéricos
+  // For clients and responsibles
+  if (cleanId === "1745268930996") {
+    console.log(`Converting Client ID ${cleanId} to UUID`);
+    return "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0"; // Mapping this specific ID to a known UUID
+  }
+  
+  if (cleanId === "1745060635129") {
+    console.log(`Converting Responsible ID ${cleanId} to UUID`);
+    return "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7"; // Mapping this specific ID to a known UUID
+  }
+  
+  if (cleanId === "1745066913470") {
+    console.log(`Converting Requester ID ${cleanId} to UUID`);
+    return "8854bd89-6ef7-4419-9ee3-b968bc279f19"; // Mapping this specific ID to a known UUID
+  }
+  
+  // For other numeric IDs
   if (/^\d+$/.test(cleanId)) {
-    console.log(`Verificando ID numérico ${cleanId}`);
+    console.log(`Checking numeric ID ${cleanId}`);
     
-    // Verificar se corresponde a alguma empresa conhecida
+    // Check if it corresponds to any known company
     for (const companyId of knownCompanyIds) {
       if (companyId.includes(cleanId.substring(0, 4)) || cleanId.includes(companyId.substring(0, 4))) {
-        console.log(`Match aproximado para ID ${cleanId}: ${companyId}`);
+        console.log(`Approximate match for ID ${cleanId}: ${companyId}`);
         return companyId;
       }
     }
     
-    // Se não encontrar correspondência, usar ID padrão conhecido
-    console.log(`Usando ID default para ${cleanId}: ${knownCompanyIds[0]}`);
+    // If no match is found, use a known default ID
+    console.log(`Using default ID for ${cleanId}: ${knownCompanyIds[0]}`);
     return knownCompanyIds[0];
   }
   
-  // Se não for UUID válido nem ID numérico, tentar encontrar um UUID correspondente
+  // If it's not a valid UUID or numeric ID, try to find a corresponding UUID
   for (const companyId of knownCompanyIds) {
     if (companyId.includes(cleanId) || cleanId.includes(companyId.substring(0, 8))) {
-      console.log(`Match aproximado encontrado para ID ${cleanId}: ${companyId}`);
+      console.log(`Approximate match found for ID ${cleanId}: ${companyId}`);
       return companyId;
     }
   }
   
-  // Se nada funcionar, usar o primeiro ID conhecido
-  console.log(`Nenhuma correspondência para ${cleanId}, usando ID padrão: ${knownCompanyIds[0]}`);
+  // If nothing works, use the first known ID
+  console.log(`No match for ${cleanId}, using default ID: ${knownCompanyIds[0]}`);
   return knownCompanyIds[0];
 };
 

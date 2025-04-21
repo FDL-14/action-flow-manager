@@ -219,16 +219,18 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error("É necessário selecionar uma empresa");
       }
       
-      // Usar ID conhecido válido para Total Data
-      let company_id = "12f6f95b-eeca-411d-a098-221053ab9f03";
-      console.log(`Usando ID conhecido para empresa: ${company_id}`);
+      // Convert IDs to UUID format
+      const company_id = convertToUUID(newActionData.companyId);
+      if (!company_id) {
+        throw new Error("ID da empresa inválido");
+      }
       
-      // Usar IDs válidos para os outros campos
-      const responsible_id = newActionData.responsibleId;
-      const client_id = newActionData.clientId || null;
-      const requester_id = newActionData.requesterId || null;
+      // Convert other IDs to UUID format if they exist
+      const responsible_id = convertToUUID(newActionData.responsibleId);
+      const client_id = newActionData.clientId ? convertToUUID(newActionData.clientId) : null;
+      const requester_id = newActionData.requesterId ? convertToUUID(newActionData.requesterId) : null;
       
-      console.log('IDs a serem usados:', {
+      console.log('IDs convertidos para UUID:', {
         company_id,
         responsible_id,
         client_id,
@@ -289,12 +291,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         subject: newActionData.subject,
         description: newActionData.description,
         status: validStatus as "pendente" | "concluido" | "atrasado",
-        responsibleId: responsible_id,
+        responsibleId: newActionData.responsibleId,
         startDate: newActionData.startDate,
         endDate: newActionData.endDate,
-        companyId: company_id,
-        clientId: client_id || '',
-        requesterId: requester_id || '',
+        companyId: newActionData.companyId,
+        clientId: newActionData.clientId || '',
+        requesterId: newActionData.requesterId || '',
         notes: [],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -306,7 +308,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setActions(prevActions => [...prevActions, newAction]);
       toast.success('Ação criada com sucesso!');
       
-      // Força uma atualização dos dados após a criação
+      // Force a reload of actions after creation
       setTimeout(() => {
         const fetchActions = async () => {
           const { data, error } = await supabase
