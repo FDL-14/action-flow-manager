@@ -22,17 +22,14 @@ const DashboardPage = () => {
   const { toast } = useToast();
 
   const filteredActions = actions.filter(action => {
-    // Filtrar por status
     if (filters.status !== 'all' && action.status !== filters.status) {
       return false;
     }
     
-    // Filtrar por responsável
     if (filters.responsibleId !== 'all' && action.responsibleId !== filters.responsibleId) {
       return false;
     }
     
-    // Filtrar por cliente
     if (filters.clientId !== 'all' && action.clientId !== filters.clientId) {
       return false;
     }

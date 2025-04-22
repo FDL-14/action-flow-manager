@@ -96,15 +96,15 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
     setShowNotes(true);
   };
 
-  const handleCompleteAction = () => {
+  const handleCompleteAction = async () => {
     try {
       setIsUpdating(true);
-      updateActionStatus(action.id, 'concluido', new Date());
+      console.log('Marcando ação como concluída via handleCompleteAction:', action.id);
+      await updateActionStatus(action.id, 'concluido', new Date());
       setShowNotes(false);
       toast({
         title: "Ação concluída",
         description: "A ação foi marcada como concluída com sucesso.",
-        variant: "default",
       });
     } catch (error) {
       console.error("Erro ao marcar ação como concluída:", error);
@@ -118,14 +118,14 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
     }
   };
 
-  const handleMarkIncomplete = () => {
+  const handleMarkIncomplete = async () => {
     try {
       setIsUpdating(true);
-      updateActionStatus(action.id, 'pendente');
+      console.log('Marcando ação como pendente:', action.id);
+      await updateActionStatus(action.id, 'pendente');
       toast({
         title: "Ação pendente",
         description: "A ação foi marcada como pendente.",
-        variant: "default",
       });
     } catch (error) {
       console.error("Erro ao marcar ação como pendente:", error);
@@ -139,10 +139,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
     }
   };
 
-  const handleMarkDelayed = () => {
+  const handleMarkDelayed = async () => {
     try {
       setIsUpdating(true);
-      updateActionStatus(action.id, 'atrasado');
+      console.log('Marcando ação como atrasada:', action.id);
+      await updateActionStatus(action.id, 'atrasado');
       toast({
         title: "Ação atrasada",
         description: "A ação foi marcada como atrasada.",
@@ -349,13 +350,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   const handleActionComplete = async () => {
     try {
       setIsUpdating(true);
-      console.log('Marcando ação como concluída:', action.id);
+      console.log('Marcando ação como concluída via handleActionComplete:', action.id);
       await updateActionStatus(action.id, 'concluido', new Date());
       setShowNotesDialog(false);
       toast({
         title: "Ação concluída",
         description: "A ação foi marcada como concluída com sucesso.",
-        variant: "default",
       });
     } catch (error) {
       console.error('Erro ao marcar ação como concluída:', error);

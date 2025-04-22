@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -217,6 +218,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     
     try {
       console.log('Marcando ação como concluída:', action.id);
+      // Chamar a função com await para garantir que ela é finalizada antes de continuar
       await updateActionStatus(action.id, 'concluido', new Date());
       
       toast({
@@ -224,10 +226,12 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         description: "A ação foi marcada como concluída com sucesso.",
       });
       
+      // Chamar o callback onComplete se ele existir
       if (onComplete) {
         onComplete();
       }
       
+      // Fechar o diálogo de anotações
       onClose();
     } catch (error) {
       console.error("Erro ao concluir ação:", error);
