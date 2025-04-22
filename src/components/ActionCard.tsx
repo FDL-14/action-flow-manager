@@ -101,7 +101,9 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
       setIsUpdating(true);
       console.log('Marcando ação como concluída via handleCompleteAction:', action.id);
       
-      await updateActionStatus(action.id, 'concluido', new Date());
+      const completionDate = new Date();
+      const result = await updateActionStatus(action.id, 'concluido', completionDate);
+      console.log('Resultado da atualização de status para concluído:', result);
       
       setShowNotes(false);
       toast({
@@ -125,7 +127,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
       setIsUpdating(true);
       console.log('Marcando ação como pendente:', action.id);
       
-      await updateActionStatus(action.id, 'pendente');
+      const result = await updateActionStatus(action.id, 'pendente');
+      console.log('Resultado da atualização de status para pendente:', result);
       
       toast({
         title: "Ação pendente",
@@ -148,7 +151,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
       setIsUpdating(true);
       console.log('Marcando ação como atrasada:', action.id);
       
-      await updateActionStatus(action.id, 'atrasado');
+      const result = await updateActionStatus(action.id, 'atrasado');
+      console.log('Resultado da atualização de status para atrasado:', result);
       
       toast({
         title: "Ação atrasada",
@@ -358,7 +362,9 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
       setIsUpdating(true);
       console.log('Marcando ação como concluída via handleActionComplete:', action.id);
       
-      await updateActionStatus(action.id, 'concluido', new Date());
+      const completionDate = new Date();
+      const result = await updateActionStatus(action.id, 'concluido', completionDate);
+      console.log('Resultado da atualização de status após diálogo:', result);
       
       setShowNotesDialog(false);
       toast({
