@@ -8,7 +8,7 @@ import ActionCard from '@/components/ActionCard';
 import ActionFilter from '@/components/ActionFilter';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 const DashboardPage = () => {
   const { company } = useCompany();

@@ -57,6 +57,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const [showNotificationOptions, setShowNotificationOptions] = useState(false);
   const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -244,7 +245,6 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   
   const handleDownload = (url: string, filename: string = 'arquivo') => {
     try {
-      // Usar fetch para tratar como blob
       fetch(url)
         .then(response => {
           if (!response.ok) {
@@ -253,15 +253,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
           return response.blob();
         })
         .then(blob => {
-          // Criar URL do objeto blob
           const blobUrl = window.URL.createObjectURL(blob);
           
-          // Criar elemento âncora temporário para o download
           const a = document.createElement('a');
           a.style.display = 'none';
           a.href = blobUrl;
           
-          // Adicionar a extensão do arquivo se não existir no nome
           const extension = url.split('.').pop()?.toLowerCase();
           const hasExtension = filename.includes('.');
           
@@ -271,14 +268,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
           
           a.download = filename;
           
-          // Adicionar ao DOM, clicar e remover
           document.body.appendChild(a);
           a.click();
           
-          // Pequeno timeout para garantir que o download inicie antes de remover
           setTimeout(() => {
             document.body.removeChild(a);
-            // Liberar objeto URL
             window.URL.revokeObjectURL(blobUrl);
           }, 100);
           
@@ -321,10 +315,18 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
       console.log('Marcando ação como concluída:', action.id);
       await updateActionStatus(action.id, 'concluido', new Date());
       setShowNotesDialog(false);
-      toast.success('Ação marcada como concluída');
+      toast({
+        title: "Ação concluída",
+        description: "A ação foi marcada como concluída com sucesso.",
+        variant: "default",
+      });
     } catch (error) {
       console.error('Erro ao marcar ação como concluída:', error);
-      toast.error('Erro ao atualizar status da ação');
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar status da ação",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }
