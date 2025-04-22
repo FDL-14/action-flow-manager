@@ -224,19 +224,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     
     try {
       console.log('Marcando ação como concluída via handleComplete:', action.id);
-      
-      // Usar Promise para garantir que a operação é concluída
-      await new Promise<void>((resolve, reject) => {
-        updateActionStatus(action.id, 'concluido', new Date())
-          .then(() => {
-            console.log('Status atualizado com sucesso para concluído');
-            resolve();
-          })
-          .catch((error) => {
-            console.error('Erro ao atualizar status para concluído:', error);
-            reject(error);
-          });
-      });
+      await updateActionStatus(action.id, 'concluido', new Date());
       
       toast({
         title: "Ação concluída",
