@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
@@ -57,6 +56,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   const [showAttachments, setShowAttachments] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const [showNotificationOptions, setShowNotificationOptions] = useState(false);
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -314,6 +314,21 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   };
 
   const latestAttachment = getLatestAttachment();
+
+  const handleActionComplete = async () => {
+    try {
+      setIsUpdating(true);
+      console.log('Marcando ação como concluída:', action.id);
+      await updateActionStatus(action.id, 'concluido', new Date());
+      setShowNotesDialog(false);
+      toast.success('Ação marcada como concluída');
+    } catch (error) {
+      console.error('Erro ao marcar ação como concluída:', error);
+      toast.error('Erro ao atualizar status da ação');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <Card className={`mb-4 border-l-4 ${getStatusColor()}`}>
@@ -730,6 +745,21 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
           </div>
         </DialogContent>
       </Dialog>
+
+      {showNotesDialog && (
+        <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Anotações - {action.subject}</DialogTitle>
+            </DialogHeader>
+            <ActionNotes 
+              action={action} 
+              onClose={() => setShowNotesDialog(false)}
+              onComplete={handleActionComplete}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 };

@@ -30,7 +30,7 @@ interface ActionNotesProps {
 
 const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }) => {
   const { user } = useAuth();
-  const { addActionNote, deleteActionNote, addAttachment, getAttachmentUrl } = useActions();
+  const { addActionNote, deleteActionNote, addAttachment, getAttachmentUrl, updateActionStatus } = useActions();
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -38,6 +38,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const [addedNoteOrAttachment, setAddedNoteOrAttachment] = useState(false);
   const [attachmentUrls, setAttachmentUrls] = useState<{ path: string, url: string }[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [isCompletingAction, setIsCompletingAction] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,13 +58,18 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       try {
         console.log('Carregando URLs para anexos:', action.attachments);
         const urlPromises = action.attachments.map(async (path) => {
-          const url = await getAttachmentUrl(path);
-          return { path, url };
+          try {
+            const url = await getAttachmentUrl(path);
+            return { path, url };
+          } catch (error) {
+            console.error(`Erro ao carregar URL para anexo ${path}:`, error);
+            return { path, url: '' };
+          }
         });
         
         const urls = await Promise.all(urlPromises);
         console.log('URLs de anexos carregadas:', urls);
-        setAttachmentUrls(urls);
+        setAttachmentUrls(urls.filter(u => u.url));
       } catch (error) {
         console.error("Erro ao carregar URLs de anexos:", error);
         toast({
@@ -90,6 +96,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     }
 
     try {
+      console.log('Adicionando anotação para ação', action.id, 'com conteúdo:', data.content);
       await addActionNote(action.id, data.content);
       form.reset();
       
@@ -99,7 +106,13 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       
       // Marca que o usuário adicionou uma anotação nesta sessão
       setAddedNoteOrAttachment(true);
+      
+      toast({
+        title: "Anotação adicionada",
+        description: "Sua anotação foi adicionada com sucesso.",
+      });
     } catch (error) {
+      console.error('Erro ao adicionar anotação:', error);
       toast({
         title: "Erro ao adicionar anotação",
         description: "Não foi possível adicionar a anotação. Tente novamente.",
@@ -112,6 +125,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     const files = event.target.files;
     if (files && files.length > 0) {
       setSelectedFile(files[0]);
+      console.log('Arquivo selecionado:', files[0].name);
     }
   };
 
@@ -128,8 +142,12 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     setIsUploading(true);
 
     try {
-      console.log('Enviando arquivo:', selectedFile.name);
+      console.log('Enviando arquivo:', selectedFile.name, 'para ação:', action.id);
       await addAttachment(action.id, selectedFile);
+      toast({
+        title: "Arquivo anexado",
+        description: "O arquivo foi anexado com sucesso.",
+      });
       setSelectedFile(null);
 
       if (action.status !== 'concluido') {
@@ -142,14 +160,19 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       // Recarregar URLs de anexos após o upload ser concluído
       if (action.attachments && action.attachments.length > 0) {
         setIsLoadingAttachments(true);
-        const urlPromises = action.attachments.map(async (path) => {
-          const url = await getAttachmentUrl(path);
-          return { path, url };
-        });
-        
-        const urls = await Promise.all(urlPromises);
-        setAttachmentUrls(urls);
-        setIsLoadingAttachments(false);
+        try {
+          const urlPromises = action.attachments.map(async (path) => {
+            const url = await getAttachmentUrl(path);
+            return { path, url };
+          });
+          
+          const urls = await Promise.all(urlPromises);
+          setAttachmentUrls(urls);
+        } catch (error) {
+          console.error("Erro ao recarregar URLs de anexos:", error);
+        } finally {
+          setIsLoadingAttachments(false);
+        }
       }
     } catch (error) {
       console.error("Erro ao fazer upload:", error);
@@ -165,13 +188,58 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
 
   const handleDeleteNote = async (noteId: string) => {
     if (window.confirm("Tem certeza que deseja excluir esta anotação?")) {
-      await deleteActionNote(noteId, action.id);
+      try {
+        await deleteActionNote(noteId, action.id);
+        toast({
+          title: "Anotação excluída",
+          description: "A anotação foi excluída com sucesso.",
+        });
+      } catch (error) {
+        console.error("Erro ao excluir anotação:", error);
+        toast({
+          title: "Erro ao excluir anotação",
+          description: "Não foi possível excluir a anotação. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleComplete = () => {
-    if (onComplete) {
-      onComplete();
+  const handleComplete = async () => {
+    if (!addedNoteOrAttachment) {
+      toast({
+        title: "Ação incompleta",
+        description: "Adicione uma anotação ou anexo antes de concluir esta ação.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsCompletingAction(true);
+    
+    try {
+      console.log('Marcando ação como concluída:', action.id);
+      await updateActionStatus(action.id, 'concluido', new Date());
+      
+      toast({
+        title: "Ação concluída",
+        description: "A ação foi marcada como concluída com sucesso.",
+      });
+      
+      if (onComplete) {
+        onComplete();
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("Erro ao concluir ação:", error);
+      toast({
+        title: "Erro ao concluir ação",
+        description: "Não foi possível marcar a ação como concluída. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompletingAction(false);
     }
   };
 
@@ -357,9 +425,16 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             onClick={handleComplete} 
             className="w-full bg-green-600 hover:bg-green-700 text-white"
             type="button"
-            disabled={!addedNoteOrAttachment}
+            disabled={!addedNoteOrAttachment || isCompletingAction}
           >
-            Marcar Ação como Concluída
+            {isCompletingAction ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              'Marcar Ação como Concluída'
+            )}
           </Button>
           {!addedNoteOrAttachment && (
             <p className="text-xs text-center mt-2 text-amber-600">

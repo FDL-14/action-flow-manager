@@ -141,4 +141,3 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     console.error('Error setting up realtime:', error);
   }
 })();
-
