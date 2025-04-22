@@ -97,31 +97,67 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   };
 
   const handleCompleteAction = () => {
-    updateActionStatus(action.id, 'concluido', new Date());
-    setShowNotes(false);
-    toast({
-      title: "Ação concluída",
-      description: "A ação foi marcada como concluída com sucesso.",
-      variant: "default",
-    });
+    try {
+      setIsUpdating(true);
+      updateActionStatus(action.id, 'concluido', new Date());
+      setShowNotes(false);
+      toast({
+        title: "Ação concluída",
+        description: "A ação foi marcada como concluída com sucesso.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Erro ao marcar ação como concluída:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível marcar a ação como concluída. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleMarkIncomplete = () => {
-    updateActionStatus(action.id, 'pendente');
-    toast({
-      title: "Ação pendente",
-      description: "A ação foi marcada como pendente.",
-      variant: "default",
-    });
+    try {
+      setIsUpdating(true);
+      updateActionStatus(action.id, 'pendente');
+      toast({
+        title: "Ação pendente",
+        description: "A ação foi marcada como pendente.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Erro ao marcar ação como pendente:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status da ação.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleMarkDelayed = () => {
-    updateActionStatus(action.id, 'atrasado');
-    toast({
-      title: "Ação atrasada",
-      description: "A ação foi marcada como atrasada.",
-      variant: "destructive",
-    });
+    try {
+      setIsUpdating(true);
+      updateActionStatus(action.id, 'atrasado');
+      toast({
+        title: "Ação atrasada",
+        description: "A ação foi marcada como atrasada.",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Erro ao marcar ação como atrasada:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status da ação.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleSendEmail = async () => {

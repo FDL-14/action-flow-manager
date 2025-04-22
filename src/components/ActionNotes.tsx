@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +48,6 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
 
   const visibleNotes = action.notes.filter(note => !note.isDeleted);
 
-  // Carregar URLs de anexos
   useEffect(() => {
     const loadAttachmentUrls = async () => {
       if (!action.attachments || action.attachments.length === 0) return;

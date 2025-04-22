@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -8,6 +7,7 @@ import ActionFilter from '@/components/ActionFilter';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 
 const ActionsPage = () => {
   const { company } = useCompany();
@@ -21,6 +21,7 @@ const ActionsPage = () => {
   });
   const [refreshKey, setRefreshKey] = useState(0);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleActionDeleted = () => {
     setRefreshKey(prev => prev + 1);
@@ -28,24 +29,20 @@ const ActionsPage = () => {
   
   const handleActionMenuClick = (actionId: string) => {
     setProcessingAction(actionId);
-    // Pequeno timeout para garantir que a UI seja atualizada
     setTimeout(() => {
       setProcessingAction(null);
     }, 500);
   };
 
   const filteredActions = actions.filter(action => {
-    // Filtrar por status
     if (filters.status !== 'all' && action.status !== filters.status) {
       return false;
     }
     
-    // Filtrar por responsável
     if (filters.responsibleId !== 'all' && action.responsibleId !== filters.responsibleId) {
       return false;
     }
     
-    // Filtrar por cliente
     if (filters.clientId !== 'all' && action.clientId !== filters.clientId) {
       return false;
     }
