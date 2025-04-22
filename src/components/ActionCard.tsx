@@ -31,7 +31,8 @@ import {
   Phone,
   MessageSquare,
   MessageCircle,
-  Share
+  Share,
+  Loader2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
