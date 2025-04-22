@@ -93,25 +93,37 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
   };
 
   const handleMarkComplete = () => {
-    setShowNotes(true);
+    setShowNotesDialog(true);
   };
 
   const handleCompleteAction = async () => {
     try {
       setIsUpdating(true);
       console.log('Marcando ação como concluída via handleCompleteAction:', action.id);
-      await updateActionStatus(action.id, 'concluido', new Date());
+      
+      await new Promise<void>((resolve, reject) => {
+        updateActionStatus(action.id, 'concluido', new Date())
+          .then(() => {
+            console.log('Status atualizado com sucesso para concluído');
+            resolve();
+          })
+          .catch((error) => {
+            console.error('Erro ao atualizar status para concluído:', error);
+            reject(error);
+          });
+      });
+      
       setShowNotes(false);
       toast({
         title: "Ação concluída",
-        description: "A ação foi marcada como concluída com sucesso.",
+        description: "A ação foi marcada como concluída com sucesso."
       });
     } catch (error) {
       console.error("Erro ao marcar ação como concluída:", error);
       toast({
         title: "Erro",
         description: "Não foi possível marcar a ação como concluída. Tente novamente.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdating(false);
@@ -122,17 +134,29 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
     try {
       setIsUpdating(true);
       console.log('Marcando ação como pendente:', action.id);
-      await updateActionStatus(action.id, 'pendente');
+      
+      await new Promise<void>((resolve, reject) => {
+        updateActionStatus(action.id, 'pendente')
+          .then(() => {
+            console.log('Status atualizado com sucesso para pendente');
+            resolve();
+          })
+          .catch((error) => {
+            console.error('Erro ao atualizar status para pendente:', error);
+            reject(error);
+          });
+      });
+      
       toast({
         title: "Ação pendente",
-        description: "A ação foi marcada como pendente.",
+        description: "A ação foi marcada como pendente."
       });
     } catch (error) {
       console.error("Erro ao marcar ação como pendente:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status da ação.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdating(false);
@@ -143,18 +167,30 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
     try {
       setIsUpdating(true);
       console.log('Marcando ação como atrasada:', action.id);
-      await updateActionStatus(action.id, 'atrasado');
+      
+      await new Promise<void>((resolve, reject) => {
+        updateActionStatus(action.id, 'atrasado')
+          .then(() => {
+            console.log('Status atualizado com sucesso para atrasado');
+            resolve();
+          })
+          .catch((error) => {
+            console.error('Erro ao atualizar status para atrasado:', error);
+            reject(error);
+          });
+      });
+      
       toast({
         title: "Ação atrasada",
         description: "A ação foi marcada como atrasada.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } catch (error) {
       console.error("Erro ao marcar ação como atrasada:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status da ação.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdating(false);
@@ -351,18 +387,30 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete, onMenuClick, 
     try {
       setIsUpdating(true);
       console.log('Marcando ação como concluída via handleActionComplete:', action.id);
-      await updateActionStatus(action.id, 'concluido', new Date());
+      
+      await new Promise<void>((resolve, reject) => {
+        updateActionStatus(action.id, 'concluido', new Date())
+          .then(() => {
+            console.log('Status atualizado com sucesso para concluído');
+            resolve();
+          })
+          .catch((error) => {
+            console.error('Erro ao atualizar status para concluído:', error);
+            reject(error);
+          });
+      });
+      
       setShowNotesDialog(false);
       toast({
         title: "Ação concluída",
-        description: "A ação foi marcada como concluída com sucesso.",
+        description: "A ação foi marcada como concluída com sucesso."
       });
     } catch (error) {
       console.error('Erro ao marcar ação como concluída:', error);
       toast({
         title: "Erro",
         description: "Erro ao atualizar status da ação",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdating(false);

@@ -39,6 +39,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const [attachmentUrls, setAttachmentUrls] = useState<{ path: string, url: string }[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isCompletingAction, setIsCompletingAction] = useState(false);
+  const [isDeletingNote, setIsDeletingNote] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -188,7 +189,10 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const handleDeleteNote = async (noteId: string) => {
     if (window.confirm("Tem certeza que deseja excluir esta anotação?")) {
       try {
+        setIsDeletingNote(noteId);
+        console.log("Excluindo anotação:", noteId, "da ação:", action.id);
         await deleteActionNote(noteId, action.id);
+        
         toast({
           title: "Anotação excluída",
           description: "A anotação foi excluída com sucesso.",
@@ -200,6 +204,8 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
           description: "Não foi possível excluir a anotação. Tente novamente.",
           variant: "destructive",
         });
+      } finally {
+        setIsDeletingNote(null);
       }
     }
   };
@@ -217,9 +223,20 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     setIsCompletingAction(true);
     
     try {
-      console.log('Marcando ação como concluída:', action.id);
-      // Chamar a função com await para garantir que ela é finalizada antes de continuar
-      await updateActionStatus(action.id, 'concluido', new Date());
+      console.log('Marcando ação como concluída via handleComplete:', action.id);
+      
+      // Usar Promise para garantir que a operação é concluída
+      await new Promise<void>((resolve, reject) => {
+        updateActionStatus(action.id, 'concluido', new Date())
+          .then(() => {
+            console.log('Status atualizado com sucesso para concluído');
+            resolve();
+          })
+          .catch((error) => {
+            console.error('Erro ao atualizar status para concluído:', error);
+            reject(error);
+          });
+      });
       
       toast({
         title: "Ação concluída",
@@ -276,6 +293,21 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     return parts[parts.length - 1];
   };
 
+  const canDeleteNote = (noteCreatedBy: string) => {
+    if (!user) return false;
+    
+    // O próprio criador da anotação pode excluí-la
+    if (noteCreatedBy === user.id) return true;
+    
+    // Usuários com permissão de administrador podem excluir qualquer anotação
+    if (user.role === 'master') return true;
+    
+    // Verificar se o usuário tem permissão específica para excluir anotações
+    const hasDeletePermission = user.permissions?.some(p => p.canDelete);
+    
+    return hasDeletePermission || false;
+  };
+
   return (
     <div className="space-y-4">
       {visibleNotes.length === 0 ? (
@@ -298,14 +330,19 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
                       {format(new Date(note.createdAt), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                     </span>
                   </div>
-                  {note.createdBy === user?.id && (
+                  {canDeleteNote(note.createdBy) && (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDeleteNote(note.id)}
                       className="h-6 w-6 text-red-500 hover:text-red-700"
+                      disabled={isDeletingNote === note.id}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {isDeletingNote === note.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   )}
                 </div>
