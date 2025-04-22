@@ -19,6 +19,7 @@ const DashboardPage = () => {
     responsibleId: 'all',
     clientId: 'all',
   });
+  const { toast } = useToast();
 
   const filteredActions = actions.filter(action => {
     // Filtrar por status
