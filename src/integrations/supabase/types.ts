@@ -89,6 +89,7 @@ export type Database = {
         Row: {
           client_id: string | null
           company_id: string | null
+          completed_at: string | null
           created_at: string | null
           description: string | null
           due_date: string | null
@@ -104,6 +105,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           company_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
@@ -119,6 +121,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           company_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null

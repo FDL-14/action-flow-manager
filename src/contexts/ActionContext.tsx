@@ -66,7 +66,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           if (data && Array.isArray(data)) {
             const formattedActions: Action[] = data.map(action => {
-              // Verificar se action é null ou undefined
               if (!action) {
                 console.warn('Item de ação inválido encontrado', action);
                 return null;
@@ -91,7 +90,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 parsedNotes = [];
               }
 
-              // Check if completed_at exists before trying to access it
               const completedAt = 'completed_at' in action && action.completed_at 
                 ? new Date(action.completed_at as string) 
                 : undefined;
@@ -114,7 +112,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 createdBy: '',
                 createdByName: ''
               };
-            }).filter(Boolean) as Action[]; // Remover itens null/undefined
+            }).filter(Boolean) as Action[];
             
             console.log('Ações formatadas:', formattedActions);
             setActions(formattedActions);
@@ -130,7 +128,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     fetchActions();
     
-    // Configurar canal em tempo real para atualizações de ações
     const channel = supabase
       .channel('public:actions')
       .on('postgres_changes', { 
@@ -679,8 +676,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updated_at: new Date().toISOString()
       };
       
-      if (status === 'concluido' && completedAt) {
-        updateData.completed_at = completedAt.toISOString();
+      if (status === 'concluido') {
+        updateData.completed_at = (completedAt || new Date()).toISOString();
+      } else {
+        updateData.completed_at = null;
       }
       
       const { error } = await supabase
@@ -699,7 +698,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return { 
               ...action, 
               status, 
-              completedAt: status === 'concluido' ? completedAt || new Date() : undefined,
+              completedAt: status === 'concluido' ? (completedAt || new Date()) : undefined,
               updatedAt: new Date() 
             };
           }
@@ -708,9 +707,12 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       );
       
       toast.success(`Status da ação atualizado para ${status}!`);
+      
+      return true;
     } catch (error) {
       console.error('Erro ao atualizar status da ação:', error);
       toast.error('Erro ao atualizar status.');
+      return false;
     }
   };
 
