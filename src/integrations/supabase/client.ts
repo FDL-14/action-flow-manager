@@ -1,8 +1,15 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Initialize Supabase client with explicit fallback values
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tsjdsbxgottssqqlzfxl.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzamRzYnhnb3R0c3NxcWx6ZnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1ODM3NDgsImV4cCI6MjA2MDE1OTc0OH0.3WVd3cIBxyUlJGBjCzwLs5YY14xC6ZNtMbb5zuxF0EY';
+
+// Log initialization values for debugging
+console.log('Initializing Supabase client with:', { 
+  supabaseUrl: supabaseUrl || 'NOT SET', 
+  supabaseKeyProvided: supabaseKey ? 'YES' : 'NO' 
+});
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
