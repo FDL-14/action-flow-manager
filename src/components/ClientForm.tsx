@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 interface ClientFormProps {
   open: boolean;
@@ -53,7 +53,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient }) => {
   const { addClient, updateClient, companies, company } = useCompany();
-  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -89,11 +88,13 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
     }
   }, [editClient, form, company]);
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
     try {
+      console.log("Enviando dados do formulário:", values);
+      
       if (editClient) {
         // Update existing client
-        updateClient({
+        await updateClient({
           ...editClient,
           name: values.name,
           email: values.email || undefined,
@@ -103,37 +104,23 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           companyId: values.companyId,
           updatedAt: new Date(),
         });
-        
-        toast({
-          title: "Cliente atualizado",
-          description: "Cliente atualizado com sucesso",
-          variant: "default",
-        });
       } else {
         // Create new client
-        addClient({
+        await addClient({
           name: values.name,
           email: values.email || undefined,
           phone: values.phone || undefined,
           address: values.address || undefined,
           cnpj: values.cnpj || undefined,
-          companyId: values.companyId, // Include companyId to fix the TypeScript error
-        });
-        
-        toast({
-          title: "Cliente adicionado",
-          description: "Cliente adicionado com sucesso",
-          variant: "default",
+          companyId: values.companyId,
         });
       }
       
       onOpenChange(false);
     } catch (error) {
       console.error('Error submitting client form:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao salvar o cliente",
-        variant: "destructive",
+      toast.error("Erro ao salvar", {
+        description: "Ocorreu um erro ao salvar o cliente. Por favor, tente novamente."
       });
     }
   };
@@ -161,6 +148,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>

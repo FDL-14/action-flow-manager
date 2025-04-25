@@ -1,13 +1,15 @@
 
-import emailjs from 'emailjs-com';
 import { Responsible } from '@/lib/types';
 import { toast } from 'sonner';
+import { useEmail } from './email';
 
 // Chaves de serviço (normalmente estariam em variáveis de ambiente)
 const SMS_API_KEY = "demo_free_tier_key"; // Chave de demonstração para MessageBird
 const WHATSAPP_API_KEY = "demo_free_tier_key"; // Chave de demonstração para Twilio
 
 export const useMessaging = () => {
+  const { sendEmail } = useEmail();
+  
   const sendActionNotification = async (
     responsible: Responsible,
     requester?: Responsible,
@@ -15,8 +17,19 @@ export const useMessaging = () => {
     description?: string
   ) => {
     try {
-      // Enviar email
-      await sendEmail(responsible, requester, subject, description);
+      // Enviar email usando nosso serviço de email atualizado
+      const emailSent = await sendEmail({
+        to: [responsible.email],
+        subject: subject || "Nova ação atribuída a você",
+        content: `
+          <h2>Olá ${responsible.name},</h2>
+          <p>${requester ? requester.name : 'O sistema'} atribuiu uma nova ação para você:</p>
+          <h3>${subject || 'Nova ação'}</h3>
+          <p>${description || 'Uma nova ação foi atribuída a você no sistema. Por favor, verifique.'}</p>
+          <p>Acesse o sistema para mais detalhes.</p>
+          <p>Atenciosamente,<br>Total Data</p>
+        `
+      });
       
       // Enviar SMS se o número de telefone estiver disponível
       if (responsible.phone) {
@@ -28,47 +41,19 @@ export const useMessaging = () => {
         await sendWhatsApp(responsible.phone, subject || "Nova ação atribuída a você", responsible.name, description);
       }
       
-      toast.success("Notificações enviadas com sucesso!", {
-        description: "Email, SMS e WhatsApp foram enviados para o responsável."
-      });
+      if (emailSent) {
+        toast.success("Notificações enviadas com sucesso!", {
+          description: "Email, SMS e WhatsApp foram enviados para o responsável."
+        });
+      }
       
-      return true;
+      return emailSent;
     } catch (error) {
       console.error("Erro ao enviar notificações:", error);
       toast.error("Erro ao enviar notificações", {
         description: "Houve um problema ao enviar as notificações. Tente novamente."
       });
       return false;
-    }
-  };
-
-  const sendEmail = async (
-    responsible: Responsible,
-    requester?: Responsible,
-    subject?: string,
-    description?: string
-  ) => {
-    try {
-      const templateParams = {
-        to_name: responsible.name,
-        to_email: responsible.email,
-        from_name: requester?.name || "Sistema de Gestão",
-        subject: subject || "Nova ação atribuída a você",
-        message: description || "Uma nova ação foi atribuída a você no sistema. Por favor, verifique.",
-      };
-
-      // Usando EmailJS para enviar email
-      await emailjs.send(
-        'service_demo',
-        'template_demo',
-        templateParams,
-        'user_demo'
-      );
-
-      return true;
-    } catch (error) {
-      console.error("Erro ao enviar email:", error);
-      throw new Error("Falha ao enviar email");
     }
   };
 
@@ -86,7 +71,7 @@ export const useMessaging = () => {
       const smsData = {
         recipient: phoneNumber,
         message: `${message}. Acesse o sistema para mais detalhes.`,
-        originator: "ActionFlow"
+        originator: "TotalData"
       };
       
       // Simulação de chamada à API MessageBird
@@ -137,8 +122,15 @@ export const useMessaging = () => {
 
   return {
     sendActionNotification,
-    sendEmail,
+    sendEmail: (params: SendEmailParams) => sendEmail(params),
     sendSMS,
     sendWhatsApp
   };
 };
+
+// Adicionando a interface aqui para evitar erros de TypeScript
+interface SendEmailParams {
+  to: string[];
+  subject: string;
+  content: string;
+}

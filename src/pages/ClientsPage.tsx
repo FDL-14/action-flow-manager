@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -50,14 +49,24 @@ const ClientsPage = () => {
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(company?.id);
 
-  // Verificar permissões do usuário
   const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit);
   const canDeleteClients = user?.role === 'master';
 
-  // Filtrar clientes quando a empresa selecionada muda
   useEffect(() => {
+    console.log("ClientsPage - company changed:", company?.id);
+    if (company) {
+      setSelectedCompanyId(company.id);
+    }
+  }, [company]);
+
+  useEffect(() => {
+    console.log("Filtrando clientes com selectedCompanyId:", selectedCompanyId);
+    console.log("Total de clientes disponíveis:", clients.length);
+    
     if (selectedCompanyId && selectedCompanyId !== 'all') {
-      setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
+      const filtered = clients.filter(client => client.companyId === selectedCompanyId);
+      console.log("Clientes filtrados:", filtered);
+      setFilteredClients(filtered);
     } else {
       setFilteredClients(clients);
     }
@@ -98,7 +107,6 @@ const ClientsPage = () => {
         )}
       </div>
 
-      {/* Seletor de empresa */}
       <div className="mb-6">
         <Card className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">

@@ -124,12 +124,16 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [responsibles, toastUI]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!company) return;
+    if (!company && !clientData.companyId) {
+      toast.error("Erro ao salvar", {
+        description: "É necessário selecionar uma empresa para adicionar um cliente."
+      });
+      return;
+    }
     
     try {
+      const companyId = convertToUUID(clientData.companyId || (company ? company.id : ''));
       console.log("Adicionando novo cliente:", clientData);
-      
-      const companyId = convertToUUID(clientData.companyId || company.id);
       console.log("ID da empresa convertido para UUID:", companyId);
       
       if (!companyId) {
@@ -143,6 +147,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         contact_name: clientData.name,
         company_id: companyId
       };
+      
+      console.log("Dados a serem enviados para Supabase:", supabaseClientData);
       
       const { data: supabaseClient, error } = await supabase
         .from('clients')
@@ -164,7 +170,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         phone: supabaseClient.contact_phone || undefined,
         address: undefined,
         cnpj: undefined,
-        companyId: clientData.companyId || company.id,
+        companyId: supabaseClient.company_id,
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
@@ -185,24 +191,72 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const updateClient = (updatedClient: Client) => {
-    if (!company) return;
-    
-    const updatedClients = clients.map(c => 
-      c.id === updatedClient.id ? { ...updatedClient, updatedAt: new Date() } : c
-    );
-    
-    setClients(updatedClients);
-    
-    toast.success("Cliente atualizado com sucesso!");
+  const updateClient = async (updatedClient: Client) => {
+    try {
+      console.log("Atualizando cliente:", updatedClient);
+      
+      const companyId = convertToUUID(updatedClient.companyId);
+      
+      if (!companyId) {
+        throw new Error("ID da empresa inválido");
+      }
+      
+      const supabaseClientData = {
+        name: updatedClient.name,
+        contact_email: updatedClient.email || null,
+        contact_phone: updatedClient.phone || null,
+        contact_name: updatedClient.name,
+        company_id: companyId
+      };
+      
+      const { error } = await supabase
+        .from('clients')
+        .update(supabaseClientData)
+        .eq('id', updatedClient.id);
+      
+      if (error) {
+        console.error('Erro ao atualizar cliente no Supabase:', error);
+        throw error;
+      }
+      
+      const updatedClients = clients.map(c => 
+        c.id === updatedClient.id ? { ...updatedClient, updatedAt: new Date() } : c
+      );
+      
+      setClients(updatedClients);
+      
+      toast.success("Cliente atualizado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao atualizar cliente:", error);
+      toast.error("Erro ao atualizar", {
+        description: "Não foi possível atualizar o cliente. Por favor, tente novamente."
+      });
+    }
   };
 
-  const deleteClient = (id: string) => {
-    if (!company) return;
-    
-    setClients(clients.filter(c => c.id !== id));
-    
-    toast.success("Cliente excluído com sucesso!");
+  const deleteClient = async (id: string) => {
+    try {
+      console.log("Excluindo cliente:", id);
+      
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Erro ao excluir cliente no Supabase:', error);
+        throw error;
+      }
+      
+      setClients(clients.filter(c => c.id !== id));
+      
+      toast.success("Cliente excluído com sucesso!");
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      toast.error("Erro ao excluir", {
+        description: "Não foi possível excluir o cliente. Por favor, tente novamente."
+      });
+    }
   };
 
   const addResponsible = (responsibleData: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {

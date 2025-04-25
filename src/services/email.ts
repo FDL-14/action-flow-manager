@@ -7,7 +7,7 @@ interface SendEmailParams {
   content: string;
 }
 
-// Configuração do TurboSMTP
+// Configuração do TurboSMTP com as chaves fornecidas
 const TURBOSMTP_API_KEY = "39665192b1b3fb2c07ef80191dd453b3";
 const TURBOSMTP_SECRET = "REcMTn7ru018aSj4GHZytx3v6bWhPpmB";
 const TURBOSMTP_ENDPOINT = "https://api.turbo-smtp.com/v1/email/send";
@@ -25,10 +25,11 @@ export const useEmail = () => {
 
       // Preparar os dados para o TurboSMTP
       const emailData = {
-        from: "contato@meusaas.com",
+        from: "contato@totaldata.com.br",
         to: params.to.join(","),
         subject: params.subject,
         html: params.content,
+        app_name: "Totaldata_Gerenciamento_de_Ações"
       };
 
       // Enviar e-mail usando TurboSMTP
@@ -43,10 +44,13 @@ export const useEmail = () => {
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Erro na resposta do TurboSMTP:", errorData);
         throw new Error(`Erro ao enviar email: ${response.statusText}`);
       }
 
-      console.log("Email enviado com sucesso via TurboSMTP");
+      const responseData = await response.json();
+      console.log("Email enviado com sucesso via TurboSMTP:", responseData);
       toast.success("Email enviado com sucesso!");
       return true;
     } catch (error) {
