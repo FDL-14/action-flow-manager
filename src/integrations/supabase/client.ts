@@ -54,6 +54,7 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     
     // Clients
     "1745268930996": "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
+    "2099b1c4-b95c-42d1-8768-48b528f66607": "2099b1c4-b95c-42d1-8768-48b528f66607",
     
     // Responsibles - using unique keys for each responsible
     "1745060635129": "7f6f84e6-4362-4ebe-b8cc-6e11ec8407f7", // João Silva with timestamp ID
@@ -61,6 +62,7 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     "resp_2": "28a7ed6b-5c2a-4dd4-9aef-a8dca5c5b46e", // Maria Souza
     "resp_3": "65f8e32c-1a1d-49c1-b432-f77d6c529612", // Carlos Oliveira
     "resp_4": "b4a80976-86e0-4a74-8c5c-e5a0f3d35f5f", // Ana Santos
+    "1745581459614": "7d69f456-543a-4e1c-9a23-f056481a7c12", // New responsible
     
     // Requesters
     "1745066913470": "8854bd89-6ef7-4419-9ee3-b968bc279f19",
@@ -88,30 +90,36 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
   // For numeric IDs or other formats, generate a deterministic UUID
   try {
     // Use a proper format for the generated UUID
-    const uuid = "00000000-0000-4000-a000-000000000000".split('');
-    
-    // Convert the ID to a padded string
+    // Format: xxxxxxxx-xxxx-4xxx-axxx-xxxxxxxxxxxx (RFC 4122 v4 UUID format)
     let idStr = cleanId.toString().padStart(12, '0');
-    if (idStr.length > 12) {
-      idStr = idStr.substring(0, 12);
+    
+    // Generate first segment (8 chars)
+    let segment1 = idStr.substring(0, 8);
+    if (segment1.length < 8) {
+      segment1 = segment1.padEnd(8, '0');
     }
     
-    // Use the first 8 chars for the first segment
-    for (let i = 0; i < Math.min(idStr.length, 8); i++) {
-      uuid[i] = idStr[i];
+    // Generate second segment (4 chars)
+    let segment2 = idStr.length > 8 ? idStr.substring(8, 12) : '0000';
+    if (segment2.length < 4) {
+      segment2 = segment2.padEnd(4, '0');
     }
     
-    // Use the next 4 chars for the third segment (after the first two dashes)
-    if (idStr.length > 8) {
-      for (let i = 0; i < Math.min(idStr.length - 8, 4); i++) {
-        uuid[13 + i] = idStr[8 + i];
+    // Generate last segment (12 chars) - use hash of the original ID for uniqueness
+    let segment3 = '';
+    for (let i = 0; i < 12; i++) {
+      if (i < idStr.length) {
+        segment3 += idStr.charCodeAt(i % idStr.length).toString(16).padStart(2, '0').substring(0, 1);
+      } else {
+        segment3 += '0';
       }
     }
     
-    const resultUUID = uuid.join('');
-    console.log(`Generated deterministic UUID for ${cleanId}: ${resultUUID}`);
+    // Combine into valid UUID format (version 4, variant 1)
+    const generatedUUID = `${segment1}-${segment2}-4000-a000-${segment3}`;
+    console.log(`Generated deterministic UUID for ${cleanId}: ${generatedUUID}`);
     
-    return resultUUID;
+    return generatedUUID;
   } catch (error) {
     console.error(`Error converting ID ${cleanId} to UUID:`, error);
     return null;

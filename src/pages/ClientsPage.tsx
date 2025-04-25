@@ -56,7 +56,7 @@ const ClientsPage = () => {
 
   // Filtrar clientes quando a empresa selecionada muda
   useEffect(() => {
-    if (selectedCompanyId) {
+    if (selectedCompanyId && selectedCompanyId !== 'all') {
       setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
     } else {
       setFilteredClients(clients);
@@ -120,6 +120,9 @@ const ClientsPage = () => {
                     {company.name}
                   </SelectItem>
                 ))}
+                {companies.length === 0 && (
+                  <SelectItem value="no_companies">Nenhuma empresa disponível</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

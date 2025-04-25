@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -433,6 +432,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                           {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
                         </SelectItem>
                       ))}
+                      {getCombinedResponsiblesAndUsers().length === 0 && (
+                        <SelectItem value="no_responsibles_available">
+                          Nenhum responsável disponível
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -461,6 +465,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                           {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
                         </SelectItem>
                       ))}
+                      {filteredRequesters.length === 0 && (
+                        <SelectItem value="no_requesters_available">
+                          Nenhum solicitante disponível
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
