@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { mockClients, mockResponsibles } from '@/lib/mock-data';
@@ -56,11 +55,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [clients, setClients] = React.useState<Client[]>(mockClients);
   const [responsibles, setResponsibles] = React.useState<Responsible[]>(mockResponsibles);
 
-  // Carrega clientes do localStorage ou Supabase
   React.useEffect(() => {
     const fetchClients = async () => {
       try {
-        // Tenta buscar clientes do Supabase
         const { data, error } = await supabase
           .from('clients')
           .select('*');
@@ -68,13 +65,11 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (error) {
           console.error("Erro ao buscar clientes do Supabase:", error);
           
-          // Tenta buscar clientes do localStorage como fallback
           const storedClients = localStorage.getItem('clients');
           if (storedClients) {
             setClients(JSON.parse(storedClients));
           }
         } else if (data && data.length > 0) {
-          // Mapeia os dados do Supabase para o formato local
           const formattedClients = data.map(c => ({
             id: c.id,
             name: c.name,
@@ -134,93 +129,63 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       console.log("Adicionando novo cliente:", clientData);
       
-      // Ensure we have a valid company ID
-      const companyId = clientData.companyId || company.id;
-      console.log("ID da empresa original:", companyId);
+      const companyId = convertToUUID(clientData.companyId || company.id);
+      console.log("ID da empresa convertido para UUID:", companyId);
       
-      const supabaseCompanyId = convertToUUID(companyId);
-      console.log("ID da empresa convertido para UUID:", supabaseCompanyId);
-      
-      if (!supabaseCompanyId) {
+      if (!companyId) {
         throw new Error("ID da empresa inválido");
       }
       
-      // Primeiro tenta salvar no Supabase
+      const supabaseClientData = {
+        name: clientData.name,
+        contact_email: clientData.email || null,
+        contact_phone: clientData.phone || null,
+        contact_name: clientData.name,
+        company_id: companyId
+      };
+      
       const { data: supabaseClient, error } = await supabase
         .from('clients')
-        .insert({
-          name: clientData.name,
-          contact_email: clientData.email,
-          contact_phone: clientData.phone,
-          company_id: supabaseCompanyId
-        })
-        .select()
+        .insert(supabaseClientData)
+        .select('*')
         .single();
       
       if (error) {
-        console.error("Erro ao salvar cliente no Supabase:", error);
-        
-        // Fallback para salvar localmente em caso de erro
-        const newClient: Client = {
-          id: Date.now().toString(),
-          companyId: companyId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ...clientData
-        };
-        
-        setClients(prev => [...prev, newClient]);
-        
-        toastUI({
-          title: "Cliente adicionado localmente",
-          description: `Cliente ${clientData.name} foi adicionado localmente.`,
-          variant: "default",
-        });
-      } else {
-        // Cliente salvo com sucesso no Supabase
-        console.log("Cliente salvo no Supabase:", supabaseClient);
-        
-        // Mapeia o cliente do Supabase para o formato local
-        const newClient: Client = {
-          id: supabaseClient.id,
-          name: supabaseClient.name,
-          email: supabaseClient.contact_email || undefined,
-          phone: supabaseClient.contact_phone || undefined,
-          address: undefined,
-          cnpj: undefined,
-          companyId: companyId, // Mantenha o ID original para correlações locais
-          createdAt: new Date(supabaseClient.created_at || new Date()),
-          updatedAt: new Date(supabaseClient.updated_at || new Date())
-        };
-        
-        // Atualiza o estado local
-        setClients(prev => [...prev, newClient]);
-        
-        toastUI({
-          title: "Cliente adicionado",
-          description: `Cliente ${clientData.name} foi adicionado com sucesso.`,
-          variant: "default",
-        });
+        console.error('Erro ao salvar cliente no Supabase:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error("Erro ao adicionar cliente:", error);
       
-      // Fallback de segurança em caso de erro
+      console.log("Cliente salvo no Supabase:", supabaseClient);
+      
       const newClient: Client = {
-        id: Date.now().toString(),
+        id: supabaseClient.id,
+        name: supabaseClient.name,
+        email: supabaseClient.contact_email || undefined,
+        phone: supabaseClient.contact_phone || undefined,
+        address: undefined,
+        cnpj: undefined,
         companyId: clientData.companyId || company.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        ...clientData
+        createdAt: new Date(supabaseClient.created_at),
+        updatedAt: new Date(supabaseClient.updated_at)
       };
       
       setClients(prev => [...prev, newClient]);
       
-      toastUI({
+      toast({
+        title: "Cliente adicionado",
+        description: `Cliente ${clientData.name} foi adicionado com sucesso.`,
+        variant: "default",
+      });
+      
+      return newClient;
+    } catch (error) {
+      console.error("Erro ao adicionar cliente:", error);
+      toast({
         title: "Erro ao salvar",
-        description: "Cliente salvo localmente, mas ocorreu um erro com o banco de dados.",
+        description: "Não foi possível salvar o cliente. Por favor, tente novamente.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
@@ -278,7 +243,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     console.log("Buscando clientes para a empresa:", companyId);
     console.log("Total de clientes disponíveis:", clients.length);
     
-    // Filtrar clientes pela companyId
     const filteredClients = clients.filter(client => {
       const clientBelongsToCompany = client.companyId === companyId;
       if (clientBelongsToCompany) {
