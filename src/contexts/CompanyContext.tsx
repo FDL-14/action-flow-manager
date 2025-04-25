@@ -128,6 +128,13 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       console.log("Adicionando cliente com dados:", clientData);
+      
+      // Make sure we have a valid company ID
+      if (!clientData.companyId) {
+        throw new Error("ID da empresa inválido");
+      }
+      
+      // Convert company ID to UUID format for Supabase
       const companyId = convertToUUID(clientData.companyId);
       
       if (!companyId) {
@@ -164,7 +171,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         phone: supabaseClient.contact_phone || undefined,
         address: undefined,
         cnpj: undefined,
-        companyId: supabaseClient.company_id,
+        companyId: clientData.companyId, // Use original company ID to maintain consistency
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
@@ -197,6 +204,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
       
+      // Make sure we have a valid company ID for the database
       const companyId = convertToUUID(updatedClient.companyId);
       
       if (!companyId) {
@@ -208,8 +216,10 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         contact_email: updatedClient.email || null,
         contact_phone: updatedClient.phone || null,
         contact_name: updatedClient.name,
-        company_id: companyId
+        company_id: companyId // Use the converted UUID for database
       };
+      
+      console.log("Enviando dados para Supabase:", supabaseClientData);
       
       const { error } = await supabase
         .from('clients')
@@ -223,9 +233,10 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Make sure we update the client in the state with the correct companyId
       const updatedClients = clients.map(c => 
-        c.id === updatedClient.id ? { ...updatedClient, companyId: updatedClient.companyId, updatedAt: new Date() } : c
+        c.id === updatedClient.id ? { ...updatedClient, updatedAt: new Date() } : c
       );
       
+      console.log("Cliente atualizado localmente com companyId:", updatedClient.companyId);
       setClients(updatedClients);
       
       toast.success("Cliente atualizado com sucesso!");
