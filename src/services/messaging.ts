@@ -2,13 +2,12 @@
 import { Responsible } from '@/lib/types';
 import { toast } from 'sonner';
 import { useEmail } from './email';
-
-// Chaves de serviço (normalmente estariam em variáveis de ambiente)
-const SMS_API_KEY = "demo_free_tier_key"; // Chave de demonstração para MessageBird
-const WHATSAPP_API_KEY = "demo_free_tier_key"; // Chave de demonstração para Twilio
+import { useActions } from '@/contexts/ActionContext';
+import { useEffect } from 'react';
 
 export const useMessaging = () => {
   const { sendEmail } = useEmail();
+  const { actions } = useActions();
   
   const sendActionNotification = async (
     responsible: Responsible,
@@ -17,9 +16,9 @@ export const useMessaging = () => {
     description?: string
   ) => {
     try {
-      // Enviar email usando nosso serviço de email atualizado
+      // Send email using our email service
       const emailSent = await sendEmail({
-        to: [responsible.email],
+        to: [responsible.email, ...(requester?.email ? [requester.email] : [])],
         subject: subject || "Nova ação atribuída a você",
         content: `
           <h2>Olá ${responsible.name},</h2>
@@ -31,19 +30,9 @@ export const useMessaging = () => {
         `
       });
       
-      // Enviar SMS se o número de telefone estiver disponível
-      if (responsible.phone) {
-        await sendSMS(responsible.phone, subject || "Nova ação atribuída a você", responsible.name);
-      }
-      
-      // Enviar WhatsApp se o número de telefone estiver disponível
-      if (responsible.phone) {
-        await sendWhatsApp(responsible.phone, subject || "Nova ação atribuída a você", responsible.name, description);
-      }
-      
       if (emailSent) {
         toast.success("Notificações enviadas com sucesso!", {
-          description: "Email, SMS e WhatsApp foram enviados para o responsável."
+          description: "Email enviado para o responsável e solicitante."
         });
       }
       
@@ -57,80 +46,67 @@ export const useMessaging = () => {
     }
   };
 
-  const sendSMS = async (
-    phoneNumber: string,
-    message: string,
-    recipientName: string
-  ) => {
+  const sendDeadlineNotification = async (action: any) => {
     try {
-      // Simulando envio de SMS com MessageBird ou outro serviço
-      console.log(`Enviando SMS para ${recipientName} no número ${phoneNumber}`);
-      
-      // Em um ambiente real, usaríamos um serviço como MessageBird ou Twilio
-      // Simulação de chamada API
-      const smsData = {
-        recipient: phoneNumber,
-        message: `${message}. Acesse o sistema para mais detalhes.`,
-        originator: "TotalData"
-      };
-      
-      // Simulação de chamada à API MessageBird
-      console.log("Dados do SMS:", smsData);
-      console.log("Utilizando API KEY:", SMS_API_KEY);
-      
-      // Simulação de sucesso
-      console.log("SMS enviado com sucesso!");
-      return true;
+      const recipients = [action.responsible?.email];
+      if (action.requester?.email) {
+        recipients.push(action.requester.email);
+      }
+
+      await sendEmail({
+        to: recipients,
+        subject: `Alerta: Ação "${action.subject}" próxima do prazo`,
+        content: `
+          <h2>Alerta de Prazo</h2>
+          <p>A ação "${action.subject}" está próxima do prazo de conclusão.</p>
+          <p><strong>Descrição:</strong> ${action.description}</p>
+          <p><strong>Data de término:</strong> ${new Date(action.endDate).toLocaleString('pt-BR')}</p>
+          <p>Por favor, verifique a ação no sistema e tome as providências necessárias.</p>
+          <p>Atenciosamente,<br>Total Data</p>
+        `
+      });
     } catch (error) {
-      console.error("Erro ao enviar SMS:", error);
-      throw new Error("Falha ao enviar SMS");
+      console.error("Erro ao enviar notificação de prazo:", error);
     }
   };
 
-  const sendWhatsApp = async (
-    phoneNumber: string,
-    subject: string,
-    recipientName: string,
-    description?: string
-  ) => {
-    try {
-      // Simulando envio de WhatsApp com Twilio ou outro serviço
-      console.log(`Enviando WhatsApp para ${recipientName} no número ${phoneNumber}`);
+  // Check for actions near deadline
+  useEffect(() => {
+    const checkDeadlines = () => {
+      const now = new Date();
       
-      // Formatação da mensagem para WhatsApp
-      const whatsappMessage = `*${subject}*\n\n${description || "Uma nova ação foi atribuída a você no sistema."}\n\nAcesse o sistema para mais detalhes.`;
-      
-      // Simulação de chamada API
-      const whatsappData = {
-        to: `whatsapp:+${phoneNumber.replace(/\D/g, '')}`,
-        from: "whatsapp:+12065551234", // Número de WhatsApp do sistema (seria configurado no serviço)
-        body: whatsappMessage
-      };
-      
-      // Simulação de chamada à API Twilio
-      console.log("Dados do WhatsApp:", whatsappData);
-      console.log("Utilizando API KEY:", WHATSAPP_API_KEY);
-      
-      // Simulação de sucesso
-      console.log("Mensagem WhatsApp enviada com sucesso!");
-      return true;
-    } catch (error) {
-      console.error("Erro ao enviar WhatsApp:", error);
-      throw new Error("Falha ao enviar WhatsApp");
-    }
-  };
+      actions.forEach(action => {
+        if (action.status === 'pendente') {
+          const endDate = new Date(action.endDate);
+          const timeDiff = endDate.getTime() - now.getTime();
+          const hoursDiff = timeDiff / (1000 * 60 * 60);
+          
+          // Check if action is 24 hours from deadline
+          if (hoursDiff <= 24 && hoursDiff > 23) {
+            console.log('Sending 24h notification for action:', action.subject);
+            sendDeadlineNotification(action);
+          }
+          
+          // Check if action is 1 hour from deadline
+          if (hoursDiff <= 1 && hoursDiff > 0) {
+            console.log('Sending 1h notification for action:', action.subject);
+            sendDeadlineNotification(action);
+          }
+        }
+      });
+    };
+
+    // Check deadlines every 15 minutes
+    const interval = setInterval(checkDeadlines, 15 * 60 * 1000);
+    
+    // Initial check
+    checkDeadlines();
+    
+    return () => clearInterval(interval);
+  }, [actions]);
 
   return {
     sendActionNotification,
-    sendEmail: (params: SendEmailParams) => sendEmail(params),
-    sendSMS,
-    sendWhatsApp
+    sendEmail,
   };
 };
-
-// Adicionando a interface aqui para evitar erros de TypeScript
-interface SendEmailParams {
-  to: string[];
-  subject: string;
-  content: string;
-}
