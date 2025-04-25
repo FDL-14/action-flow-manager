@@ -1,8 +1,12 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
-import { supabase, JsonObject, convertToUUID } from '@/integrations/supabase/client';
+import { supabase, convertToUUID } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
+
+// Define JsonObject type here instead of importing it
+type JsonObject = Record<string, any>;
 
 interface ActionContextType {
   actions: Action[];
