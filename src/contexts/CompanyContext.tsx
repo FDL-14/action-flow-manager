@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { mockClients, mockResponsibles } from '@/lib/mock-data';
@@ -68,7 +67,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           
           const storedClients = localStorage.getItem('clients');
           if (storedClients) {
-            setClients(JSON.parse(storedClients));
+            const parsedClients = JSON.parse(storedClients);
+            console.log("Clientes carregados do localStorage:", parsedClients);
+            setClients(parsedClients);
           }
         } else if (data && data.length > 0) {
           const formattedClients = data.map(c => ({
@@ -85,6 +86,14 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           
           console.log("Clientes carregados do Supabase:", formattedClients);
           setClients(formattedClients);
+        } else {
+          // No clients found in Supabase, try loading from localStorage
+          const storedClients = localStorage.getItem('clients');
+          if (storedClients) {
+            const parsedClients = JSON.parse(storedClients);
+            console.log("Nenhum cliente no Supabase, carregando do localStorage:", parsedClients);
+            setClients(parsedClients);
+          }
         }
       } catch (error) {
         console.error("Erro ao inicializar clientes:", error);
@@ -98,6 +107,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   React.useEffect(() => {
     try {
       if (clients && clients.length > 0) {
+        console.log("Salvando clientes no localStorage:", clients);
         localStorage.setItem('clients', JSON.stringify(clients));
       }
     } catch (error) {
@@ -129,11 +139,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       console.log("Adicionando cliente com dados:", clientData);
       
-      // Make sure we have a valid company ID
-      if (!clientData.companyId) {
-        throw new Error("ID da empresa inválido");
-      }
-      
       // First check if the company exists in the list of companies
       const companyExists = companies.some(c => c.id === clientData.companyId);
       if (!companyExists) {
@@ -142,6 +147,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
         return;
       }
+      
+      // Store original company ID for local state
+      const originalCompanyId = clientData.companyId;
       
       // Convert company ID to UUID format for Supabase
       const companyId = convertToUUID(clientData.companyId);
@@ -173,6 +181,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       console.log("Cliente salvo no Supabase:", supabaseClient);
       
+      // Important: Keep original companyId format for local state
       const newClient: Client = {
         id: supabaseClient.id,
         name: supabaseClient.name,
@@ -180,10 +189,12 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         phone: supabaseClient.contact_phone || undefined,
         address: undefined,
         cnpj: undefined,
-        companyId: clientData.companyId, // Use original company ID to maintain consistency
+        companyId: originalCompanyId, // Use original company ID to maintain consistency
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
+      
+      console.log("Novo cliente adicionado ao estado local com companyId:", newClient.companyId);
       
       // Update local client list
       setClients(prev => [...prev, newClient]);
@@ -222,6 +233,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
       
+      // Store original company ID for local state
+      const originalCompanyId = updatedClient.companyId;
+      
       // Make sure we have a valid company ID for the database
       const companyId = convertToUUID(updatedClient.companyId);
       
@@ -251,10 +265,14 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Make sure we update the client in the state with the correct companyId
       const updatedClients = clients.map(c => 
-        c.id === updatedClient.id ? { ...updatedClient, updatedAt: new Date() } : c
+        c.id === updatedClient.id ? { 
+          ...updatedClient, 
+          companyId: originalCompanyId, // Ensure we use the original format 
+          updatedAt: new Date() 
+        } : c
       );
       
-      console.log("Cliente atualizado localmente com companyId:", updatedClient.companyId);
+      console.log("Cliente atualizado localmente com companyId:", originalCompanyId);
       setClients(updatedClients);
       
       toast.success("Cliente atualizado com sucesso!");
@@ -339,7 +357,13 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const filteredClients = clients.filter(client => {
       if (!client.companyId) return false;
       
-      return client.companyId === companyId;
+      // Normalize the comparison to ensure exact string matching
+      const normalizedClientCompanyId = client.companyId.toString().trim();
+      const normalizedTargetCompanyId = companyId.toString().trim();
+      
+      const isMatch = normalizedClientCompanyId === normalizedTargetCompanyId;
+      console.log(`Cliente ${client.name}: companyId=${normalizedClientCompanyId}, target=${normalizedTargetCompanyId}, match=${isMatch}`);
+      return isMatch;
     });
     
     console.log("Clientes filtrados para a empresa:", filteredClients);

@@ -66,33 +66,42 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
     },
   });
 
+  // Reset form when dialog opens or editClient changes
   useEffect(() => {
-    if (editClient) {
-      console.log("Editando cliente:", editClient);
-      form.reset({
-        name: editClient.name,
-        email: editClient.email || '',
-        phone: editClient.phone || '',
-        address: editClient.address || '',
-        cnpj: editClient.cnpj || '',
-        companyId: editClient.companyId || company?.id || '',
-      });
-    } else {
-      console.log("Formulário para novo cliente, empresa atual:", company?.id);
-      form.reset({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        cnpj: '',
-        companyId: company?.id || '',
-      });
+    if (open) {
+      console.log("Formulário aberto, empresa atual:", company?.id);
+      
+      if (editClient) {
+        console.log("Editando cliente:", editClient);
+        console.log("Company ID do cliente:", editClient.companyId);
+        
+        form.reset({
+          name: editClient.name,
+          email: editClient.email || '',
+          phone: editClient.phone || '',
+          address: editClient.address || '',
+          cnpj: editClient.cnpj || '',
+          companyId: editClient.companyId || company?.id || '',
+        });
+      } else {
+        console.log("Formulário para novo cliente");
+        
+        form.reset({
+          name: '',
+          email: '',
+          phone: '',
+          address: '',
+          cnpj: '',
+          companyId: company?.id || '',
+        });
+      }
     }
   }, [editClient, form, company, open]);
 
   const onSubmit = async (values: FormValues) => {
     try {
       console.log("Enviando dados do formulário:", values);
+      console.log("Company ID selecionada:", values.companyId);
       
       if (!values.companyId) {
         toast.error("Empresa obrigatória", {
@@ -122,7 +131,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           phone: values.phone || undefined,
           address: values.address || undefined,
           cnpj: values.cnpj || undefined,
-          companyId: values.companyId,
+          companyId: values.companyId, // Ensure we pass the company ID explicitly
           updatedAt: new Date(),
         });
         
@@ -135,7 +144,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           phone: values.phone || undefined,
           address: values.address || undefined,
           cnpj: values.cnpj || undefined,
-          companyId: values.companyId,
+          companyId: values.companyId, // Ensure we pass the company ID explicitly
         });
         
         toast.success("Cliente adicionado com sucesso");
@@ -176,6 +185,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
                       const selectedCompany = companies.find(c => c.id === value);
                       console.log("Detalhes da empresa selecionada:", selectedCompany);
                       field.onChange(value);
+                      
+                      // Force field validation after selection to ensure it's recognized
+                      form.trigger("companyId");
                     }}
                     defaultValue={field.value}
                     value={field.value}
@@ -280,7 +292,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={!form.formState.isValid}>
                 {editClient ? 'Atualizar Cliente' : 'Adicionar Cliente'}
               </Button>
             </DialogFooter>
