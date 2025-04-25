@@ -242,9 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           view_only_assigned_actions: profile.role !== 'master'
         };
 
-        const canCreateClient: boolean = typeof userPermissions.can_create_client === 'boolean' 
-          ? userPermissions.can_create_client 
-          : profile.role === 'master';
+        const canCreateClient = profile.role === 'master';
 
         const safeRole: 'user' | 'master' = profile.role === 'master' ? 'master' : 'user';
 
