@@ -161,7 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               updatedUser.permissions = updatedUser.permissions.map(permission => ({
                 ...permission,
                 canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (u.role === 'master'),
-                canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (u.role === 'master')
+                canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (u.role === 'master'),
+                canCreateClient: 'canCreateClient' in permission ? permission.canCreateClient : (u.role === 'master')
               }));
             }
             
@@ -267,6 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             canEditAction: userPermissions.can_edit_action,
             canEditClient: userPermissions.can_edit_client,
             canDeleteClient: userPermissions.can_delete_client,
+            canCreateClient: userPermissions.can_create_client,
             canEditCompany: userPermissions.can_edit_company,
             canDeleteCompany: userPermissions.can_delete_company,
             viewOnlyAssignedActions: userPermissions.view_only_assigned_actions,
@@ -462,6 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         can_edit_action: defaultPermission.canEditAction,
         can_edit_client: defaultPermission.canEditClient,
         can_delete_client: defaultPermission.canDeleteClient,
+        can_create_client: defaultPermission.canCreateClient,
         can_edit_company: defaultPermission.canEditCompany,
         can_delete_company: defaultPermission.canDeleteCompany,
         view_only_assigned_actions: defaultPermission.viewOnlyAssignedActions
