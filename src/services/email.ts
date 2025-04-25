@@ -23,14 +23,29 @@ export const useEmail = () => {
         return false;
       }
 
+      // Filtrar e-mails vazios ou inválidos
+      const validEmails = params.to.filter(email => 
+        email && email.trim() !== '' && email.includes('@')
+      );
+      
+      if (validEmails.length === 0) {
+        console.warn("Não há e-mails válidos para envio");
+        toast.error("Não há e-mails válidos para envio");
+        return false;
+      }
+
       // Preparar os dados para o TurboSMTP
       const emailData = {
         from: "contato@totaldata.com.br",
-        to: params.to.join(","),
+        to: validEmails.join(","),
         subject: params.subject,
         html: params.content,
         app_name: "Totaldata_Gerenciamento_de_Ações"
       };
+
+      console.log("Dados do e-mail:", emailData);
+      console.log("Endpoint:", TURBOSMTP_ENDPOINT);
+      console.log("API Key:", TURBOSMTP_API_KEY.substring(0, 5) + "...");
 
       // Enviar e-mail usando TurboSMTP
       const response = await fetch(TURBOSMTP_ENDPOINT, {
@@ -43,13 +58,24 @@ export const useEmail = () => {
         body: JSON.stringify(emailData),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Erro na resposta do TurboSMTP:", errorData);
-        throw new Error(`Erro ao enviar email: ${response.statusText}`);
+      console.log("Status da resposta:", response.status);
+      
+      const responseText = await response.text();
+      console.log("Resposta completa:", responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Erro ao analisar resposta JSON:", e);
+        responseData = { error: "Formato de resposta inválido" };
       }
 
-      const responseData = await response.json();
+      if (!response.ok) {
+        console.error("Erro na resposta do TurboSMTP:", responseData);
+        throw new Error(`Erro ao enviar email: ${response.statusText || responseData.error || 'Erro desconhecido'}`);
+      }
+
       console.log("Email enviado com sucesso via TurboSMTP:", responseData);
       toast.success("Email enviado com sucesso!");
       return true;

@@ -13,12 +13,77 @@ export const useMessaging = () => {
     responsible: Responsible,
     requester?: Responsible,
     subject?: string,
-    description?: string
+    description?: string,
+    notificationType?: 'email' | 'sms' | 'whatsapp'
   ) => {
     try {
+      console.log("Iniciando envio de notificação:", {
+        responsible,
+        requester,
+        subject,
+        notificationType
+      });
+      
+      // Verificando dados de destinatários
+      if (!responsible || !responsible.email) {
+        console.warn("Responsável não encontrado ou sem e-mail");
+        toast.error("Faltam dados do responsável para enviar notificação");
+        return false;
+      }
+      
+      const recipients = [responsible.email];
+      if (requester?.email) {
+        recipients.push(requester.email);
+      }
+      
+      console.log("Destinatários:", recipients);
+
+      // Se for especificado um tipo específico de notificação
+      if (notificationType) {
+        console.log(`Enviando notificação via ${notificationType}`);
+        
+        switch (notificationType) {
+          case 'email':
+            // Enviar apenas e-mail
+            const emailSent = await sendEmail({
+              to: recipients,
+              subject: subject || "Nova ação atribuída a você",
+              content: `
+                <h2>Olá ${responsible.name},</h2>
+                <p>${requester ? requester.name : 'O sistema'} atribuiu uma nova ação para você:</p>
+                <h3>${subject || 'Nova ação'}</h3>
+                <p>${description || 'Uma nova ação foi atribuída a você no sistema. Por favor, verifique.'}</p>
+                <p>Acesse o sistema para mais detalhes.</p>
+                <p>Atenciosamente,<br>Total Data</p>
+              `
+            });
+            
+            if (emailSent) {
+              toast.success("E-mail enviado com sucesso!");
+            }
+            
+            return emailSent;
+            
+          case 'sms':
+            // Simulação de envio de SMS - será implementado futuramente
+            console.log("Simulando envio de SMS para:", responsible.phone);
+            toast.success("SMS enviado com sucesso! (simulado)");
+            return true;
+            
+          case 'whatsapp':
+            // Simulação de envio de WhatsApp - será implementado futuramente
+            console.log("Simulando envio de WhatsApp para:", responsible.phone);
+            toast.success("Mensagem WhatsApp enviada com sucesso! (simulado)");
+            return true;
+        }
+      }
+      
+      // Caso padrão: enviar todas as notificações disponíveis
+      console.log("Enviando todas as notificações disponíveis");
+      
       // Send email using our email service
       const emailSent = await sendEmail({
-        to: [responsible.email, ...(requester?.email ? [requester.email] : [])],
+        to: recipients,
         subject: subject || "Nova ação atribuída a você",
         content: `
           <h2>Olá ${responsible.name},</h2>
@@ -48,9 +113,25 @@ export const useMessaging = () => {
 
   const sendDeadlineNotification = async (action: any) => {
     try {
-      const recipients = [action.responsible?.email];
+      console.log("Enviando notificação de prazo para ação:", action.subject);
+      
+      // Verificar se há destinatários válidos
+      if (!action.responsible?.email && !action.requester?.email) {
+        console.warn("Não há destinatários válidos para notificação de prazo");
+        return false;
+      }
+      
+      const recipients = [];
+      if (action.responsible?.email) {
+        recipients.push(action.responsible.email);
+      }
       if (action.requester?.email) {
         recipients.push(action.requester.email);
+      }
+      
+      if (recipients.length === 0) {
+        console.warn("Lista de destinatários vazia após filtro");
+        return false;
       }
 
       await sendEmail({
@@ -65,8 +146,11 @@ export const useMessaging = () => {
           <p>Atenciosamente,<br>Total Data</p>
         `
       });
+      
+      return true;
     } catch (error) {
       console.error("Erro ao enviar notificação de prazo:", error);
+      return false;
     }
   };
 
@@ -83,13 +167,13 @@ export const useMessaging = () => {
           
           // Check if action is 24 hours from deadline
           if (hoursDiff <= 24 && hoursDiff > 23) {
-            console.log('Sending 24h notification for action:', action.subject);
+            console.log('Enviando notificação de 24h para ação:', action.subject);
             sendDeadlineNotification(action);
           }
           
           // Check if action is 1 hour from deadline
           if (hoursDiff <= 1 && hoursDiff > 0) {
-            console.log('Sending 1h notification for action:', action.subject);
+            console.log('Enviando notificação de 1h para ação:', action.subject);
             sendDeadlineNotification(action);
           }
         }
