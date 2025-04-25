@@ -173,6 +173,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
                   <Select
                     onValueChange={(value) => {
                       console.log("Empresa selecionada:", value);
+                      const selectedCompany = companies.find(c => c.id === value);
+                      console.log("Detalhes da empresa selecionada:", selectedCompany);
                       field.onChange(value);
                     }}
                     defaultValue={field.value}

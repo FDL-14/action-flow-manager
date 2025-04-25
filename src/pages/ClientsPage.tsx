@@ -53,6 +53,8 @@ const ClientsPage = () => {
 
   const canEditClients = user?.role === 'master' || 
                         user?.permissions?.some(p => p.canEdit || p.canEditClient || p.canCreateClient);
+  const canCreateClient = user?.role === 'master' || 
+                       user?.permissions?.some(p => p.canCreate || p.canCreateClient);
   const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDelete || p.canDeleteClient);
 
   // Set initial company filter when component mounts or company changes
@@ -70,7 +72,7 @@ const ClientsPage = () => {
     
     if (selectedCompanyId && selectedCompanyId !== 'all') {
       try {
-        const filtered = clients.filter(client => client.companyId === selectedCompanyId);
+        const filtered = getClientsByCompanyId(selectedCompanyId);
         console.log("Clientes filtrados por empresa:", filtered);
         setFilteredClients(filtered);
       } catch (error) {
@@ -81,7 +83,7 @@ const ClientsPage = () => {
     } else {
       setFilteredClients(clients);
     }
-  }, [clients, selectedCompanyId]);
+  }, [clients, selectedCompanyId, getClientsByCompanyId]);
 
   const handleEditClient = (client: Client) => {
     console.log("Editando cliente:", client);
@@ -112,7 +114,7 @@ const ClientsPage = () => {
   };
 
   const handleAddClient = () => {
-    if (canEditClients) {
+    if (canCreateClient) {
       setEditingClient(undefined);
       setShowClientForm(true);
     } else {
@@ -123,6 +125,8 @@ const ClientsPage = () => {
   };
 
   const getCompanyNameById = (companyId: string): string => {
+    if (!companyId) return 'Empresa não associada';
+    
     const foundCompany = companies.find(c => c.id === companyId);
     return foundCompany ? foundCompany.name : 'Empresa não encontrada';
   };
@@ -131,7 +135,7 @@ const ClientsPage = () => {
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Clientes</h1>
-        {canEditClients && (
+        {canCreateClient && (
           <Button onClick={handleAddClient}>
             <Plus className="h-4 w-4 mr-2" />
             Cadastrar Cliente

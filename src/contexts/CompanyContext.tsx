@@ -134,6 +134,15 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new Error("ID da empresa inválido");
       }
       
+      // First check if the company exists in the list of companies
+      const companyExists = companies.some(c => c.id === clientData.companyId);
+      if (!companyExists) {
+        toast.error("Empresa não encontrada", {
+          description: "A empresa selecionada não existe."
+        });
+        return;
+      }
+      
       // Convert company ID to UUID format for Supabase
       const companyId = convertToUUID(clientData.companyId);
       
@@ -200,6 +209,15 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!updatedClient.companyId) {
         toast.error("Erro ao atualizar cliente", {
           description: "É necessário selecionar uma empresa para este cliente."
+        });
+        return;
+      }
+      
+      // Check if company exists in our companies list first
+      const companyExists = companies.some(c => c.id === updatedClient.companyId);
+      if (!companyExists) {
+        toast.error("Empresa não encontrada", {
+          description: "A empresa selecionada não existe."
         });
         return;
       }
@@ -309,17 +327,19 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return [];
     }
     
+    if (companyId === 'all') {
+      return clients;
+    }
+    
     console.log("Buscando clientes para a empresa:", companyId);
     console.log("Total de clientes disponíveis:", clients.length);
+    console.log("IDs da empresa de cada cliente:", clients.map(c => ({ name: c.name, companyId: c.companyId })));
     
     // Ensure we're comparing with the exact same format
     const filteredClients = clients.filter(client => {
-      const clientCompanyId = client.companyId ? client.companyId.trim() : '';
-      const targetCompanyId = companyId ? companyId.trim() : '';
+      if (!client.companyId) return false;
       
-      const isMatch = clientCompanyId === targetCompanyId;
-      console.log(`Cliente ${client.name} (${client.id}): companyId=${clientCompanyId}, targetId=${targetCompanyId}, match=${isMatch}`);
-      return isMatch;
+      return client.companyId === companyId;
     });
     
     console.log("Clientes filtrados para a empresa:", filteredClients);
