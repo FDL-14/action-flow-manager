@@ -25,7 +25,7 @@ export const defaultMasterUser: User = {
       canEditAction: true,
       canEditClient: true,
       canDeleteClient: true,
-      canCreateClient: true,
+      canCreateClient: true,  // Adding this property
       canEditCompany: true,
       canDeleteCompany: true,
       viewOnlyAssignedActions: false
@@ -60,7 +60,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: false,
         canDeleteClient: false,
-        canCreateClient: false,
+        canCreateClient: false,  // Adding this property
         canEditCompany: false,
         canDeleteCompany: false,
         viewOnlyAssignedActions: true
@@ -92,7 +92,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: false,
         canDeleteClient: false,
-        canCreateClient: false,
+        canCreateClient: false,  // Adding this property
         canEditCompany: false,
         canDeleteCompany: false,
         viewOnlyAssignedActions: true
@@ -124,7 +124,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: true,
         canDeleteClient: true,
-        canCreateClient: true,
+        canCreateClient: true,  // Adding this property
         canEditCompany: true,
         canDeleteCompany: true,
         viewOnlyAssignedActions: false
@@ -156,7 +156,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: true,
         canDeleteClient: true,
-        canCreateClient: true,
+        canCreateClient: true,  // Adding this property
         canEditCompany: true,
         canDeleteCompany: true,
         viewOnlyAssignedActions: false

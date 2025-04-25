@@ -393,7 +393,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canEditAction: role === 'master',
       canEditClient: role === 'master',
       canDeleteClient: role === 'master',
-      canCreateClient: role === 'master',
+      canCreateClient: role === 'master', // Added the missing property
       canEditCompany: role === 'master',
       canDeleteCompany: role === 'master',
       viewOnlyAssignedActions: role !== 'master',
