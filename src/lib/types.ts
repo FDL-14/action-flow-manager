@@ -30,6 +30,7 @@ export interface Permission {
   canEditAction: boolean;
   canEditClient: boolean;
   canDeleteClient: boolean;
+  canCreateClient: boolean;  // Added new permission for creating clients
   canEditCompany: boolean;
   canDeleteCompany: boolean;
   viewOnlyAssignedActions: boolean;
@@ -53,6 +54,9 @@ export interface Action {
   updatedAt: Date;
   createdBy?: string;
   createdByName?: string;
+  approved?: boolean; // Added for requester approval
+  approvedAt?: Date; // Date when the action was approved
+  approvedBy?: string; // ID of the user who approved the action
 }
 
 export interface ActionNote {

@@ -221,8 +221,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw error;
       }
       
+      // Make sure we update the client in the state with the correct companyId
       const updatedClients = clients.map(c => 
-        c.id === updatedClient.id ? { ...updatedClient, updatedAt: new Date() } : c
+        c.id === updatedClient.id ? { ...updatedClient, companyId: updatedClient.companyId, updatedAt: new Date() } : c
       );
       
       setClients(updatedClients);
@@ -299,15 +300,18 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     console.log("Buscando clientes para a empresa:", companyId);
     console.log("Total de clientes disponíveis:", clients.length);
-    console.log("Lista de todos os clientes:", clients);
     
+    // Ensure we're comparing with the exact same format
     const filteredClients = clients.filter(client => {
-      const clientBelongsToCompany = client.companyId === companyId;
-      console.log(`Cliente ${client.name} (${client.id}): companyId=${client.companyId}, match=${clientBelongsToCompany}`);
-      return clientBelongsToCompany;
+      const clientCompanyId = client.companyId ? client.companyId.trim() : '';
+      const targetCompanyId = companyId ? companyId.trim() : '';
+      
+      const isMatch = clientCompanyId === targetCompanyId;
+      console.log(`Cliente ${client.name} (${client.id}): companyId=${clientCompanyId}, targetId=${targetCompanyId}, match=${isMatch}`);
+      return isMatch;
     });
     
-    console.log("Clientes filtrados para a empresa:", filteredClients.length);
+    console.log("Clientes filtrados para a empresa:", filteredClients);
     return filteredClients;
   };
 

@@ -51,10 +51,11 @@ const ClientsPage = () => {
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(company?.id);
 
-  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit || p.canEditClient);
+  const canEditClients = user?.role === 'master' || 
+                        user?.permissions?.some(p => p.canEdit || p.canEditClient || p.canCreateClient);
   const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDelete || p.canDeleteClient);
 
-  // Set initial company filter when company changes
+  // Set initial company filter when component mounts or company changes
   useEffect(() => {
     console.log("ClientsPage - company changed:", company?.id);
     if (company) {
@@ -70,7 +71,7 @@ const ClientsPage = () => {
     if (selectedCompanyId && selectedCompanyId !== 'all') {
       try {
         const filtered = clients.filter(client => client.companyId === selectedCompanyId);
-        console.log("Clientes filtrados:", filtered);
+        console.log("Clientes filtrados por empresa:", filtered);
         setFilteredClients(filtered);
       } catch (error) {
         console.error("Erro ao filtrar clientes:", error);
@@ -119,6 +120,11 @@ const ClientsPage = () => {
         description: "Você não tem permissão para adicionar clientes."
       });
     }
+  };
+
+  const getCompanyNameById = (companyId: string): string => {
+    const foundCompany = companies.find(c => c.id === companyId);
+    return foundCompany ? foundCompany.name : 'Empresa não encontrada';
   };
 
   return (
@@ -196,7 +202,7 @@ const ClientsPage = () => {
               <TableBody>
                 {filteredClients.map((client) => {
                   const clientActions = getActionsByClient(client.id);
-                  const clientCompany = companies.find(c => c.id === client.companyId);
+                  const companyName = getCompanyNameById(client.companyId);
                   
                   return (
                     <TableRow key={client.id}>
@@ -207,9 +213,7 @@ const ClientsPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {clientCompany?.name || (
-                          <span className="text-yellow-600">Empresa não encontrada</span>
-                        )}
+                        {companyName}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">

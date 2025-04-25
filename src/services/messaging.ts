@@ -154,7 +154,50 @@ export const useMessaging = () => {
     }
   };
 
-  // Check for actions near deadline
+  const sendOverdueNotification = async (action: any) => {
+    try {
+      console.log("Enviando notificação de ação vencida:", action.subject);
+      
+      // Verificar se há destinatários válidos
+      if (!action.responsible?.email && !action.requester?.email) {
+        console.warn("Não há destinatários válidos para notificação de ação vencida");
+        return false;
+      }
+      
+      const recipients = [];
+      if (action.responsible?.email) {
+        recipients.push(action.responsible.email);
+      }
+      if (action.requester?.email) {
+        recipients.push(action.requester.email);
+      }
+      
+      if (recipients.length === 0) {
+        console.warn("Lista de destinatários vazia após filtro");
+        return false;
+      }
+
+      await sendEmail({
+        to: recipients,
+        subject: `URGENTE: Ação "${action.subject}" está vencida!`,
+        content: `
+          <h2 style="color: #d32f2f;">Ação Vencida!</h2>
+          <p>A ação "${action.subject}" <strong>está vencida</strong> e requer sua atenção imediata.</p>
+          <p><strong>Descrição:</strong> ${action.description}</p>
+          <p><strong>Data de término:</strong> ${new Date(action.endDate).toLocaleString('pt-BR')}</p>
+          <p>Por favor, verifique a ação no sistema e tome as providências necessárias o mais rápido possível.</p>
+          <p>Atenciosamente,<br>Total Data</p>
+        `
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Erro ao enviar notificação de ação vencida:", error);
+      return false;
+    }
+  };
+
+  // Check for actions near deadline and overdue
   useEffect(() => {
     const checkDeadlines = () => {
       const now = new Date();
@@ -164,6 +207,13 @@ export const useMessaging = () => {
           const endDate = new Date(action.endDate);
           const timeDiff = endDate.getTime() - now.getTime();
           const hoursDiff = timeDiff / (1000 * 60 * 60);
+          
+          // Check if action is overdue
+          if (hoursDiff < 0) {
+            console.log('Enviando notificação de ação vencida:', action.subject);
+            sendOverdueNotification(action);
+            return;
+          }
           
           // Check if action is 24 hours from deadline
           if (hoursDiff <= 24 && hoursDiff > 23) {
@@ -192,5 +242,7 @@ export const useMessaging = () => {
   return {
     sendActionNotification,
     sendEmail,
+    sendDeadlineNotification,
+    sendOverdueNotification
   };
 };

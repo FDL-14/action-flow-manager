@@ -1,18 +1,9 @@
 
-import React from 'react';
-import { UseFormReturn } from 'react-hook-form';
-import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { FormValues } from '@/components/CompanyForm';
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 interface CompanyFormFieldsProps {
-  form: UseFormReturn<FormValues>;
+  form: any;
 }
 
 const CompanyFormFields: React.FC<CompanyFormFieldsProps> = ({ form }) => {
@@ -25,13 +16,13 @@ const CompanyFormFields: React.FC<CompanyFormFieldsProps> = ({ form }) => {
           <FormItem>
             <FormLabel>Nome da Empresa</FormLabel>
             <FormControl>
-              <Input placeholder="Ex: Minha Empresa Ltda" {...field} />
+              <Input placeholder="Nome da sua empresa" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-
+      
       <FormField
         control={form.control}
         name="address"
@@ -39,27 +30,27 @@ const CompanyFormFields: React.FC<CompanyFormFieldsProps> = ({ form }) => {
           <FormItem>
             <FormLabel>Endereço</FormLabel>
             <FormControl>
-              <Input placeholder="Ex: Rua Exemplo, 123" {...field} />
+              <Input placeholder="Endereço completo" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-
+      
       <FormField
         control={form.control}
         name="cnpj"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>CNPJ</FormLabel>
+            <FormLabel>CNPJ/CPF/CAEPF/CNO</FormLabel>
             <FormControl>
-              <Input placeholder="Ex: 00.000.000/0001-00" {...field} />
+              <Input placeholder="CNPJ/CPF/CAEPF/CNO" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-
+      
       <FormField
         control={form.control}
         name="phone"
@@ -67,7 +58,7 @@ const CompanyFormFields: React.FC<CompanyFormFieldsProps> = ({ form }) => {
           <FormItem>
             <FormLabel>Telefone</FormLabel>
             <FormControl>
-              <Input placeholder="Ex: (00) 0000-0000" {...field} />
+              <Input placeholder="Telefone de contato" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

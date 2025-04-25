@@ -101,6 +101,18 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
         return;
       }
       
+      // Find the selected company to verify it exists
+      const selectedCompany = companies.find(c => c.id === values.companyId);
+      if (!selectedCompany) {
+        toast.error("Empresa inválida", {
+          description: "A empresa selecionada não foi encontrada."
+        });
+        return;
+      }
+      
+      // Log the company being associated with the client
+      console.log("Associando cliente à empresa:", selectedCompany.name, selectedCompany.id);
+      
       if (editClient) {
         // Update existing client
         await updateClient({
@@ -159,7 +171,10 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
                 <FormItem>
                   <FormLabel>Empresa</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      console.log("Empresa selecionada:", value);
+                      field.onChange(value);
+                    }}
                     defaultValue={field.value}
                     value={field.value}
                   >
