@@ -53,6 +53,7 @@ const defaultPermissions = {
   canEditAction: false,
   canEditClient: false,
   canDeleteClient: false,
+  canCreateClient: false,
   canEditCompany: false,
   canDeleteCompany: false,
   viewOnlyAssignedActions: true,
@@ -78,6 +79,7 @@ const formSchema = z.object({
     canEditAction: z.boolean().default(false),
     canEditClient: z.boolean().default(false),
     canDeleteClient: z.boolean().default(false),
+    canCreateClient: z.boolean().default(false),
     canEditCompany: z.boolean().default(false),
     canDeleteCompany: z.boolean().default(false),
     viewOnlyAssignedActions: z.boolean().default(true),
@@ -130,6 +132,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
           canEditAction: permissions.canEditAction,
           canEditClient: permissions.canEditClient,
           canDeleteClient: permissions.canDeleteClient,
+          canCreateClient: permissions.canCreateClient || false,
           canEditCompany: permissions.canEditCompany,
           canDeleteCompany: permissions.canDeleteCompany,
           viewOnlyAssignedActions: permissions.viewOnlyAssignedActions
@@ -149,7 +152,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
         permissions: {
           ...defaultPermissions,
           canEditCompany: false,
-          canDeleteCompany: false
+          canDeleteCompany: false,
+          canCreateClient: false
         }
       });
       setSelectedCompanies([]);
@@ -181,6 +185,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
             canEditAction: data.permissions.canEditAction,
             canEditClient: data.permissions.canEditClient,
             canDeleteClient: data.permissions.canDeleteClient,
+            canCreateClient: data.permissions.canCreateClient,
             canEditCompany: data.permissions.canEditCompany,
             canDeleteCompany: data.permissions.canDeleteCompany,
             viewOnlyAssignedActions: data.permissions.viewOnlyAssignedActions
@@ -213,6 +218,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
             canEditAction: data.permissions.canEditAction,
             canEditClient: data.permissions.canEditClient,
             canDeleteClient: data.permissions.canDeleteClient,
+            canCreateClient: data.permissions.canCreateClient,
             canEditCompany: data.permissions.canEditCompany,
             canDeleteCompany: data.permissions.canDeleteCompany,
             viewOnlyAssignedActions: data.permissions.viewOnlyAssignedActions
@@ -717,6 +723,27 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                         <FormLabel>Excluir Empresas</FormLabel>
                         <p className="text-sm text-gray-500">
                           Permissão para excluir empresas
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="permissions.canCreateClient"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Cadastrar Clientes</FormLabel>
+                        <p className="text-sm text-gray-500">
+                          Permissão para cadastrar clientes
                         </p>
                       </div>
                     </FormItem>
