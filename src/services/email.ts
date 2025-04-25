@@ -7,7 +7,7 @@ interface SendEmailParams {
   content: string;
 }
 
-// Configuração do TurboSMTP com as chaves fornecidas
+// Configuration for TurboSMTP with the provided keys
 const TURBOSMTP_API_KEY = "39665192b1b3fb2c07ef80191dd453b3";
 const TURBOSMTP_SECRET = "REcMTn7ru018aSj4GHZytx3v6bWhPpmB";
 const TURBOSMTP_ENDPOINT = "https://api.turbo-smtp.com/v1/email/send";

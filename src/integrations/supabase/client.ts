@@ -21,7 +21,7 @@ export const convertToUUID = (id: string): string => {
     return "00000000-0000-0000-0000-000000000000";
   }
   
-  // If it's already a UUID, return it
+  // Check if it's already a valid UUID
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     console.log(`ID is already a UUID: ${id}`);
     return id;

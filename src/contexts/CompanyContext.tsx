@@ -103,7 +103,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchClients();
   }, []);
 
-  // Save clients to localStorage when they change
   React.useEffect(() => {
     try {
       if (clients && clients.length > 0) {
@@ -116,7 +115,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [clients]);
 
-  // Save responsibles to localStorage when they change
   React.useEffect(() => {
     try {
       if (responsibles && responsibles.length > 0) {
@@ -331,7 +329,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setResponsibles(responsibles.filter(r => r.id !== id));
   };
 
-  // Improved version of getClientsByCompanyId that uses exact string matching
   const getClientsByCompanyId = (companyId: string): Client[] => {
     if (!companyId) {
       console.warn("getClientsByCompanyId: nenhum ID de empresa fornecido");
@@ -345,7 +342,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     console.log("Buscando clientes para a empresa:", companyId);
     console.log("Total de clientes disponíveis:", clients.length);
     
-    // Simple strict string comparison
     const filteredClients = clients.filter(client => {
       const result = client.companyId === companyId;
       console.log(`Cliente ${client.name}: companyId=${client.companyId}, target=${companyId}, match=${result}`);
