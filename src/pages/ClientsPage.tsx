@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Card, 
@@ -16,6 +16,13 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Building2, Mail, Phone, Plus, Edit, Trash } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
