@@ -298,7 +298,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
     // Verificar se o usuário tem permissão específica para excluir anotações
     const hasDeletePermission = user.permissions?.some(p => p.canDelete);
     
-    return hasDeletePermission || false;
+    return !!hasDeletePermission;
   };
 
   return (

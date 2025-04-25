@@ -11,7 +11,7 @@ interface ActionContextType {
   updateAction: (id: string, updatedData: Partial<Action>) => void;
   deleteAction: (id: string) => void;
   addActionNote: (actionId: string, content: string) => void;
-  deleteActionNote: (actionId: string, noteId: string) => void;
+  deleteActionNote: (noteId: string, actionId: string) => void;
   getActionById: (id: string) => Action | undefined;
   updateActionStatus: (id: string, status: "pendente" | "concluido" | "atrasado", completedAt?: Date) => void;
   sendActionEmail: (id: string, method?: string) => Promise<void>;
@@ -615,8 +615,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const deleteActionNote = async (actionId: string, noteId: string) => {
+  const deleteActionNote = async (noteId: string, actionId: string) => {
     try {
+      console.log('Deletando nota:', noteId, 'da ação:', actionId);
+      
       const { error: noteError } = await supabase
         .from('action_notes')
         .update({ is_deleted: true })
@@ -624,6 +626,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         
       if (noteError) {
         console.error('Erro ao marcar nota como excluída no Supabase:', noteError);
+        // Continue anyway since we'll update the local notes too
       }
       
       const action = actions.find(a => a.id === actionId);
@@ -641,27 +644,32 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
         if (updateError) {
           console.error('Erro ao atualizar notas na ação:', updateError);
+          throw updateError;
         }
+        
+        setActions(prevActions =>
+          prevActions.map(action => {
+            if (action.id === actionId) {
+              return {
+                ...action,
+                notes: action.notes.map(note =>
+                  note.id === noteId ? { ...note, isDeleted: true } : note
+                ),
+              };
+            }
+            return action;
+          })
+        );
+        
+        console.log('Nota marcada como excluída com sucesso');
+        return true;
+      } else {
+        console.error('Ação não encontrada:', actionId);
+        throw new Error('Ação não encontrada');
       }
-      
-      setActions(prevActions =>
-        prevActions.map(action => {
-          if (action.id === actionId) {
-            return {
-              ...action,
-              notes: action.notes.map(note =>
-                note.id === noteId ? { ...note, isDeleted: true } : note
-              ),
-            };
-          }
-          return action;
-        })
-      );
-      
-      toast.success('Nota excluída com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir nota:', error);
-      toast.error('Erro ao excluir nota.');
+      throw error;
     }
   };
 
