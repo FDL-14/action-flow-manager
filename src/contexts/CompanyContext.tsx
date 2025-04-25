@@ -83,10 +83,11 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
             address: undefined,
             cnpj: undefined,
             companyId: c.company_id || '',
-            createdAt: new Date(c.created_at),
-            updatedAt: new Date(c.updated_at)
+            createdAt: new Date(c.created_at || new Date()),
+            updatedAt: new Date(c.updated_at || new Date())
           }));
           
+          console.log("Clientes carregados do Supabase:", formattedClients);
           setClients(formattedClients);
         }
       } catch (error) {
@@ -133,10 +134,14 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       console.log("Adicionando novo cliente:", clientData);
       
-      // Prepare client data for Supabase
-      const companyId = convertToUUID(clientData.companyId || company.id);
+      // Ensure we have a valid company ID
+      const companyId = clientData.companyId || company.id;
+      console.log("ID da empresa original:", companyId);
       
-      if (!companyId) {
+      const supabaseCompanyId = convertToUUID(companyId);
+      console.log("ID da empresa convertido para UUID:", supabaseCompanyId);
+      
+      if (!supabaseCompanyId) {
         throw new Error("ID da empresa inválido");
       }
       
@@ -147,7 +152,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           name: clientData.name,
           contact_email: clientData.email,
           contact_phone: clientData.phone,
-          company_id: companyId
+          company_id: supabaseCompanyId
         })
         .select()
         .single();
@@ -158,7 +163,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Fallback para salvar localmente em caso de erro
         const newClient: Client = {
           id: Date.now().toString(),
-          companyId: clientData.companyId || company.id,
+          companyId: companyId,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...clientData
@@ -183,9 +188,9 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           phone: supabaseClient.contact_phone || undefined,
           address: undefined,
           cnpj: undefined,
-          companyId: supabaseClient.company_id || company.id,
-          createdAt: new Date(supabaseClient.created_at),
-          updatedAt: new Date(supabaseClient.updated_at)
+          companyId: companyId, // Mantenha o ID original para correlações locais
+          createdAt: new Date(supabaseClient.created_at || new Date()),
+          updatedAt: new Date(supabaseClient.updated_at || new Date())
         };
         
         // Atualiza o estado local
@@ -270,7 +275,20 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getClientsByCompanyId = (companyId: string): Client[] => {
-    return clients.filter(client => client.companyId === companyId);
+    console.log("Buscando clientes para a empresa:", companyId);
+    console.log("Total de clientes disponíveis:", clients.length);
+    
+    // Filtrar clientes pela companyId
+    const filteredClients = clients.filter(client => {
+      const clientBelongsToCompany = client.companyId === companyId;
+      if (clientBelongsToCompany) {
+        console.log("Cliente encontrado para a empresa:", client);
+      }
+      return clientBelongsToCompany;
+    });
+    
+    console.log("Clientes filtrados para a empresa:", filteredClients.length);
+    return filteredClients;
   };
 
   return (

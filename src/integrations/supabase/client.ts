@@ -50,6 +50,7 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     // Companies
     "1": "12f6f95b-eeca-411d-a098-221053ab9f03", // Total Data
     "1745060635120": "12f6f95b-eeca-411d-a098-221053ab9f03", // Same Total Data company with different ID
+    "1745060164901": "12f6f95b-eeca-411d-a098-221053ab9f03", // Another Total Data entry
     
     // Clients
     "1745268930996": "c5f9ed6d-8936-4989-9ee8-dddee5ccf3a0",
@@ -63,6 +64,10 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
     
     // Requesters
     "1745066913470": "8854bd89-6ef7-4419-9ee3-b968bc279f19",
+    
+    // Users
+    "1745067722987": "94c92f32-a676-4a3d-9d90-5704d8aae237", // Fabiano Domingues Luciano
+    "1745067484193": "9c2df12c-4b89-4d94-adb2-1a25b613dd61", // Flávia de Souza Magalhães Lucano
   };
   
   // Check if we have a direct mapping for this ID
@@ -82,28 +87,24 @@ export const convertToUUID = (id: string | null | undefined): string | null => {
   
   // For numeric IDs or other formats, generate a deterministic UUID
   try {
-    const defaultUUID = "00000000-0000-4000-a000-000000000000";
-    let idPart = cleanId;
+    // Use a proper format for the generated UUID
+    const uuid = "00000000-0000-4000-a000-000000000000".split('');
     
-    // Truncate very long IDs
-    if (idPart.length > 12) {
-      idPart = idPart.substring(0, 12);
+    // Convert the ID to a padded string
+    let idStr = cleanId.toString().padStart(12, '0');
+    if (idStr.length > 12) {
+      idStr = idStr.substring(0, 12);
     }
     
-    // Pad with zeros if too short
-    if (idPart.length < 12) {
-      idPart = idPart.padStart(12, '0');
+    // Use the first 8 chars for the first segment
+    for (let i = 0; i < Math.min(idStr.length, 8); i++) {
+      uuid[i] = idStr[i];
     }
     
-    // Generate deterministic UUID by replacing parts of the default UUID
-    const idPartChars = idPart.split('');
-    const uuid = defaultUUID.split('');
-    
-    for (let i = 0; i < idPartChars.length && i < 12; i++) {
-      if (i < 8) {
-        uuid[i] = idPartChars[i];
-      } else if (i < 12) {
-        uuid[i + 9] = idPartChars[i]; // Skip the hyphens
+    // Use the next 4 chars for the third segment (after the first two dashes)
+    if (idStr.length > 8) {
+      for (let i = 0; i < Math.min(idStr.length - 8, 4); i++) {
+        uuid[13 + i] = idStr[8 + i];
       }
     }
     

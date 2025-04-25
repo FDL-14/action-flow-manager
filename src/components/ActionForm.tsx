@@ -54,7 +54,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
-  const { companies, responsibles, clients, company: defaultCompany } = useCompany();
+  const { companies, responsibles, clients, company: defaultCompany, getClientsByCompanyId } = useCompany();
   const { addAction } = useActions();
   const { user, users } = useAuth();
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -83,6 +83,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
 
   const validateCompanyExists = async (companyId: string): Promise<boolean> => {
     try {
+      if (!companyId || companyId.trim() === '') {
+        console.error('CompanyID vazio fornecido para validação');
+        return false;
+      }
+      
       const existsLocally = companies.some(company => company.id === companyId);
       
       if (existsLocally) {
@@ -90,10 +95,19 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         return true;
       }
       
+      const supabaseId = convertToUUID(companyId);
+      
+      if (!supabaseId) {
+        console.error('Não foi possível converter o ID da empresa para UUID');
+        return false;
+      }
+      
+      console.log(`Verificando empresa com ID convertido: ${supabaseId}`);
+      
       const { data, error } = await supabase
         .from('companies')
         .select('id')
-        .eq('id', companyId)
+        .eq('id', supabaseId)
         .limit(1);
         
       if (error) {
@@ -101,7 +115,10 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         return false;
       }
       
-      return data && data.length > 0;
+      const exists = data && data.length > 0;
+      console.log(`Empresa existe no Supabase: ${exists}`, data);
+      
+      return exists;
     } catch (error) {
       console.error('Erro ao validar empresa:', error);
       return false;
@@ -110,7 +127,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
 
   useEffect(() => {
     if (selectedCompanyId) {
-      setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
+      const companyClients = getClientsByCompanyId(selectedCompanyId);
+      console.log(`Atualizando clientes para empresa ${selectedCompanyId}:`, companyClients);
+      setFilteredClients(companyClients);
     } else {
       setFilteredClients(clients);
     }
@@ -191,25 +210,25 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
           description: "Selecione uma empresa",
           variant: "destructive",
         });
+        setSubmitting(false);
         return;
       }
       
       const empresa = companies.find(c => c.id === values.companyId);
-      if (!empresa) {
-        console.error(`Empresa com ID ${values.companyId} não encontrada localmente`);
-        
-        const empresaExiste = await validateCompanyExists(values.companyId);
-        if (!empresaExiste) {
-          toast({
-            title: "Erro",
-            description: `Empresa com ID ${values.companyId} não encontrada`,
-            variant: "destructive",
-          });
-          return;
-        }
+      console.log('Empresa encontrada localmente:', empresa);
+      
+      const empresaExiste = await validateCompanyExists(values.companyId);
+      if (!empresaExiste) {
+        toast({
+          title: "Erro",
+          description: `A empresa selecionada não existe no banco de dados`,
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
       }
       
-      console.log('Empresa selecionada:', empresa || `ID: ${values.companyId} (verificada no banco)`);
+      console.log('Empresa confirmada no banco:', values.companyId);
       
       const uploadedAttachments: string[] = [];
       
@@ -244,13 +263,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         throw new Error("Datas inválidas");
       }
       
-      const companyIdToUse = empresa ? empresa.id : values.companyId;
-      
       await addAction({
         subject: values.subject,
         description: values.description,
         responsibleId: values.responsibleId,
-        companyId: companyIdToUse,
+        companyId: values.companyId,
         clientId: values.clientId || undefined,
         requesterId: values.requesterId,
         startDate,
@@ -321,6 +338,12 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       form.setValue('clientId', '');
                       form.setValue('responsibleId', '');
                       form.setValue('requesterId', '');
+                      
+                      const empresa = companies.find(c => c.id === value);
+                      console.log('Empresa selecionada:', empresa);
+                      
+                      const clientesDisponiveis = getClientsByCompanyId(value);
+                      console.log('Clientes disponíveis para esta empresa:', clientesDisponiveis);
                     }} 
                     defaultValue={field.value}
                   >
@@ -332,7 +355,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                     <SelectContent>
                       {companies.map((company) => (
                         <SelectItem key={company.id} value={company.id}>
-                          {company.name}
+                          {company.name} (ID: {company.id})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -349,22 +372,40 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                 <FormItem>
                   <FormLabel>Cliente</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      console.log(`Cliente selecionado ID: ${value}`);
+                    }} 
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione um cliente" />
+                        <SelectValue placeholder={
+                          filteredClients.length > 0 
+                            ? "Selecione um cliente" 
+                            : "Nenhum cliente disponível para esta empresa"
+                        } />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredClients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
+                      {filteredClients.length === 0 ? (
+                        <SelectItem disabled value="">
+                          Nenhum cliente disponível
                         </SelectItem>
-                      ))}
+                      ) : (
+                        filteredClients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  {selectedCompanyId && filteredClients.length === 0 && (
+                    <div className="mt-2 text-sm text-orange-500">
+                      Esta empresa não possui clientes. Adicione clientes na página de Clientes.
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

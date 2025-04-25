@@ -34,16 +34,27 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ClientsPage = () => {
-  const { company, clients, deleteClient } = useCompany();
+  const { company, clients, deleteClient, companies } = useCompany();
   const { getActionsByClient } = useActions();
   const { user } = useAuth();
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(company?.id);
 
   // Verificar permissões do usuário
   const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit);
   const canDeleteClients = user?.role === 'master';
+
+  // Filtrar clientes quando a empresa selecionada muda
+  useEffect(() => {
+    if (selectedCompanyId) {
+      setFilteredClients(clients.filter(client => client.companyId === selectedCompanyId));
+    } else {
+      setFilteredClients(clients);
+    }
+  }, [clients, selectedCompanyId]);
 
   const handleEditClient = (client: Client) => {
     setEditingClient(client);
@@ -80,12 +91,42 @@ const ClientsPage = () => {
         )}
       </div>
 
-      {clients.length === 0 ? (
+      {/* Seletor de empresa */}
+      <div className="mb-6">
+        <Card className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div>
+              <h3 className="text-lg font-medium">Filtrar por empresa</h3>
+              <p className="text-sm text-gray-500">Selecione uma empresa para ver seus clientes</p>
+            </div>
+            <Select 
+              value={selectedCompanyId} 
+              onValueChange={(value) => setSelectedCompanyId(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={undefined}>Todas as empresas</SelectItem>
+                {companies.map(company => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Card>
+      </div>
+
+      {filteredClients.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Nenhum cliente cadastrado</CardTitle>
             <CardDescription>
-              Clique no botão "Cadastrar Cliente" para adicionar seu primeiro cliente.
+              {selectedCompanyId ? 
+                "Não há clientes para esta empresa." : 
+                "Clique no botão \"Cadastrar Cliente\" para adicionar seu primeiro cliente."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -102,14 +143,17 @@ const ClientsPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Empresa</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead>Ações Relacionadas</TableHead>
                   <TableHead className="text-right">Gerenciar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.map((client) => {
+                {filteredClients.map((client) => {
                   const clientActions = getActionsByClient(client.id);
+                  const clientCompany = companies.find(c => c.id === client.companyId);
+                  
                   return (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">
@@ -117,6 +161,9 @@ const ClientsPage = () => {
                           <Building2 className="h-4 w-4 mr-2 text-gray-400" />
                           {client.name}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {clientCompany?.name || 'Empresa não encontrada'}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
