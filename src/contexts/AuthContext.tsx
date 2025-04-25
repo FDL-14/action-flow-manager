@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -393,7 +392,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       canEditAction: role === 'master',
       canEditClient: role === 'master',
       canDeleteClient: role === 'master',
-      canCreateClient: role === 'master', // Added the missing property
+      canCreateClient: role === 'master',
       canEditCompany: role === 'master',
       canDeleteCompany: role === 'master',
       viewOnlyAssignedActions: role !== 'master',
@@ -403,7 +402,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         ...defaultPermissions,
         ...customPermission,
-        // Ensure canCreateClient is set if not provided in custom permissions
         canCreateClient: 'canCreateClient' in customPermission 
           ? customPermission.canCreateClient 
           : defaultPermissions.canCreateClient
@@ -565,7 +563,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (existingProfiles && existingProfiles.length > 0) {
         toast({
           title: "Erro",
-          description: "Já existe outro usuário com este CPF",
+          description: "Já existe outro usu��rio com este CPF",
           variant: "destructive",
         });
         return false;
