@@ -171,19 +171,15 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       setClients(prev => [...prev, newClient]);
       
-      toast({
-        title: "Cliente adicionado",
-        description: `Cliente ${clientData.name} foi adicionado com sucesso.`,
-        variant: "default",
+      toast.success("Cliente adicionado com sucesso!", {
+        description: `Cliente ${clientData.name} foi adicionado com sucesso.`
       });
       
       return newClient;
     } catch (error) {
       console.error("Erro ao adicionar cliente:", error);
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar o cliente. Por favor, tente novamente.",
-        variant: "destructive",
+      toast.error("Erro ao salvar", {
+        description: "Não foi possível salvar o cliente. Por favor, tente novamente."
       });
       throw error;
     }
