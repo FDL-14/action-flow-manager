@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -389,7 +390,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                     </FormControl>
                     <SelectContent>
                       {filteredClients.length === 0 ? (
-                        <SelectItem disabled value="">
+                        <SelectItem value="no_clients_available">
                           Nenhum cliente disponível
                         </SelectItem>
                       ) : (

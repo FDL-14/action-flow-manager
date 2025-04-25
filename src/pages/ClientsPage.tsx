@@ -114,7 +114,7 @@ const ClientsPage = () => {
                 <SelectValue placeholder="Selecione uma empresa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={undefined}>Todas as empresas</SelectItem>
+                <SelectItem value="all">Todas as empresas</SelectItem>
                 {companies.map(company => (
                   <SelectItem key={company.id} value={company.id}>
                     {company.name}
