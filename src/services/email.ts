@@ -36,24 +36,23 @@ export const useEmail = () => {
 
       // Preparar os dados para o TurboSMTP
       const emailData = {
-        from: "contato@totaldata.com.br",
-        to: validEmails.join(","),
+        api_key: TURBOSMTP_API_KEY,
+        api_secret: TURBOSMTP_SECRET,
+        mail_from: "contato@totaldata.com.br",
+        mail_to: validEmails.join(","),
         subject: params.subject,
         html: params.content,
         app_name: "Totaldata_Gerenciamento_de_Ações"
       };
 
-      console.log("Dados do e-mail:", emailData);
+      console.log("Dados do e-mail:", { ...emailData, api_key: "***", api_secret: "***" });
       console.log("Endpoint:", TURBOSMTP_ENDPOINT);
-      console.log("API Key:", TURBOSMTP_API_KEY.substring(0, 5) + "...");
 
-      // Enviar e-mail usando TurboSMTP
+      // Enviar e-mail usando TurboSMTP - corrigido para formato correto da API
       const response = await fetch(TURBOSMTP_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": TURBOSMTP_API_KEY,
-          "X-API-Secret": TURBOSMTP_SECRET,
         },
         body: JSON.stringify(emailData),
       });

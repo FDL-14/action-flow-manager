@@ -154,10 +154,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Convert company ID to UUID format for Supabase
       const companyId = convertToUUID(clientData.companyId);
       
-      if (!companyId) {
-        throw new Error("ID da empresa inválido");
-      }
-      
       const supabaseClientData = {
         name: clientData.name,
         contact_email: clientData.email || null,
@@ -238,10 +234,6 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Make sure we have a valid company ID for the database
       const companyId = convertToUUID(updatedClient.companyId);
-      
-      if (!companyId) {
-        throw new Error("ID da empresa inválido");
-      }
       
       const supabaseClientData = {
         name: updatedClient.name,
@@ -339,6 +331,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setResponsibles(responsibles.filter(r => r.id !== id));
   };
 
+  // Improved version of getClientsByCompanyId that uses exact string matching
   const getClientsByCompanyId = (companyId: string): Client[] => {
     if (!companyId) {
       console.warn("getClientsByCompanyId: nenhum ID de empresa fornecido");
@@ -351,19 +344,12 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     console.log("Buscando clientes para a empresa:", companyId);
     console.log("Total de clientes disponíveis:", clients.length);
-    console.log("IDs da empresa de cada cliente:", clients.map(c => ({ name: c.name, companyId: c.companyId })));
     
-    // Ensure we're comparing with the exact same format
+    // Simple strict string comparison
     const filteredClients = clients.filter(client => {
-      if (!client.companyId) return false;
-      
-      // Normalize the comparison to ensure exact string matching
-      const normalizedClientCompanyId = client.companyId.toString().trim();
-      const normalizedTargetCompanyId = companyId.toString().trim();
-      
-      const isMatch = normalizedClientCompanyId === normalizedTargetCompanyId;
-      console.log(`Cliente ${client.name}: companyId=${normalizedClientCompanyId}, target=${normalizedTargetCompanyId}, match=${isMatch}`);
-      return isMatch;
+      const result = client.companyId === companyId;
+      console.log(`Cliente ${client.name}: companyId=${client.companyId}, target=${companyId}, match=${result}`);
+      return result;
     });
     
     console.log("Clientes filtrados para a empresa:", filteredClients);

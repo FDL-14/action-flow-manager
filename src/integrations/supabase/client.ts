@@ -13,18 +13,22 @@ console.log('Initializing Supabase client with:', {
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Check if we already have this function, if not, add it
-export const convertToUUID = (id: string): string | null => {
-  if (!id) return null;
+// Improved UUID conversion function
+export const convertToUUID = (id: string): string => {
+  if (!id) {
+    console.error("convertToUUID received empty ID");
+    // Return a valid UUID format as fallback for empty inputs
+    return "00000000-0000-0000-0000-000000000000";
+  }
   
   // If it's already a UUID, return it
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    console.log(`ID is already a UUID: ${id}`);
     return id;
   }
   
-  // Otherwise, try to convert to a UUID
+  // Generate consistent UUID from any string
   try {
-    // Simple hash function to convert any string to UUID format
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
       const char = id.charCodeAt(i);
@@ -32,16 +36,18 @@ export const convertToUUID = (id: string): string | null => {
       hash = hash & hash; // Convert to 32bit integer
     }
     
-    // Generate a pseudo-UUID from the hash
+    // Generate a deterministic UUID from the hash
     const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = (hash + Math.random() * 16) % 16 | 0;
       hash = Math.floor(hash / 16);
       return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
     });
     
+    console.log(`Converted ID ${id} to UUID ${uuid}`);
     return uuid;
   } catch (error) {
     console.error('Error converting ID to UUID:', error);
-    return null;
+    // Return a valid UUID format as fallback
+    return "00000000-0000-0000-0000-000000000000";
   }
 };

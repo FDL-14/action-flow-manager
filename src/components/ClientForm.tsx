@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -53,6 +53,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient }) => {
   const { addClient, updateClient, companies, company } = useCompany();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,6 +65,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
       cnpj: '',
       companyId: company?.id || '',
     },
+    mode: 'onChange',
   });
 
   // Reset form when dialog opens or editClient changes
@@ -75,16 +77,22 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
         console.log("Editando cliente:", editClient);
         console.log("Company ID do cliente:", editClient.companyId);
         
+        const companyIdToUse = editClient.companyId || company?.id || '';
+        setSelectedCompanyId(companyIdToUse);
+        
         form.reset({
           name: editClient.name,
           email: editClient.email || '',
           phone: editClient.phone || '',
           address: editClient.address || '',
           cnpj: editClient.cnpj || '',
-          companyId: editClient.companyId || company?.id || '',
+          companyId: companyIdToUse,
         });
       } else {
         console.log("Formulário para novo cliente");
+        
+        const companyIdToUse = company?.id || '';
+        setSelectedCompanyId(companyIdToUse);
         
         form.reset({
           name: '',
@@ -92,7 +100,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           phone: '',
           address: '',
           cnpj: '',
-          companyId: company?.id || '',
+          companyId: companyIdToUse,
         });
       }
     }
@@ -182,22 +190,20 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
                   <Select
                     onValueChange={(value) => {
                       console.log("Empresa selecionada:", value);
-                      const selectedCompany = companies.find(c => c.id === value);
-                      console.log("Detalhes da empresa selecionada:", selectedCompany);
+                      setSelectedCompanyId(value);
                       field.onChange(value);
                       
                       // Force field validation after selection to ensure it's recognized
                       form.trigger("companyId");
                     }}
-                    defaultValue={field.value}
-                    value={field.value}
+                    value={selectedCompanyId || field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma empresa" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="bg-white min-w-[240px] max-h-[300px] overflow-y-auto z-50">
                       {companies.length > 0 ? (
                         companies.map((company) => (
                           <SelectItem key={company.id} value={company.id}>
@@ -292,7 +298,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!form.formState.isValid}>
+              <Button type="submit">
                 {editClient ? 'Atualizar Cliente' : 'Adicionar Cliente'}
               </Button>
             </DialogFooter>
