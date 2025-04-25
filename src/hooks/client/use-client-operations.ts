@@ -1,69 +1,43 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Client } from '@/lib/types';
 import { toast } from 'sonner';
-import { supabase, convertToUUID } from '@/integrations/supabase/client';
+import { useClientState } from './use-client-state';
+import { 
+  fetchSupabaseClients, 
+  addSupabaseClient, 
+  updateSupabaseClient,
+  deleteSupabaseClient 
+} from './use-supabase-clients';
+import { convertToUUID } from '@/integrations/supabase/client';
 
 export const useClientOperations = () => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const { clients, setClients } = useClientState();
 
   useEffect(() => {
-    const fetchClients = async () => {
+    const initClients = async () => {
       try {
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*');
-          
-        if (error) {
-          console.error("Erro ao buscar clientes do Supabase:", error);
-          
+        const supabaseClients = await fetchSupabaseClients();
+        
+        if (!supabaseClients) {
           const storedClients = localStorage.getItem('clients');
           if (storedClients) {
             const parsedClients = JSON.parse(storedClients);
             console.log("Clientes carregados do localStorage:", parsedClients);
             setClients(parsedClients);
           }
-        } else if (data && data.length > 0) {
-          const formattedClients = data.map(c => ({
-            id: c.id,
-            name: c.name,
-            email: c.contact_email || undefined,
-            phone: c.contact_phone || undefined,
-            address: undefined,
-            cnpj: undefined,
-            companyId: c.company_id || '',
-            createdAt: new Date(c.created_at || new Date()),
-            updatedAt: new Date(c.updated_at || new Date())
-          }));
-          
-          console.log("Clientes carregados do Supabase:", formattedClients);
-          setClients(formattedClients);
-        } else {
-          const storedClients = localStorage.getItem('clients');
-          if (storedClients) {
-            const parsedClients = JSON.parse(storedClients);
-            console.log("Nenhum cliente no Supabase, carregando do localStorage:", parsedClients);
-            setClients(parsedClients);
-          }
+          return;
         }
+        
+        console.log("Clientes carregados do Supabase:", supabaseClients);
+        setClients(supabaseClients);
       } catch (error) {
         console.error("Erro ao inicializar clientes:", error);
       }
     };
     
-    fetchClients();
-  }, []);
-
-  useEffect(() => {
-    try {
-      if (clients && clients.length > 0) {
-        localStorage.setItem('clients', JSON.stringify(clients));
-      }
-    } catch (error) {
-      console.error("Error saving clients:", error);
-      toast.error("Erro ao salvar clientes localmente");
-    }
-  }, [clients]);
+    initClients();
+  }, [setClients]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientData.companyId) {
@@ -79,24 +53,7 @@ export const useClientOperations = () => {
       const originalCompanyId = clientData.companyId;
       const companyId = convertToUUID(clientData.companyId);
       
-      const supabaseClientData = {
-        name: clientData.name,
-        contact_email: clientData.email || null,
-        contact_phone: clientData.phone || null,
-        contact_name: clientData.name,
-        company_id: companyId
-      };
-      
-      const { data: supabaseClient, error } = await supabase
-        .from('clients')
-        .insert(supabaseClientData)
-        .select('*')
-        .single();
-      
-      if (error) {
-        console.error('Erro ao salvar cliente no Supabase:', error);
-        throw error;
-      }
+      const supabaseClient = await addSupabaseClient({ ...clientData, companyId });
       
       const newClient: Client = {
         id: supabaseClient.id,
@@ -134,23 +91,10 @@ export const useClientOperations = () => {
       const originalCompanyId = updatedClient.companyId;
       const companyId = convertToUUID(updatedClient.companyId);
       
-      const supabaseClientData = {
-        name: updatedClient.name,
-        contact_email: updatedClient.email || null,
-        contact_phone: updatedClient.phone || null,
-        contact_name: updatedClient.name,
-        company_id: companyId
-      };
-      
-      const { error } = await supabase
-        .from('clients')
-        .update(supabaseClientData)
-        .eq('id', updatedClient.id);
-      
-      if (error) {
-        console.error('Erro ao atualizar cliente no Supabase:', error);
-        throw error;
-      }
+      await updateSupabaseClient(updatedClient.id, { 
+        ...updatedClient, 
+        companyId 
+      });
       
       const updatedClients = clients.map(c => 
         c.id === updatedClient.id ? { 
@@ -172,16 +116,7 @@ export const useClientOperations = () => {
 
   const deleteClient = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
-      
-      if (error) {
-        console.error('Erro ao excluir cliente no Supabase:', error);
-        throw error;
-      }
-      
+      await deleteSupabaseClient(id);
       setClients(clients.filter(c => c.id !== id));
       toast.success("Cliente excluído com sucesso");
     } catch (error) {

@@ -1,10 +1,9 @@
-
 import React, { createContext, useContext } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { mockClients } from '@/lib/mock-data';
 import { useCompanyState } from '@/hooks/use-company-state';
 import { useCompanyOperations } from '@/hooks/use-company-operations';
-import { useClientOperations } from '@/hooks/use-client-operations';
+import { useClientOperations } from '@/hooks/client';
 import { useResponsibleOperations } from '@/hooks/use-responsible-operations';
 
 interface CompanyContextType {
