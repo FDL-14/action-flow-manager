@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { mockClients, mockResponsibles } from '@/lib/mock-data';
@@ -93,6 +94,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchClients();
   }, []);
 
+  // Save clients to localStorage when they change
   React.useEffect(() => {
     try {
       if (clients && clients.length > 0) {
@@ -100,14 +102,11 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch (error) {
       console.error("Error saving clients:", error);
-      toastUI({
-        title: "Error saving",
-        description: "Could not save clients locally.",
-        variant: "destructive",
-      });
+      toast.error("Erro ao salvar clientes localmente");
     }
-  }, [clients, toastUI]);
+  }, [clients]);
 
+  // Save responsibles to localStorage when they change
   React.useEffect(() => {
     try {
       if (responsibles && responsibles.length > 0) {
@@ -115,26 +114,21 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch (error) {
       console.error("Error saving responsibles:", error);
-      toastUI({
-        title: "Error saving",
-        description: "Could not save responsibles locally.",
-        variant: "destructive",
-      });
+      toast.error("Erro ao salvar responsáveis localmente");
     }
-  }, [responsibles, toastUI]);
+  }, [responsibles]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!company && !clientData.companyId) {
-      toast.error("Erro ao salvar", {
-        description: "É necessário selecionar uma empresa para adicionar um cliente."
+    if (!clientData.companyId) {
+      toast.error("Erro ao salvar cliente", {
+        description: "É necessário selecionar uma empresa para este cliente."
       });
       return;
     }
     
     try {
-      const companyId = convertToUUID(clientData.companyId || (company ? company.id : ''));
-      console.log("Adicionando novo cliente:", clientData);
-      console.log("ID da empresa convertido para UUID:", companyId);
+      console.log("Adicionando cliente com dados:", clientData);
+      const companyId = convertToUUID(clientData.companyId);
       
       if (!companyId) {
         throw new Error("ID da empresa inválido");
@@ -175,6 +169,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updatedAt: new Date(supabaseClient.updated_at)
       };
       
+      // Update local client list
       setClients(prev => [...prev, newClient]);
       
       toast.success("Cliente adicionado com sucesso!", {
@@ -184,7 +179,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return newClient;
     } catch (error) {
       console.error("Erro ao adicionar cliente:", error);
-      toast.error("Erro ao salvar", {
+      toast.error("Erro ao salvar cliente", {
         description: "Não foi possível salvar o cliente. Por favor, tente novamente."
       });
       throw error;
@@ -194,6 +189,13 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateClient = async (updatedClient: Client) => {
     try {
       console.log("Atualizando cliente:", updatedClient);
+      
+      if (!updatedClient.companyId) {
+        toast.error("Erro ao atualizar cliente", {
+          description: "É necessário selecionar uma empresa para este cliente."
+        });
+        return;
+      }
       
       const companyId = convertToUUID(updatedClient.companyId);
       
@@ -228,7 +230,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success("Cliente atualizado com sucesso!");
     } catch (error) {
       console.error("Erro ao atualizar cliente:", error);
-      toast.error("Erro ao atualizar", {
+      toast.error("Erro ao atualizar cliente", {
         description: "Não foi possível atualizar o cliente. Por favor, tente novamente."
       });
     }
@@ -253,7 +255,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       toast.success("Cliente excluído com sucesso!");
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
-      toast.error("Erro ao excluir", {
+      toast.error("Erro ao excluir cliente", {
         description: "Não foi possível excluir o cliente. Por favor, tente novamente."
       });
     }
@@ -290,14 +292,18 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getClientsByCompanyId = (companyId: string): Client[] => {
+    if (!companyId) {
+      console.warn("getClientsByCompanyId: nenhum ID de empresa fornecido");
+      return [];
+    }
+    
     console.log("Buscando clientes para a empresa:", companyId);
     console.log("Total de clientes disponíveis:", clients.length);
+    console.log("Lista de todos os clientes:", clients);
     
     const filteredClients = clients.filter(client => {
       const clientBelongsToCompany = client.companyId === companyId;
-      if (clientBelongsToCompany) {
-        console.log("Cliente encontrado para a empresa:", client);
-      }
+      console.log(`Cliente ${client.name} (${client.id}): companyId=${client.companyId}, match=${clientBelongsToCompany}`);
       return clientBelongsToCompany;
     });
     

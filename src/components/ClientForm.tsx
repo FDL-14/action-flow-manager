@@ -68,15 +68,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
 
   useEffect(() => {
     if (editClient) {
+      console.log("Editando cliente:", editClient);
       form.reset({
         name: editClient.name,
         email: editClient.email || '',
         phone: editClient.phone || '',
         address: editClient.address || '',
         cnpj: editClient.cnpj || '',
-        companyId: editClient.companyId,
+        companyId: editClient.companyId || company?.id || '',
       });
     } else {
+      console.log("Formulário para novo cliente, empresa atual:", company?.id);
       form.reset({
         name: '',
         email: '',
@@ -86,11 +88,18 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
         companyId: company?.id || '',
       });
     }
-  }, [editClient, form, company]);
+  }, [editClient, form, company, open]);
 
   const onSubmit = async (values: FormValues) => {
     try {
       console.log("Enviando dados do formulário:", values);
+      
+      if (!values.companyId) {
+        toast.error("Empresa obrigatória", {
+          description: "Selecione uma empresa para continuar."
+        });
+        return;
+      }
       
       if (editClient) {
         // Update existing client
@@ -104,6 +113,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           companyId: values.companyId,
           updatedAt: new Date(),
         });
+        
+        toast.success("Cliente atualizado com sucesso");
       } else {
         // Create new client
         await addClient({
@@ -114,6 +125,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           cnpj: values.cnpj || undefined,
           companyId: values.companyId,
         });
+        
+        toast.success("Cliente adicionado com sucesso");
       }
       
       onOpenChange(false);
@@ -156,11 +169,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
+                      {companies.length > 0 ? (
+                        companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no_companies" disabled>
+                          Nenhuma empresa disponível
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

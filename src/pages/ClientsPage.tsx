@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -38,9 +39,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from 'sonner';
 
 const ClientsPage = () => {
-  const { company, clients, deleteClient, companies } = useCompany();
+  const { company, clients, deleteClient, companies, getClientsByCompanyId } = useCompany();
   const { getActionsByClient } = useActions();
   const { user } = useAuth();
   const [showClientForm, setShowClientForm] = useState(false);
@@ -49,9 +51,10 @@ const ClientsPage = () => {
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(company?.id);
 
-  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit);
-  const canDeleteClients = user?.role === 'master';
+  const canEditClients = user?.role === 'master' || user?.permissions?.some(p => p.canEdit || p.canEditClient);
+  const canDeleteClients = user?.role === 'master' || user?.permissions?.some(p => p.canDelete || p.canDeleteClient);
 
+  // Set initial company filter when company changes
   useEffect(() => {
     console.log("ClientsPage - company changed:", company?.id);
     if (company) {
@@ -59,20 +62,28 @@ const ClientsPage = () => {
     }
   }, [company]);
 
+  // Filter clients when selection or client list changes
   useEffect(() => {
     console.log("Filtrando clientes com selectedCompanyId:", selectedCompanyId);
     console.log("Total de clientes disponíveis:", clients.length);
     
     if (selectedCompanyId && selectedCompanyId !== 'all') {
-      const filtered = clients.filter(client => client.companyId === selectedCompanyId);
-      console.log("Clientes filtrados:", filtered);
-      setFilteredClients(filtered);
+      try {
+        const filtered = clients.filter(client => client.companyId === selectedCompanyId);
+        console.log("Clientes filtrados:", filtered);
+        setFilteredClients(filtered);
+      } catch (error) {
+        console.error("Erro ao filtrar clientes:", error);
+        setFilteredClients([]);
+        toast.error("Erro ao filtrar clientes");
+      }
     } else {
       setFilteredClients(clients);
     }
   }, [clients, selectedCompanyId]);
 
   const handleEditClient = (client: Client) => {
+    console.log("Editando cliente:", client);
     setEditingClient(client);
     setShowClientForm(true);
   };
@@ -85,6 +96,10 @@ const ClientsPage = () => {
   const handleDeleteClient = (id: string) => {
     if (canDeleteClients) {
       setClientToDelete(id);
+    } else {
+      toast.error("Permissão negada", {
+        description: "Você não tem permissão para excluir clientes."
+      });
     }
   };
 
@@ -95,12 +110,23 @@ const ClientsPage = () => {
     }
   };
 
+  const handleAddClient = () => {
+    if (canEditClients) {
+      setEditingClient(undefined);
+      setShowClientForm(true);
+    } else {
+      toast.error("Permissão negada", {
+        description: "Você não tem permissão para adicionar clientes."
+      });
+    }
+  };
+
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Clientes</h1>
         {canEditClients && (
-          <Button onClick={() => { setEditingClient(undefined); setShowClientForm(true); }}>
+          <Button onClick={handleAddClient}>
             <Plus className="h-4 w-4 mr-2" />
             Cadastrar Cliente
           </Button>
@@ -129,7 +155,7 @@ const ClientsPage = () => {
                   </SelectItem>
                 ))}
                 {companies.length === 0 && (
-                  <SelectItem value="no_companies">Nenhuma empresa disponível</SelectItem>
+                  <SelectItem value="no_companies" disabled>Nenhuma empresa disponível</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -142,7 +168,7 @@ const ClientsPage = () => {
           <CardHeader>
             <CardTitle>Nenhum cliente cadastrado</CardTitle>
             <CardDescription>
-              {selectedCompanyId ? 
+              {selectedCompanyId && selectedCompanyId !== 'all' ? 
                 "Não há clientes para esta empresa." : 
                 "Clique no botão \"Cadastrar Cliente\" para adicionar seu primeiro cliente."}
             </CardDescription>
@@ -181,7 +207,9 @@ const ClientsPage = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {clientCompany?.name || 'Empresa não encontrada'}
+                        {clientCompany?.name || (
+                          <span className="text-yellow-600">Empresa não encontrada</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
