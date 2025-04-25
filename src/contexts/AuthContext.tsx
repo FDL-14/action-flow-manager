@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '@/lib/types';
 import { defaultMasterUser } from '@/lib/mock-data';
@@ -242,6 +243,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           view_only_assigned_actions: profile.role !== 'master'
         };
 
+        // Add the missing property to the userPermissions object
+        const canCreateClient = 'can_create_client' in userPermissions 
+          ? userPermissions.can_create_client 
+          : profile.role === 'master';
+
         const safeRole: 'user' | 'master' = profile.role === 'master' ? 'master' : 'user';
 
         const userObject: User = {
@@ -268,7 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             canEditAction: userPermissions.can_edit_action,
             canEditClient: userPermissions.can_edit_client,
             canDeleteClient: userPermissions.can_delete_client,
-            canCreateClient: userPermissions.can_create_client,
+            canCreateClient: canCreateClient, // Use our safely determined value
             canEditCompany: userPermissions.can_edit_company,
             canDeleteCompany: userPermissions.can_delete_company,
             viewOnlyAssignedActions: userPermissions.view_only_assigned_actions,
@@ -450,6 +456,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const defaultPermission = createPermission(userData.role, userData.permissions);
       
+      // Ensure can_create_client is included in the permissions object
       const permissionsToInsert = {
         user_id: insertedProfile.id,
         can_create: defaultPermission.canCreate,
