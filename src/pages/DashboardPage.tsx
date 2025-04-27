@@ -37,6 +37,12 @@ const DashboardPage = () => {
     return true;
   });
 
+  // Handle action deletion - simple implementation
+  const handleActionDeleted = () => {
+    // This function will be called after an action is deleted
+    // No need for further logic as the actions context is already updated
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -65,7 +71,11 @@ const DashboardPage = () => {
             </p>
           ) : (
             filteredActions.slice(0, 3).map(action => (
-              <ActionCard key={action.id} action={action} />
+              <ActionCard 
+                key={action.id} 
+                action={action} 
+                onDelete={handleActionDeleted}
+              />
             ))
           )}
         </div>

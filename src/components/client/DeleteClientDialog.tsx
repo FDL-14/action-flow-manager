@@ -18,7 +18,7 @@ interface DeleteClientDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  client?: Client; // Passando o objeto cliente completo ao invés de apenas o nome
+  client?: Client; // Using client object instead of just the name
 }
 
 export const DeleteClientDialog = ({
@@ -33,16 +33,13 @@ export const DeleteClientDialog = ({
     setIsDeleting(true);
     try {
       await onConfirm();
-      toast({
-        title: "Cliente excluído",
-        description: `O cliente ${client?.name || ''} foi excluído com sucesso.`,
+      toast.success(`Cliente excluído`, {
+        description: `O cliente ${client?.name || ''} foi excluído com sucesso.`
       });
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
-      toast({
-        title: "Erro ao excluir",
-        description: "Não foi possível excluir este cliente. Tente novamente.",
-        variant: "destructive",
+      toast.error("Erro ao excluir", {
+        description: "Não foi possível excluir este cliente. Tente novamente."
       });
     } finally {
       setIsDeleting(false);

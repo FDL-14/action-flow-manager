@@ -140,7 +140,7 @@ const ClientsPage = () => {
         isOpen={!!clientToDelete}
         onClose={() => setClientToDelete(null)}
         onConfirm={confirmDeleteClient}
-        clientName={clientToDelete?.name}
+        client={clientToDelete || undefined}
       />
     </div>
   );
