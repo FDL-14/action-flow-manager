@@ -5,7 +5,7 @@ import { Plus, Eye } from 'lucide-react';
 import ActionCard from '@/components/ActionCard';
 import ActionForm from '@/components/ActionForm';
 import ActionFilter from '@/components/ActionFilter';
-import ActionView from '@/components/ActionView'; // We'll create this component next
+import ActionView from '@/components/ActionView'; 
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useIsMobile } from '@/hooks/use-mobile';

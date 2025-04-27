@@ -42,17 +42,18 @@ const CompleteActionDialog = ({
     try {
       // First upload any files if present
       let attachments: string[] = [];
+      
+      // Mock file upload success - in a real implementation this would upload to storage
       if (files.length > 0) {
-        // This is placeholder - you'll need to implement file upload to your storage
         toast.info("Enviando anexos...");
-        // Mock file upload success
+        // This is placeholder - in a real implementation you'd upload the files
         attachments = files.map(file => `https://example.com/files/${encodeURIComponent(file.name)}`);
       }
 
       // Add a note with completion justification
       const noteContent = `[CONCLUSÃO] ${completionNotes}`;
       const updatedNotes = [
-        ...action.notes,
+        ...(action.notes || []),
         {
           id: Date.now().toString(),
           actionId: action.id,

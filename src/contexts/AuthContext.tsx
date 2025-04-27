@@ -1,867 +1,642 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Permission } from '@/lib/types';
-import { defaultMasterUser } from '@/lib/mock-data';
-import { useToast } from '@/hooks/use-toast';
+import { User, Permission, Responsible } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
+import { AuthUser } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
   users: User[];
-  isAuthenticated: boolean;
-  login: (cpf: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  addUser: (userData: { 
-    name: string; 
-    cpf: string; 
-    email: string;
-    role: 'user' | 'master'; 
-    companyIds: string[];
-    clientIds?: string[];
-    permissions?: any
-  }) => Promise<boolean>;
-  updateUser: (userData: { 
-    id: string;
-    name: string; 
-    cpf: string; 
-    email: string;
-    role: 'user' | 'master';
-    companyIds: string[];
-    clientIds?: string[];
-    permissions?: any
-  }) => Promise<boolean>;
-  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
-  resetUserPassword: (userId: string) => void;
-  canUserEditResponsibles: () => boolean;
-  canUserDeleteResponsibles: () => boolean;
-  getUserCompanyIds: () => string[];
-  getUserClientIds: () => string[];
-  canViewAllActions: () => boolean;
-  shouldViewOnlyAssignedActions: () => boolean;
+  permissions: Permission | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (password: string) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
+  checkPermission: (permission: keyof Permission) => boolean;
+  hasPermission: (permission: keyof Permission) => boolean;
+  updateUserPermissions: (userId: string, permissions: Partial<Permission>) => Promise<void>;
+  createResponsibleFromUser: (userId: string, responsible: Omit<Responsible, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   users: [],
-  isAuthenticated: false,
-  login: async () => false,
-  logout: () => {},
-  addUser: async () => false,
-  updateUser: async () => false,
-  changePassword: async () => false,
-  resetUserPassword: () => {},
-  canUserEditResponsibles: () => false,
-  canUserDeleteResponsibles: () => false,
-  getUserCompanyIds: () => [],
-  getUserClientIds: () => [],
-  canViewAllActions: () => false,
-  shouldViewOnlyAssignedActions: () => false,
+  permissions: null,
+  loading: true,
+  login: async () => {},
+  logout: async () => {},
+  register: async () => {},
+  forgotPassword: async () => {},
+  resetPassword: async () => {},
+  updateProfile: async () => {},
+  checkPermission: () => false,
+  hasPermission: () => false,
+  updateUserPermissions: async () => {},
+  createResponsibleFromUser: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { toast } = useToast();
+  const [permissions, setPermissions] = useState<Permission | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authSession, setAuthSession] = useState<AuthUser | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const navigate = useNavigate();
 
+  // Initialize - check if user is already logged in
   useEffect(() => {
-    const loadUsers = async () => {
+    const checkUserSession = async () => {
       try {
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('*');
-
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error('Erro ao carregar perfis do Supabase:', error);
-          loadFromLocalStorage();
+          console.error('Error getting session:', error);
+          setLoading(false);
+          setSessionChecked(true);
           return;
         }
-
-        if (profiles && profiles.length > 0) {
-          console.log('Perfis carregados do Supabase:', profiles);
-          
-          const loadedUsers: User[] = profiles.map(profile => {
-            const userRole: 'user' | 'master' = 
-              profile.role === 'master' ? 'master' : 'user';
-              
-            return {
-              id: profile.id,
-              name: profile.name,
-              cpf: profile.cpf || '',
-              email: profile.email || `${profile.cpf}@example.com`,
-              role: userRole,
-              companyIds: profile.company_ids || ['1'],
-              clientIds: profile.client_ids || [],
-              password: undefined,
-              permissions: [{
-                id: "default",
-                name: "Default Permissions",
-                description: "Default user permissions",
-                canCreate: userRole === 'master',
-                canEdit: userRole === 'master',
-                canDelete: userRole === 'master',
-                canMarkComplete: true,
-                canMarkDelayed: true,
-                canAddNotes: true,
-                canViewReports: userRole === 'master',
-                viewAllActions: userRole === 'master',
-                canEditUser: userRole === 'master',
-                canEditAction: userRole === 'master',
-                canEditClient: userRole === 'master',
-                canDeleteClient: userRole === 'master',
-                canCreateClient: userRole === 'master',
-                canEditCompany: userRole === 'master',
-                canDeleteCompany: userRole === 'master',
-                viewOnlyAssignedActions: userRole !== 'master',
-              }]
-            };
-          });
-          
-          setUsers(loadedUsers);
-          localStorage.setItem('users', JSON.stringify(loadedUsers));
-        } else {
-          console.log('Nenhum perfil encontrado no Supabase, carregando do localStorage');
-          loadFromLocalStorage();
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user);
+          setAuthSession(session.user);
         }
       } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-        loadFromLocalStorage();
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
+        setSessionChecked(true);
       }
     };
+    
+    checkUserSession();
+  }, []);
 
-    const loadFromLocalStorage = () => {
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        try {
-          const parsedUser = JSON.parse(savedUser);
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Erro ao analisar usuário do localStorage:', error);
-          localStorage.removeItem('user');
-        }
-      }
-
-      const savedUsers = localStorage.getItem('users');
-      if (savedUsers) {
-        try {
-          const parsedUsers = JSON.parse(savedUsers);
-          
-          const updatedUsers = parsedUsers.map((u: User) => {
-            const updatedUser = {
-              ...u,
-              email: u.email || `${u.cpf}@example.com`,
-              companyIds: u.companyIds || ['1'],
-              clientIds: u.clientIds || []
-            };
-            
-            if (updatedUser.permissions && updatedUser.permissions.length > 0) {
-              updatedUser.permissions = updatedUser.permissions.map(permission => ({
-                ...permission,
-                canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (u.role === 'master'),
-                canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (u.role === 'master'),
-                canCreateClient: 'canCreateClient' in permission ? permission.canCreateClient : (u.role === 'master')
-              }));
-            }
-            
-            return updatedUser;
-          });
-          
-          setUsers(updatedUsers);
-          localStorage.setItem('users', JSON.stringify(updatedUsers));
-        } catch (error) {
-          console.error('Erro ao analisar usuários do localStorage:', error);
-        }
-      } else {
-        setUsers([defaultMasterUser]);
-        localStorage.setItem('users', JSON.stringify([defaultMasterUser]));
-      }
-    };
-
-    loadUsers();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Evento de autenticação:', event, session);
-        if (session) {
-          fetchUserProfile(session.user.id);
-        } else {
+  // Listen for auth state changes
+  useEffect(() => {
+    if (!sessionChecked) return;
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setLoading(true);
+        
+        if (event === 'SIGNED_IN' && session) {
+          await fetchUserProfile(session.user);
+          setAuthSession(session.user);
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
           setUser(null);
-          setIsAuthenticated(false);
-          localStorage.removeItem('user');
+          setPermissions(null);
+          setAuthSession(null);
+          navigate('/login', { replace: true });
         }
+        
+        setLoading(false);
       }
     );
 
     return () => {
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [sessionChecked, navigate]);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (authUser: AuthUser) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', authUser.id)
         .single();
         
-      if (error) {
-        console.error('Erro ao buscar perfil do usuário:', error);
+      if (error || !data) {
+        console.error('Error fetching user profile:', error);
         return;
       }
-
-      if (profile) {
-        const { data: permissions, error: permissionsError } = await supabase
-          .from('user_permissions')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-        
-        if (permissionsError && permissionsError.code !== 'PGRST116') {
-          console.error('Erro ao buscar permissões do usuário:', permissionsError);
-        }
-
-        const userPermissions = permissions || {
-          can_create: profile.role === 'master',
-          can_edit: profile.role === 'master',
-          can_delete: profile.role === 'master',
-          can_mark_complete: true,
-          can_mark_delayed: true,
-          can_add_notes: true,
-          can_view_reports: profile.role === 'master',
-          view_all_actions: profile.role === 'master',
-          can_edit_user: profile.role === 'master',
-          can_edit_action: profile.role === 'master',
-          can_edit_client: profile.role === 'master',
-          can_delete_client: profile.role === 'master',
-          can_edit_company: profile.role === 'master',
-          can_delete_company: profile.role === 'master',
-          view_only_assigned_actions: profile.role !== 'master'
-        };
-
-        const canCreateClient = profile.role === 'master';
-
-        const safeRole: 'user' | 'master' = profile.role === 'master' ? 'master' : 'user';
-
-        const userObject: User = {
-          id: profile.id,
-          name: profile.name,
-          cpf: profile.cpf || '',
-          email: profile.email || '',
-          role: safeRole,
-          companyIds: profile.company_ids || ['1'],
-          clientIds: profile.client_ids || [],
-          permissions: [{
-            id: "default",
-            name: "Default Permissions",
-            description: "Default user permissions",
-            canCreate: userPermissions.can_create,
-            canEdit: userPermissions.can_edit,
-            canDelete: userPermissions.can_delete,
-            canMarkComplete: userPermissions.can_mark_complete,
-            canMarkDelayed: userPermissions.can_mark_delayed,
-            canAddNotes: userPermissions.can_add_notes,
-            canViewReports: userPermissions.can_view_reports,
-            viewAllActions: userPermissions.view_all_actions,
-            canEditUser: userPermissions.can_edit_user,
-            canEditAction: userPermissions.can_edit_action,
-            canEditClient: userPermissions.can_edit_client,
-            canDeleteClient: userPermissions.can_delete_client,
-            canCreateClient: canCreateClient,
-            canEditCompany: userPermissions.can_edit_company,
-            canDeleteCompany: userPermissions.can_delete_company,
-            viewOnlyAssignedActions: userPermissions.view_only_assigned_actions,
-          }]
-        };
-
-        setUser(userObject);
-        setIsAuthenticated(true);
-        localStorage.setItem('user', JSON.stringify(userObject));
-      }
-    } catch (error) {
-      console.error('Erro ao processar perfil do usuário:', error);
-    }
-  };
-
-  const normalizeCPF = (cpf: string): string => {
-    return cpf.replace(/\D/g, '');
-  };
-
-  const login = async (cpf: string, password: string): Promise<boolean> => {
-    try {
-      const normalizedCPF = normalizeCPF(cpf);
-      console.log("Tentando login com CPF normalizado:", normalizedCPF);
       
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+      // Fetch permissions
+      const { data: permissionsData, error: permissionsError } = await supabase
+        .from('user_permissions')
         .select('*')
-        .eq('cpf', normalizedCPF);
-      
-      if (profilesError) {
-        console.error('Erro ao buscar perfil:', profilesError);
-        return loginWithLocalStorage(normalizedCPF, password);
+        .eq('user_id', authUser.id)
+        .single();
+        
+      if (permissionsError && permissionsError.code !== 'PGRST116') {
+        console.error('Error fetching user permissions:', permissionsError);
       }
       
-      if (profiles && profiles.length > 0) {
-        const profile = profiles[0];
-        
-        const localProfiles = JSON.parse(localStorage.getItem('users') || '[]');
-        const localProfile = localProfiles.find((p: any) => p.id === profile.id);
-        
-        if (password === '@54321' || (localProfile && password === localProfile.password)) {
-          await fetchUserProfile(profile.id);
-          
-          toast({
-            title: "Login realizado com sucesso",
-            description: `Bem-vindo, ${profile.name}!`,
-            variant: "default",
-          });
-          return true;
+      const userWithPermissions: User = {
+        id: data.id,
+        name: data.name || authUser.email?.split('@')[0] || 'User',
+        email: authUser.email || '',
+        cpf: data.cpf || '',
+        role: data.role || 'user',
+        companyIds: data.company_ids || [],
+        clientIds: data.client_ids || [],
+        permissions: permissionsData ? {
+          id: permissionsData.id,
+          name: 'Default Permissions',
+          description: 'Default user permissions',
+          canCreate: permissionsData.can_create || false,
+          canEdit: permissionsData.can_edit || false,
+          canDelete: permissionsData.can_delete || false,
+          canMarkComplete: permissionsData.can_mark_complete || false,
+          canMarkDelayed: permissionsData.can_mark_delayed || false,
+          canAddNotes: permissionsData.can_add_notes || false,
+          canViewReports: permissionsData.can_view_reports || false,
+          viewAllActions: permissionsData.view_all_actions || false,
+          canEditUser: permissionsData.can_edit_user || false,
+          canEditAction: permissionsData.can_edit_action || false,
+          canEditClient: permissionsData.can_edit_client || false,
+          canDeleteClient: permissionsData.can_delete_client || false,
+          canCreateClient: permissionsData.can_create_client || false,
+          canEditCompany: permissionsData.can_edit_company || false,
+          canDeleteCompany: permissionsData.can_delete_company || false,
+          viewOnlyAssignedActions: permissionsData.view_only_assigned_actions || false,
+        } : {
+          id: '',
+          name: 'Default Permissions',
+          description: 'Default user permissions',
+          canCreate: false,
+          canEdit: false,
+          canDelete: false,
+          canMarkComplete: false,
+          canMarkDelayed: false,
+          canAddNotes: false,
+          canViewReports: false,
+          viewAllActions: false,
+          canEditUser: false,
+          canEditAction: false,
+          canEditClient: false,
+          canDeleteClient: false,
+          canCreateClient: false,
+          canEditCompany: false,
+          canDeleteCompany: false,
+          viewOnlyAssignedActions: false,
         }
-      }
-      
-      return loginWithLocalStorage(normalizedCPF, password);
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return loginWithLocalStorage(normalizeCPF(cpf), password);
-    }
-  };
-
-  const loginWithLocalStorage = (normalizedCPF: string, password: string): boolean => {
-    const foundUser = users.find(u => normalizeCPF(u.cpf) === normalizedCPF);
-    
-    if (foundUser && (password === '@54321' || password === foundUser.password)) {
-      const updatedUser = {
-        ...foundUser,
-        permissions: foundUser.permissions.map(permission => ({
-          ...permission,
-          canEditCompany: 'canEditCompany' in permission ? permission.canEditCompany : (foundUser.role === 'master'),
-          canDeleteCompany: 'canDeleteCompany' in permission ? permission.canDeleteCompany : (foundUser.role === 'master')
-        }))
       };
       
-      setUser(updatedUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      toast({
-        title: "Login realizado com sucesso",
-        description: `Bem-vindo, ${updatedUser.name}!`,
-        variant: "default",
-      });
-      return true;
+      setUser(userWithPermissions);
+      setPermissions(userWithPermissions.permissions);
+
+      // Fetch all users (admin only)
+      if (userWithPermissions.role === 'master' || userWithPermissions.permissions.canEditUser) {
+        fetchAllUsers();
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
     }
-    
-    toast({
-      title: "Erro no login",
-      description: "CPF ou senha incorretos",
-      variant: "destructive",
-    });
-    return false;
+  };
+
+  const fetchAllUsers = async () => {
+    try {
+      // Fetch users from profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
+        
+      if (error) {
+        console.error('Error fetching users:', error);
+        return;
+      }
+      
+      // Fetch permissions for each user
+      const userPromises = data.map(async (profile) => {
+        const { data: permissionsData } = await supabase
+          .from('user_permissions')
+          .select('*')
+          .eq('user_id', profile.id)
+          .single();
+          
+        return {
+          id: profile.id,
+          name: profile.name || profile.email?.split('@')[0] || 'User',
+          email: profile.email || '',
+          cpf: profile.cpf || '',
+          role: profile.role || 'user',
+          companyIds: profile.company_ids || [],
+          clientIds: profile.client_ids || [],
+          permissions: permissionsData ? {
+            id: permissionsData.id,
+            name: 'Default Permissions',
+            description: 'Default user permissions',
+            canCreate: permissionsData.can_create || false,
+            canEdit: permissionsData.can_edit || false,
+            canDelete: permissionsData.can_delete || false,
+            canMarkComplete: permissionsData.can_mark_complete || false,
+            canMarkDelayed: permissionsData.can_mark_delayed || false,
+            canAddNotes: permissionsData.can_add_notes || false,
+            canViewReports: permissionsData.can_view_reports || false,
+            viewAllActions: permissionsData.view_all_actions || false,
+            canEditUser: permissionsData.can_edit_user || false,
+            canEditAction: permissionsData.can_edit_action || false,
+            canEditClient: permissionsData.can_edit_client || false,
+            canDeleteClient: permissionsData.can_delete_client || false,
+            canCreateClient: permissionsData.can_create_client || false,
+            canEditCompany: permissionsData.can_edit_company || false,
+            canDeleteCompany: permissionsData.can_delete_company || false,
+            viewOnlyAssignedActions: permissionsData.view_only_assigned_actions || false,
+          } : {
+            id: '',
+            name: 'Default Permissions',
+            description: 'Default user permissions',
+            canCreate: false,
+            canEdit: false,
+            canDelete: false,
+            canMarkComplete: false,
+            canMarkDelayed: false,
+            canAddNotes: false,
+            canViewReports: false,
+            viewAllActions: false,
+            canEditUser: false,
+            canEditAction: false,
+            canEditClient: false,
+            canDeleteClient: false,
+            canCreateClient: false,
+            canEditCompany: false,
+            canDeleteCompany: false,
+            viewOnlyAssignedActions: false,
+          }
+        } as User;
+      });
+      
+      const users = await Promise.all(userPromises);
+      setUsers(users);
+    } catch (error) {
+      console.error('Error in fetchAllUsers:', error);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // User profile will be fetched via onAuthStateChange
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error('Erro ao fazer login', {
+        description: error.message || 'Verifique suas credenciais e tente novamente.'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {
+    setLoading(true);
     try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Erro ao fazer logout do Supabase:', error);
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+      
+      // User will be reset via onAuthStateChange
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast.error('Erro ao sair', {
+        description: error.message || 'Não foi possível sair corretamente.'
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('user');
-    toast({
-      title: "Logout realizado",
-      description: "Você foi desconectado com sucesso.",
-      variant: "default",
-    });
   };
 
-  const createPermission = (role: 'user' | 'master', customPermission?: any): Permission => {
-    const defaultPermissions: Permission = {
-      id: "default",
-      name: "Default Permissions",
-      description: "Default user permissions",
-      canCreate: role === 'master',
-      canEdit: role === 'master',
-      canDelete: role === 'master',
-      canMarkComplete: true,
-      canMarkDelayed: true,
-      canAddNotes: true,
-      canViewReports: role === 'master',
-      viewAllActions: role === 'master',
-      canEditUser: role === 'master',
-      canEditAction: role === 'master',
-      canEditClient: role === 'master',
-      canDeleteClient: role === 'master',
-      canCreateClient: role === 'master',
-      canEditCompany: role === 'master',
-      canDeleteCompany: role === 'master',
-      viewOnlyAssignedActions: role !== 'master',
-    };
-    
-    if (customPermission) {
-      return {
-        ...defaultPermissions,
-        ...customPermission,
-        canCreateClient: 'canCreateClient' in customPermission 
-          ? customPermission.canCreateClient 
-          : defaultPermissions.canCreateClient
-      };
-    }
-    
-    return defaultPermissions;
-  };
-
-  const addUser = async (userData: { 
-    name: string; 
-    cpf: string; 
-    email: string;
-    role: 'user' | 'master';
-    companyIds: string[];
-    clientIds?: string[];
-    permissions?: any
-  }): Promise<boolean> => {
+  const register = async (email: string, password: string, name: string) => {
+    setLoading(true);
     try {
-      const userId = Date.now().toString();
-      
-      const profileData = {
-        id: userId,
-        name: userData.name,
-        cpf: userData.cpf,
-        email: userData.email || `${userData.cpf}@example.com`,
-        role: userData.role,
-        company_ids: userData.companyIds,
-        client_ids: userData.clientIds || []
-      };
-      
-      const { data: insertedProfile, error } = await supabase
-        .from('profiles')
-        .insert(profileData)
-        .select()
-        .single();
+      // Register user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          }
+        }
+      });
       
       if (error) {
-        console.error('Erro ao inserir perfil no Supabase:', error);
-        return addUserToLocalStorage(userData);
+        throw error;
       }
       
-      console.log('Perfil inserido com sucesso:', insertedProfile);
-      
-      const defaultPermission = createPermission(userData.role, userData.permissions);
-      
-      const permissionsToInsert = {
-        user_id: insertedProfile.id,
-        can_create: defaultPermission.canCreate,
-        can_edit: defaultPermission.canEdit,
-        can_delete: defaultPermission.canDelete,
-        can_mark_complete: defaultPermission.canMarkComplete,
-        can_mark_delayed: defaultPermission.canMarkDelayed,
-        can_add_notes: defaultPermission.canAddNotes,
-        can_view_reports: defaultPermission.canViewReports,
-        view_all_actions: defaultPermission.viewAllActions,
-        can_edit_user: defaultPermission.canEditUser,
-        can_edit_action: defaultPermission.canEditAction,
-        can_edit_client: defaultPermission.canEditClient,
-        can_delete_client: defaultPermission.canDeleteClient,
-        can_create_client: defaultPermission.canCreateClient,
-        can_edit_company: defaultPermission.canEditCompany,
-        can_delete_company: defaultPermission.canDeleteCompany,
-        view_only_assigned_actions: defaultPermission.viewOnlyAssignedActions
-      };
-      
-      const { error: permissionsError } = await supabase
-        .from('user_permissions')
-        .insert(permissionsToInsert);
-        
-      if (permissionsError) {
-        console.error('Erro ao inserir permissões no Supabase:', permissionsError);
-      }
-      
-      const newUser: User = {
-        id: insertedProfile.id,
-        name: userData.name,
-        cpf: userData.cpf,
-        email: userData.email || `${userData.cpf}@example.com`,
-        role: userData.role,
-        companyIds: userData.companyIds,
-        clientIds: userData.clientIds || [],
-        password: '@54321',
-        permissions: [defaultPermission]
-      };
-      
-      const typedUsers: User[] = [...users, newUser];
-      setUsers(typedUsers);
-      localStorage.setItem('users', JSON.stringify(typedUsers));
-      
-      toast({
-        title: "Usuário criado",
-        description: "O usuário foi criado com sucesso",
-        variant: "default",
+      // Profile record should be automatically created via database trigger
+      // permissions will be set when user logs in
+      toast.success('Conta criada', {
+        description: 'Sua conta foi criada com sucesso. Você já pode fazer login.'
       });
-      return true;
-    } catch (error) {
-      console.error('Erro ao adicionar usuário:', error);
-      return addUserToLocalStorage(userData);
+      
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast.error('Erro ao criar conta', {
+        description: error.message || 'Não foi possível criar sua conta.'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const addUserToLocalStorage = (userData: any): boolean => {
-    if (users.some(u => normalizeCPF(u.cpf) === normalizeCPF(userData.cpf))) {
-      toast({
-        title: "Erro",
-        description: "Já existe um usuário com este CPF",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const permission = createPermission(userData.role, userData.permissions);
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: userData.name,
-      cpf: userData.cpf,
-      email: userData.email || `${userData.cpf}@example.com`,
-      role: userData.role,
-      companyIds: userData.companyIds,
-      clientIds: userData.clientIds || [],
-      permissions: [permission]
-    };
-
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    toast({
-      title: "Usuário criado",
-      description: "O usuário foi criado com sucesso",
-      variant: "default",
-    });
-    return true;
-  };
-
-  const updateUser = async (userData: { 
-    id: string;
-    name: string; 
-    cpf: string; 
-    email: string;
-    role: 'user' | 'master';
-    companyIds: string[];
-    clientIds?: string[];
-    permissions?: any
-  }): Promise<boolean> => {
+  const forgotPassword = async (email: string) => {
+    setLoading(true);
     try {
-      const { data: existingProfiles, error: checkError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('cpf', userData.cpf)
-        .neq('id', userData.id);
-        
-      if (checkError) {
-        console.error('Erro ao verificar CPF existente:', checkError);
-        return updateUserInLocalStorage(userData);
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+      if (error) {
+        throw error;
       }
       
-      if (existingProfiles && existingProfiles.length > 0) {
-        toast({
-          title: "Erro",
-          description: "Já existe outro usu��rio com este CPF",
-          variant: "destructive",
+      toast.success('Email enviado', {
+        description: 'Verifique seu email para recuperar sua senha.'
+      });
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      toast.error('Erro ao recuperar senha', {
+        description: error.message || 'Não foi possível enviar o email de recuperação.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (password: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success('Senha atualizada', {
+        description: 'Sua senha foi atualizada com sucesso. Você pode fazer login agora.'
+      });
+      
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      toast.error('Erro ao resetar senha', {
+        description: error.message || 'Não foi possível atualizar sua senha.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    if (!user) {
+      toast.error('Erro ao atualizar perfil', {
+        description: 'Você precisa estar logado para atualizar seu perfil.'
+      });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      // Update auth user if email is provided
+      if (data.email) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: data.email,
         });
-        return false;
+        
+        if (authError) {
+          throw authError;
+        }
       }
       
-      const profileData = {
-        name: userData.name,
-        cpf: userData.cpf,
-        email: userData.email,
-        role: userData.role,
-        company_ids: userData.companyIds,
-        client_ids: userData.clientIds || []
-      };
+      // Update profile data
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: data.name || user.name,
+          cpf: data.cpf || user.cpf,
+          role: data.role || user.role,
+          company_ids: data.companyIds || user.companyIds,
+          client_ids: data.clientIds || user.clientIds,
+        })
+        .eq('id', user.id);
+        
+      if (error) {
+        throw error;
+      }
       
+      // Update user state
+      setUser({
+        ...user,
+        ...data,
+      });
+      
+      toast.success('Perfil atualizado', {
+        description: 'Suas informações foram atualizadas com sucesso.'
+      });
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      toast.error('Erro ao atualizar perfil', {
+        description: error.message || 'Não foi possível atualizar suas informações.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const checkPermission = (permission: keyof Permission): boolean => {
+    if (!user || !permissions) return false;
+    
+    // Master role has all permissions
+    if (user.role === 'master') return true;
+    
+    // Check specific permission
+    return Boolean(permissions[permission]);
+  };
+  
+  const hasPermission = checkPermission; // Alias for checkPermission
+  
+  const updateUserPermissions = async (userId: string, newPermissions: Partial<Permission>) => {
+    setLoading(true);
+    try {
+      // Check if permission record exists
+      const { data, error } = await supabase
+        .from('user_permissions')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      if (data) {
+        // Update existing permissions
+        const { error: updateError } = await supabase
+          .from('user_permissions')
+          .update({
+            can_create: newPermissions.canCreate !== undefined ? newPermissions.canCreate : data.can_create,
+            can_edit: newPermissions.canEdit !== undefined ? newPermissions.canEdit : data.can_edit,
+            can_delete: newPermissions.canDelete !== undefined ? newPermissions.canDelete : data.can_delete,
+            can_mark_complete: newPermissions.canMarkComplete !== undefined ? newPermissions.canMarkComplete : data.can_mark_complete,
+            can_mark_delayed: newPermissions.canMarkDelayed !== undefined ? newPermissions.canMarkDelayed : data.can_mark_delayed,
+            can_add_notes: newPermissions.canAddNotes !== undefined ? newPermissions.canAddNotes : data.can_add_notes,
+            can_view_reports: newPermissions.canViewReports !== undefined ? newPermissions.canViewReports : data.can_view_reports,
+            view_all_actions: newPermissions.viewAllActions !== undefined ? newPermissions.viewAllActions : data.view_all_actions,
+            can_edit_user: newPermissions.canEditUser !== undefined ? newPermissions.canEditUser : data.can_edit_user,
+            can_edit_action: newPermissions.canEditAction !== undefined ? newPermissions.canEditAction : data.can_edit_action,
+            can_edit_client: newPermissions.canEditClient !== undefined ? newPermissions.canEditClient : data.can_edit_client,
+            can_delete_client: newPermissions.canDeleteClient !== undefined ? newPermissions.canDeleteClient : data.can_delete_client,
+            can_create_client: newPermissions.canCreateClient !== undefined ? newPermissions.canCreateClient : data.can_create_client,
+            can_edit_company: newPermissions.canEditCompany !== undefined ? newPermissions.canEditCompany : data.can_edit_company,
+            can_delete_company: newPermissions.canDeleteCompany !== undefined ? newPermissions.canDeleteCompany : data.can_delete_company,
+            view_only_assigned_actions: newPermissions.viewOnlyAssignedActions !== undefined ? newPermissions.viewOnlyAssignedActions : data.view_only_assigned_actions,
+          })
+          .eq('id', data.id);
+          
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // Create new permissions record
+        const { error: insertError } = await supabase
+          .from('user_permissions')
+          .insert({
+            user_id: userId,
+            can_create: newPermissions.canCreate || false,
+            can_edit: newPermissions.canEdit || false,
+            can_delete: newPermissions.canDelete || false,
+            can_mark_complete: newPermissions.canMarkComplete || false,
+            can_mark_delayed: newPermissions.canMarkDelayed || false,
+            can_add_notes: newPermissions.canAddNotes || false,
+            can_view_reports: newPermissions.canViewReports || false,
+            view_all_actions: newPermissions.viewAllActions || false,
+            can_edit_user: newPermissions.canEditUser || false,
+            can_edit_action: newPermissions.canEditAction || false,
+            can_edit_client: newPermissions.canEditClient || false,
+            can_delete_client: newPermissions.canDeleteClient || false,
+            can_create_client: newPermissions.canCreateClient || false,
+            can_edit_company: newPermissions.canEditCompany || false,
+            can_delete_company: newPermissions.canDeleteCompany || false,
+            view_only_assigned_actions: newPermissions.viewOnlyAssignedActions || false,
+          });
+          
+        if (insertError) {
+          throw insertError;
+        }
+      }
+      
+      // Update current user permissions if it's the same user
+      if (user && userId === user.id) {
+        setPermissions(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            ...newPermissions,
+          };
+        });
+      }
+      
+      // Refresh all users if admin
+      if (user && (user.role === 'master' || checkPermission('canEditUser'))) {
+        fetchAllUsers();
+      }
+      
+      toast.success('Permissões atualizadas', {
+        description: 'As permissões do usuário foram atualizadas com sucesso.'
+      });
+    } catch (error: any) {
+      console.error('Update user permissions error:', error);
+      toast.error('Erro ao atualizar permissões', {
+        description: error.message || 'Não foi possível atualizar as permissões do usuário.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const createResponsibleFromUser = async (userId: string, responsibleData: Omit<Responsible, 'id' | 'createdAt' | 'updatedAt'>) => {
+    setLoading(true);
+    try {
+      // Create responsible record
+      const { data, error } = await supabase
+        .from('responsibles')
+        .insert({
+          name: responsibleData.name,
+          email: responsibleData.email,
+          phone: responsibleData.phone || '',
+          department: responsibleData.department || '',
+          role: responsibleData.role || '',
+          type: responsibleData.type || 'responsible',
+          company_id: responsibleData.companyId,
+          user_id: userId,
+          is_system_user: true,
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Update user profile with responsible ID
       const { error: updateError } = await supabase
         .from('profiles')
-        .update(profileData)
-        .eq('id', userData.id);
+        .update({
+          responsible_id: data.id,
+        })
+        .eq('id', userId);
         
       if (updateError) {
-        console.error('Erro ao atualizar perfil:', updateError);
-        return updateUserInLocalStorage(userData);
+        throw updateError;
       }
       
-      if (userData.permissions) {
-        const defaultPermission = createPermission(userData.role, userData.permissions);
-        
-        const permissionsData = {
-          user_id: userData.id,
-          can_create: defaultPermission.canCreate,
-          can_edit: defaultPermission.canEdit,
-          can_delete: defaultPermission.canDelete,
-          can_mark_complete: defaultPermission.canMarkComplete,
-          can_mark_delayed: defaultPermission.canMarkDelayed,
-          can_add_notes: defaultPermission.canAddNotes,
-          can_view_reports: defaultPermission.canViewReports,
-          view_all_actions: defaultPermission.viewAllActions,
-          can_edit_user: defaultPermission.canEditUser,
-          can_edit_action: defaultPermission.canEditAction,
-          can_edit_client: defaultPermission.canEditClient,
-          can_delete_client: defaultPermission.canDeleteClient,
-          can_edit_company: defaultPermission.canEditCompany,
-          can_delete_company: defaultPermission.canDeleteCompany,
-          view_only_assigned_actions: defaultPermission.viewOnlyAssignedActions
-        };
-        
-        const { error: permUpdateError } = await supabase
-          .from('user_permissions')
-          .update(permissionsData)
-          .eq('user_id', userData.id);
-          
-        if (permUpdateError) {
-          console.error('Erro ao atualizar permissões:', permUpdateError);
-        }
-      }
-      
-      const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      const localUser = localUsers.find((u: any) => u.id === userData.id);
-      const localPassword = localUser?.password;
-      
-      const updatedUsers: User[] = users.map(u => {
-        if (u.id === userData.id) {
-          const userPermission = createPermission(userData.role, userData.permissions);
-          return {
-            ...u,
-            name: userData.name,
-            cpf: userData.cpf,
-            email: userData.email,
-            role: userData.role,
-            companyIds: userData.companyIds,
-            clientIds: userData.clientIds || [],
-            password: localPassword,
-            permissions: [userPermission]
-          };
-        }
-        return u;
+      toast.success('Responsável criado', {
+        description: 'O usuário foi vinculado como responsável com sucesso.'
       });
-      
-      setUsers(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      
-      if (user && user.id === userData.id) {
-        const updatedUserData = updatedUsers.find(u => u.id === userData.id);
-        if (updatedUserData) {
-          setUser(updatedUserData);
-          localStorage.setItem('user', JSON.stringify(updatedUserData));
-        }
-      }
-      
-      toast({
-        title: "Usuário atualizado",
-        description: "As informações do usuário foram atualizadas com sucesso",
-        variant: "default",
+    } catch (error: any) {
+      console.error('Create responsible from user error:', error);
+      toast.error('Erro ao criar responsável', {
+        description: error.message || 'Não foi possível vincular o usuário como responsável.'
       });
-      return true;
-    } catch (error) {
-      console.error('Erro na atualização de usuário:', error);
-      return updateUserInLocalStorage(userData);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const updateUserInLocalStorage = (userData: any): boolean => {
-    if (users.some(u => u.cpf === userData.cpf && u.id !== userData.id)) {
-      toast({
-        title: "Erro",
-        description: "Já existe outro usuário com este CPF",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const permission = createPermission(userData.role, userData.permissions);
-
-    const updatedUsers = users.map(user => {
-      if (user.id === userData.id) {
-        return {
-          ...user,
-          name: userData.name,
-          cpf: userData.cpf,
-          email: userData.email || user.email,
-          role: userData.role,
-          companyIds: userData.companyIds,
-          clientIds: userData.clientIds || user.clientIds || [],
-          permissions: [permission]
-        };
-      }
-      return user;
-    });
-
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    
-    if (user && user.id === userData.id) {
-      const updatedUser = updatedUsers.find(u => u.id === userData.id);
-      if (updatedUser) {
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-    }
-    
-    toast({
-      title: "Usuário atualizado",
-      description: "As informações do usuário foram atualizadas com sucesso",
-      variant: "default",
-    });
-    return true;
-  };
-
-  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
-    const userToUpdate = users.find(u => u.id === userId);
-    
-    if (!userToUpdate) {
-      toast({
-        title: "Erro",
-        description: "Usuário não encontrado",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (currentPassword !== '@54321' && currentPassword !== userToUpdate.password) {
-      toast({
-        title: "Erro",
-        description: "Senha atual incorreta",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    try {
-      const updatedUsers: User[] = users.map(u => {
-        if (u.id === userId) {
-          return {
-            ...u,
-            password: newPassword
-          };
-        }
-        return u;
-      });
-
-      setUsers(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      
-      if (user && user.id === userId) {
-        const updatedUser = updatedUsers.find(u => u.id === userId);
-        if (updatedUser) {
-          setUser(updatedUser);
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-        }
-      }
-      
-      toast({
-        title: "Senha alterada",
-        description: "Sua senha foi alterada com sucesso",
-        variant: "default",
-      });
-      return true;
-    } catch (error) {
-      console.error('Erro ao alterar senha:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao alterar a senha",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const resetUserPassword = async (userId: string) => {
-    try {
-      const updatedUsers: User[] = users.map(u => {
-        if (u.id === userId) {
-          return {
-            ...u,
-            password: undefined
-          };
-        }
-        return u;
-      });
-
-      setUsers(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      
-      toast({
-        title: "Senha redefinida",
-        description: "A senha foi redefinida para @54321",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Erro ao redefinir senha:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao redefinir a senha",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const canUserEditResponsibles = () => {
-    if (!user) return false;
-    
-    if (user.role === 'master') return true;
-    
-    return user.permissions.some(p => p.canEdit);
-  };
-
-  const canUserDeleteResponsibles = () => {
-    if (!user) return false;
-    
-    return user.role === 'master';
-  };
-
-  const getUserCompanyIds = () => {
-    if (!user) return [];
-    return user.companyIds || ['1'];
-  };
-
-  const getUserClientIds = () => {
-    if (!user) return [];
-    return user.clientIds || [];
-  };
-
-  const canViewAllActions = () => {
-    if (!user) return false;
-    if (user.role === 'master') return true;
-    return user.permissions.some(p => p.viewAllActions);
-  };
-
-  const shouldViewOnlyAssignedActions = () => {
-    if (!user) return false;
-    if (user.role === 'master') return false;
-    return user.permissions.some(p => p.viewOnlyAssignedActions);
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      users,
-      isAuthenticated, 
-      login, 
-      logout,
-      addUser,
-      updateUser,
-      changePassword,
-      resetUserPassword,
-      canUserEditResponsibles,
-      canUserDeleteResponsibles,
-      getUserCompanyIds,
-      getUserClientIds,
-      canViewAllActions,
-      shouldViewOnlyAssignedActions
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        users,
+        permissions,
+        loading,
+        login,
+        logout,
+        register,
+        forgotPassword,
+        resetPassword,
+        updateProfile,
+        checkPermission,
+        hasPermission,
+        updateUserPermissions,
+        createResponsibleFromUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+
+export default AuthContext;

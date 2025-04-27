@@ -9,12 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, Download, Printer } from 'lucide-react';
+import { CalendarIcon, Download, Printer, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Dialog, DialogContent } from './ui/dialog';
+import { Action } from '@/lib/types';
 
 const WorkflowReport = () => {
   const { actions } = useActions();
@@ -23,11 +25,13 @@ const WorkflowReport = () => {
   const [selectedCompany, setSelectedCompany] = useState<string>('all');
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedResponsible, setSelectedResponsible] = useState<string>('all');
+  const [selectedRequester, setSelectedRequester] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [filterableClients, setFilterableClients] = useState(clients);
   const [filteredActions, setFilteredActions] = useState(actions);
+  const [viewingAction, setViewingAction] = useState<Action | null>(null);
 
   useEffect(() => {
     if (selectedCompany && selectedCompany !== 'all') {
@@ -52,6 +56,11 @@ const WorkflowReport = () => {
       filtered = filtered.filter(action => action.responsibleId === selectedResponsible);
     }
 
+    // Add filter by requester
+    if (selectedRequester && selectedRequester !== 'all') {
+      filtered = filtered.filter(action => action.requesterId === selectedRequester);
+    }
+
     if (selectedStatus && selectedStatus !== 'all') {
       filtered = filtered.filter(action => action.status === selectedStatus);
     }
@@ -65,7 +74,7 @@ const WorkflowReport = () => {
     }
 
     setFilteredActions(filtered);
-  }, [actions, selectedCompany, selectedClient, selectedResponsible, selectedStatus, startDate, endDate]);
+  }, [actions, selectedCompany, selectedClient, selectedResponsible, selectedRequester, selectedStatus, startDate, endDate]);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -75,6 +84,8 @@ const WorkflowReport = () => {
         return 'Concluído';
       case 'atrasado':
         return 'Atrasado';
+      case 'aguardando_aprovacao':
+        return 'Aguardando Aprovação';
       default:
         return status;
     }
@@ -88,6 +99,8 @@ const WorkflowReport = () => {
         return 'bg-green-500 hover:bg-green-600 text-white';
       case 'atrasado':
         return 'bg-red-500 hover:bg-red-600 text-white';
+      case 'aguardando_aprovacao':
+        return 'bg-blue-500 hover:bg-blue-600 text-white';
       default:
         return 'bg-gray-500 hover:bg-gray-600 text-white';
     }
@@ -119,6 +132,116 @@ const WorkflowReport = () => {
     return responsible ? responsible.name : 'Não especificado';
   };
 
+  const getRequesterName = (id?: string) => {
+    if (!id) return 'Não especificado';
+    // First check in users
+    const user = users.find(u => u.id === id);
+    if (user) return user.name;
+    
+    // Then check in responsibles (as requesters are also stored there)
+    const requester = responsibles.find(r => r.id === id);
+    return requester ? requester.name : 'Não especificado';
+  };
+
+  const viewActionDetails = (action: Action) => {
+    setViewingAction(action);
+  };
+
+  const closeActionDetails = () => {
+    setViewingAction(null);
+  };
+
+  const generateActionPDF = (action: Action) => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text(`Relatório Detalhado de Ação: ${action.subject}`, 14, 20);
+
+    // Add company logo if available
+    const logo = getCompanyLogo(action.companyId);
+    if (logo) {
+      try {
+        doc.addImage(logo, 'JPEG', 170, 10, 25, 25);
+      } catch (error) {
+        console.error('Error adding logo to PDF:', error);
+      }
+    }
+    
+    // Add action details
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Detalhes da Ação:", 14, 35);
+    doc.setFont("helvetica", "normal");
+    
+    const details = [
+      `ID: ${action.id}`,
+      `Assunto: ${action.subject}`,
+      `Descrição: ${action.description}`,
+      `Status: ${getStatusLabel(action.status)}`,
+      `Empresa: ${getCompanyName(action.companyId)}`,
+      `Cliente: ${getClientName(action.clientId)}`,
+      `Responsável: ${getResponsibleName(action.responsibleId)}`,
+      `Solicitante: ${action.requesterId ? getRequesterName(action.requesterId) : 'Não especificado'}`,
+      `Data de Criação: ${format(new Date(action.createdAt), 'dd/MM/yyyy HH:mm')}`,
+      `Data de Início: ${format(new Date(action.startDate), 'dd/MM/yyyy')}`,
+      `Data de Término: ${format(new Date(action.endDate), 'dd/MM/yyyy')}`,
+      `Criado por: ${action.createdByName || 'Não especificado'}`
+    ];
+    
+    let yPos = 42;
+    details.forEach(detail => {
+      doc.text(detail, 14, yPos);
+      yPos += 7;
+    });
+    
+    // Add notes section
+    yPos += 5;
+    doc.setFont("helvetica", "bold");
+    doc.text("Histórico e Anotações:", 14, yPos);
+    doc.setFont("helvetica", "normal");
+    
+    yPos += 7;
+    
+    if (action.notes && action.notes.length > 0) {
+      action.notes
+        .filter(note => !note.isDeleted)
+        .forEach(note => {
+          const date = format(new Date(note.createdAt), 'dd/MM/yyyy HH:mm');
+          doc.setFont("helvetica", "bold");
+          doc.text(`${date}:`, 14, yPos);
+          yPos += 7;
+          
+          doc.setFont("helvetica", "normal");
+          const textLines = doc.splitTextToSize(note.content, 180);
+          textLines.forEach((line: string) => {
+            doc.text(line, 20, yPos);
+            yPos += 5;
+          });
+          
+          yPos += 5;
+        });
+    } else {
+      doc.text("Nenhuma anotação registrada.", 14, yPos);
+    }
+    
+    // Add attachments section if any
+    if (action.attachments && action.attachments.length > 0) {
+      yPos += 10;
+      doc.setFont("helvetica", "bold");
+      doc.text("Anexos:", 14, yPos);
+      doc.setFont("helvetica", "normal");
+      
+      yPos += 7;
+      action.attachments.forEach((attachment, index) => {
+        doc.text(`${index + 1}. ${attachment.split('/').pop() || attachment}`, 14, yPos);
+        yPos += 7;
+      });
+    }
+    
+    doc.save(`acao-${action.id.substring(0, 6)}.pdf`);
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF();
     
@@ -146,6 +269,7 @@ const WorkflowReport = () => {
       `Empresa: ${selectedCompany === 'all' ? 'Todas' : getCompanyName(selectedCompany)}`,
       `Cliente: ${selectedClient === 'all' ? 'Todos' : getClientName(selectedClient)}`,
       `Responsável: ${selectedResponsible === 'all' ? 'Todos' : getResponsibleName(selectedResponsible)}`,
+      `Solicitante: ${selectedRequester === 'all' ? 'Todos' : getRequesterName(selectedRequester)}`,
       `Status: ${selectedStatus === 'all' ? 'Todos' : getStatusLabel(selectedStatus)}`,
       `Período: ${startDate ? format(startDate, 'dd/MM/yyyy') : 'Início'} até ${endDate ? format(endDate, 'dd/MM/yyyy') : 'Fim'}`
     ];
@@ -157,12 +281,13 @@ const WorkflowReport = () => {
     });
     
     // Add table
-    const tableColumn = ["Empresa", "Cliente", "Assunto", "Responsável", "Status", "Data Início", "Data Fim"];
+    const tableColumn = ["Empresa", "Cliente", "Assunto", "Responsável", "Solicitante", "Status", "Data Início", "Data Fim"];
     const tableRows = filteredActions.map(action => [
       getCompanyName(action.companyId),
       getClientName(action.clientId),
       action.subject,
       getResponsibleName(action.responsibleId),
+      getRequesterName(action.requesterId),
       getStatusLabel(action.status),
       format(new Date(action.startDate), 'dd/MM/yyyy'),
       format(new Date(action.endDate), 'dd/MM/yyyy')
@@ -231,15 +356,30 @@ const WorkflowReport = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os responsáveis</SelectItem>
-                {users.map(user => (
-                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                {responsibles.map(responsible => (
+                  <SelectItem key={responsible.id} value={responsible.id}>{responsible.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Solicitante</label>
+            <Select onValueChange={setSelectedRequester} value={selectedRequester}>
+              <SelectTrigger>
+                <SelectValue placeholder="Todos os solicitantes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os solicitantes</SelectItem>
+                {responsibles.filter(r => r.type === 'requester' || !r.type).map(requester => (
+                  <SelectItem key={requester.id} value={requester.id}>{requester.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
           <div>
             <label className="block text-sm font-medium mb-1">Status</label>
             <Select onValueChange={setSelectedStatus} value={selectedStatus}>
@@ -251,6 +391,7 @@ const WorkflowReport = () => {
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="concluido">Concluído</SelectItem>
                 <SelectItem value="atrasado">Atrasado</SelectItem>
+                <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -350,6 +491,7 @@ const WorkflowReport = () => {
                 {selectedCompany !== 'all' && ` Empresa: ${getCompanyName(selectedCompany)}`}
                 {selectedClient !== 'all' && ` | Cliente: ${getClientName(selectedClient)}`}
                 {selectedResponsible !== 'all' && ` | Responsável: ${getResponsibleName(selectedResponsible)}`}
+                {selectedRequester !== 'all' && ` | Solicitante: ${getRequesterName(selectedRequester)}`}
                 {selectedStatus !== 'all' && ` | Status: ${getStatusLabel(selectedStatus)}`}
               </div>
             </CardTitle>
@@ -363,9 +505,11 @@ const WorkflowReport = () => {
                     <th className="px-4 py-2 text-left">Cliente</th>
                     <th className="px-4 py-2 text-left">Assunto</th>
                     <th className="px-4 py-2 text-left">Responsável</th>
+                    <th className="px-4 py-2 text-left">Solicitante</th>
                     <th className="px-4 py-2 text-left">Status</th>
                     <th className="px-4 py-2 text-left">Data Início</th>
                     <th className="px-4 py-2 text-left">Data Fim</th>
+                    <th className="px-4 py-2 text-left print:hidden">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,6 +520,7 @@ const WorkflowReport = () => {
                         <td className="px-4 py-3">{getClientName(action.clientId)}</td>
                         <td className="px-4 py-3">{action.subject}</td>
                         <td className="px-4 py-3">{getResponsibleName(action.responsibleId)}</td>
+                        <td className="px-4 py-3">{action.requesterId ? getRequesterName(action.requesterId) : 'Não especificado'}</td>
                         <td className="px-4 py-3">
                           <Badge className={getStatusColor(action.status)}>
                             {getStatusLabel(action.status)}
@@ -383,11 +528,33 @@ const WorkflowReport = () => {
                         </td>
                         <td className="px-4 py-3">{format(new Date(action.startDate), 'dd/MM/yyyy')}</td>
                         <td className="px-4 py-3">{format(new Date(action.endDate), 'dd/MM/yyyy')}</td>
+                        <td className="px-4 py-3 print:hidden">
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 px-2 flex items-center"
+                              onClick={() => viewActionDetails(action)}
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              <span className="text-xs">Detalhes</span>
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 px-2 flex items-center"
+                              onClick={() => generateActionPDF(action)}
+                            >
+                              <Download className="h-3.5 w-3.5 mr-1" />
+                              <span className="text-xs">PDF</span>
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-4 py-3 text-center text-gray-500">
+                      <td colSpan={9} className="px-4 py-3 text-center text-gray-500">
                         Nenhuma ação encontrada com os filtros selecionados.
                       </td>
                     </tr>
@@ -398,6 +565,190 @@ const WorkflowReport = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Action Details Dialog */}
+      {viewingAction && (
+        <Dialog open={!!viewingAction} onOpenChange={closeActionDetails}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="p-4">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">{viewingAction.subject}</h2>
+                  <div className="flex items-center mt-2">
+                    <Badge className={getStatusColor(viewingAction.status)}>
+                      {getStatusLabel(viewingAction.status)}
+                    </Badge>
+                    <span className="text-sm text-gray-500 ml-4">
+                      ID: {viewingAction.id.substring(0, 8)}
+                    </span>
+                  </div>
+                </div>
+                
+                <Button onClick={() => generateActionPDF(viewingAction)} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar PDF
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Informações da Ação</h3>
+                  <dl className="grid grid-cols-1 gap-y-2">
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Empresa:</dt>
+                      <dd className="col-span-2">{getCompanyName(viewingAction.companyId)}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Cliente:</dt>
+                      <dd className="col-span-2">{getClientName(viewingAction.clientId)}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Responsável:</dt>
+                      <dd className="col-span-2">{getResponsibleName(viewingAction.responsibleId)}</dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Solicitante:</dt>
+                      <dd className="col-span-2">
+                        {viewingAction.requesterId ? getRequesterName(viewingAction.requesterId) : 'Não especificado'}
+                      </dd>
+                    </div>
+                    {viewingAction.createdByName && (
+                      <div className="grid grid-cols-3">
+                        <dt className="font-medium">Criado por:</dt>
+                        <dd className="col-span-2">{viewingAction.createdByName}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Datas</h3>
+                  <dl className="grid grid-cols-1 gap-y-2">
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Data de Criação:</dt>
+                      <dd className="col-span-2">
+                        {format(new Date(viewingAction.createdAt), 'dd/MM/yyyy HH:mm')}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Data de Início:</dt>
+                      <dd className="col-span-2">
+                        {format(new Date(viewingAction.startDate), 'dd/MM/yyyy')}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-3">
+                      <dt className="font-medium">Data de Término:</dt>
+                      <dd className="col-span-2">
+                        {format(new Date(viewingAction.endDate), 'dd/MM/yyyy')}
+                      </dd>
+                    </div>
+                    {viewingAction.completedAt && (
+                      <div className="grid grid-cols-3">
+                        <dt className="font-medium">Concluída em:</dt>
+                        <dd className="col-span-2">
+                          {format(new Date(viewingAction.completedAt), 'dd/MM/yyyy HH:mm')}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3">Descrição</h3>
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="whitespace-pre-wrap">{viewingAction.description}</p>
+                </div>
+              </div>
+              
+              {viewingAction.completionNotes && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium mb-3">Justificativa de Conclusão</h3>
+                  <div className="bg-green-50 p-4 rounded">
+                    <p className="whitespace-pre-wrap">{viewingAction.completionNotes}</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3">Histórico e Anotações</h3>
+                {viewingAction.notes && viewingAction.notes.filter(note => !note.isDeleted).length > 0 ? (
+                  <div className="space-y-3">
+                    {viewingAction.notes
+                      .filter(note => !note.isDeleted)
+                      .map(note => (
+                        <div key={note.id} className="bg-gray-50 p-4 rounded">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="font-medium text-sm">
+                              {format(new Date(note.createdAt), 'dd/MM/yyyy HH:mm')}
+                            </div>
+                          </div>
+                          <p className="whitespace-pre-wrap">{note.content}</p>
+                          
+                          {note.attachments && note.attachments.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-sm font-medium mb-1">Anexos:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {note.attachments.map((url, idx) => (
+                                  <a 
+                                    key={idx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer" 
+                                    className="text-sm text-blue-600 hover:underline flex items-center"
+                                  >
+                                    <Download className="h-3.5 w-3.5 mr-1" />
+                                    Anexo {idx + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    }
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">Sem anotações registradas</p>
+                )}
+              </div>
+              
+              {viewingAction.attachments && viewingAction.attachments.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Anexos da Ação</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {viewingAction.attachments.map((url, idx) => (
+                      <a
+                        key={idx}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition"
+                      >
+                        <div className="mr-3">
+                          {url.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? (
+                            <FileImage className="h-6 w-6 text-blue-500" />
+                          ) : url.toLowerCase().match(/\.(pdf)$/) ? (
+                            <FileText className="h-6 w-6 text-red-500" />
+                          ) : (
+                            <FileText className="h-6 w-6 text-gray-500" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {url.split('/').pop() || `Anexo ${idx + 1}`}
+                          </p>
+                        </div>
+                        <Download className="h-4 w-4 text-gray-500" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

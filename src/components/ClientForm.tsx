@@ -1,113 +1,101 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCompany } from '@/contexts/CompanyContext';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Client } from '@/lib/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-interface ClientFormProps {
+// Define form schema with validation
+const clientFormSchema = z.object({
+  name: z.string().min(2, { message: 'O nome deve ter no mínimo 2 caracteres' }),
+  email: z.string().email({ message: 'Email inválido' }).optional().or(z.literal('')),
+  phone: z.string().optional(),
+  companyId: z.string({ required_error: "Selecione uma empresa" })
+    .min(1, { message: 'Selecione uma empresa' }),
+});
+
+export interface ClientFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editClient?: Client;
+  initialData: Client | null;
+  isNewClient: boolean;
 }
 
-const ClientForm = ({ open, onOpenChange, editClient }: ClientFormProps) => {
-  const { user } = useAuth();
+const ClientForm: React.FC<ClientFormProps> = ({
+  open,
+  onOpenChange,
+  initialData,
+  isNewClient
+}) => {
   const { addClient, updateClient, companies } = useCompany();
-  const [loading, setLoading] = useState(false);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
-
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
+  
+  // Initialize form with schema
+  const form = useForm<z.infer<typeof clientFormSchema>>({
+    resolver: zodResolver(clientFormSchema),
     defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-    }
+      name: initialData?.name || '',
+      email: initialData?.email || '',
+      phone: initialData?.phone || '',
+      companyId: initialData?.companyId || '',
+    },
   });
 
-  // Filter companies based on user's permissions
+  // Reset form when initialData changes
   useEffect(() => {
-    if (user) {
-      // If user is master or has permission to manage all companies, show all companies
-      if (user.role === 'master' || user.permissions.some(p => p.canEditCompany)) {
-        setAvailableCompanies(companies);
-      } else {
-        // Otherwise, filter companies user has access to
-        const userCompanies = companies.filter(company => 
-          user.companyIds.includes(company.id)
-        );
-        setAvailableCompanies(userCompanies);
-      }
-    }
-  }, [user, companies]);
-
-  useEffect(() => {
-    if (editClient) {
-      setValue('name', editClient.name);
-      setValue('email', editClient.email || '');
-      setValue('phone', editClient.phone || '');
-      setSelectedCompanyId(editClient.companyId);
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        email: initialData.email || '',
+        phone: initialData.phone || '',
+        companyId: initialData.companyId || '',
+      });
     } else {
-      reset({
+      form.reset({
         name: '',
         email: '',
         phone: '',
+        companyId: '',
       });
-      
-      // Set default company if user only has access to one company
-      if (availableCompanies.length === 1) {
-        setSelectedCompanyId(availableCompanies[0].id);
-      } else if (user?.companyIds?.length === 1) {
-        setSelectedCompanyId(user.companyIds[0]);
-      } else {
-        setSelectedCompanyId('');
-      }
     }
-  }, [editClient, setValue, reset, availableCompanies, user]);
+  }, [initialData, form, open]);
 
-  const onSubmit = async (data: any) => {
-    if (!selectedCompanyId) {
-      toast.error("É necessário selecionar uma empresa");
-      return;
-    }
-
-    setLoading(true);
-    
+  // Handle form submission
+  const onSubmit = async (data: z.infer<typeof clientFormSchema>) => {
     try {
-      const clientData = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        companyId: selectedCompanyId,
-      };
-
-      if (editClient) {
-        await updateClient({
-          ...clientData,
-          id: editClient.id,
-          createdAt: editClient.createdAt,
-          updatedAt: new Date()
-        });
-        toast.success('Cliente atualizado com sucesso');
-      } else {
-        await addClient({
-          ...clientData
-        });
-        toast.success('Cliente cadastrado com sucesso');
-      }
+      console.log("Form data:", data); // Debug log
       
+      if (isNewClient) {
+        await addClient({
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          companyId: data.companyId,
+          address: '',
+          cnpj: ''
+        });
+        toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
+      } else if (initialData) {
+        await updateClient({
+          ...initialData,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          companyId: data.companyId,
+        });
+        toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
+      }
+
       onOpenChange(false);
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
-      toast.error('Erro ao salvar cliente');
-    } finally {
-      setLoading(false);
+      toast.error('Erro ao salvar', { description: 'Não foi possível salvar os dados do cliente.' });
     }
   };
 
@@ -115,68 +103,93 @@ const ClientForm = ({ open, onOpenChange, editClient }: ClientFormProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{editClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+          <DialogTitle>{isNewClient ? 'Novo Cliente' : 'Editar Cliente'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                {...register('name', { required: 'Nome é obrigatório' })}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message?.toString()}</p>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nome do cliente" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
+            />
 
-            <div className="grid gap-2">
-              <Label htmlFor="company">Empresa</Label>
-              <Select 
-                value={selectedCompanyId} 
-                onValueChange={setSelectedCompanyId}
-                disabled={editClient && !user?.permissions.some(p => p.canEditClient)}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Email de contato" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Telefone de contato" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="companyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Empresa</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma empresa" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter className="pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCompanies.map(company => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!selectedCompanyId && (
-                <p className="text-sm text-amber-500">É necessário selecionar uma empresa</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                {...register('email')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                {...register('phone')}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={loading || !selectedCompanyId}>
-              {loading ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </form>
+                Cancelar
+              </Button>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

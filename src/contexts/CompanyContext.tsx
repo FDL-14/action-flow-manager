@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext } from 'react';
 import { Company, Client, Responsible } from '@/lib/types';
 import { mockClients } from '@/lib/mock-data';

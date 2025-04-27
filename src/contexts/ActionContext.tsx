@@ -1,11 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { supabase, convertToUUID } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 
-// Define JsonObject type here instead of importing it
 type JsonObject = Record<string, any>;
 
 interface ActionContextType {
@@ -17,7 +15,7 @@ interface ActionContextType {
   addActionNote: (actionId: string, content: string) => void;
   deleteActionNote: (noteId: string, actionId: string) => void;
   getActionById: (id: string) => Action | undefined;
-  updateActionStatus: (id: string, status: "pendente" | "concluido" | "atrasado", completedAt?: Date) => void;
+  updateActionStatus: (id: string, status: "pendente" | "concluido" | "atrasado" | "aguardando_aprovacao", completedAt?: Date) => void;
   sendActionEmail: (id: string, method?: string) => Promise<void>;
   addAttachment: (actionId: string, file: File) => Promise<void>;
   getAttachmentUrl: (path: string) => Promise<string>;
@@ -59,7 +57,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.log('Buscando ações do Supabase...');
           const { data, error } = await supabase
             .from('actions')
-            .select('*');
+            .select('*')
+            .order('created_at', { ascending: false });
             
           if (error) {
             console.error('Erro ao buscar ações:', error);
@@ -102,7 +101,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 id: action.id,
                 subject: action.title || 'Sem título',
                 description: action.description || '',
-                status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
+                status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado" | "aguardando_aprovacao",
                 responsibleId: action.responsible_id || '',
                 startDate: new Date(action.created_at || Date.now()),
                 endDate: action.due_date ? new Date(action.due_date) : new Date(),
@@ -113,7 +112,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 createdAt: new Date(action.created_at || Date.now()),
                 updatedAt: new Date(action.updated_at || Date.now()),
                 completedAt: completedAt,
-                createdBy: '',
+                createdBy: action.created_by || '',
                 createdByName: ''
               };
             }).filter(Boolean) as Action[];
@@ -321,7 +320,8 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         due_date: newActionData.endDate.toISOString(),
         notes: [],
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        created_by: user?.id
       };
       
       console.log('Ação formatada para Supabase:', actionForSupabase);
@@ -378,74 +378,10 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createdByName: user?.name || ''
       };
       
-      setActions(prevActions => [...prevActions, newAction]);
+      setActions(prevActions => [newAction, ...prevActions]);
       toast.success('Ação criada com sucesso!');
       
-      setTimeout(() => {
-        const fetchActions = async () => {
-          const { data, error } = await supabase
-            .from('actions')
-            .select('*');
-            
-          if (error) {
-            console.error('Erro ao buscar ações após criação:', error);
-            return;
-          }
-          
-          console.log('Dados atualizados após criação:', data);
-          
-          if (data && Array.isArray(data)) {
-            const formattedActions: Action[] = data
-              .map(action => {
-                if (!action) return null;
-                
-                let parsedNotes: ActionNote[] = [];
-                try {
-                  if (action.notes && Array.isArray(action.notes)) {
-                    parsedNotes = action.notes.map((note: any) => ({
-                      id: note.id || String(Date.now()),
-                      actionId: action.id,
-                      content: note.content || '',
-                      createdBy: note.createdBy || 'system',
-                      createdAt: new Date(note.createdAt || Date.now()),
-                      isDeleted: note.isDeleted || false,
-                    }));
-                  }
-                } catch (e) {
-                  parsedNotes = [];
-                }
-  
-                const completedAt = 'completed_at' in action && action.completed_at 
-                  ? new Date(action.completed_at as string) 
-                  : undefined;
-
-                return {
-                  id: action.id,
-                  subject: action.title || 'Sem título',
-                  description: action.description || '',
-                  status: (action.status || 'pendente') as "pendente" | "concluido" | "atrasado",
-                  responsibleId: action.responsible_id || '',
-                  startDate: new Date(action.created_at || Date.now()),
-                  endDate: action.due_date ? new Date(action.due_date) : new Date(),
-                  companyId: action.company_id || '',
-                  clientId: action.client_id || '',
-                  requesterId: action.requester_id || '',
-                  notes: parsedNotes,
-                  createdAt: new Date(action.created_at || Date.now()),
-                  updatedAt: new Date(action.updated_at || Date.now()),
-                  completedAt: completedAt,
-                  createdBy: '',
-                  createdByName: ''
-                };
-              })
-              .filter(Boolean) as Action[];
-              
-            setActions(formattedActions);
-          }
-        };
-        
-        fetchActions();
-      }, 1000);
+      return newAction;
     } catch (error: any) {
       console.error('Erro ao adicionar ação:', error);
       toast.error(error.message || 'Erro ao criar ação.');
@@ -455,6 +391,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateAction = async (id: string, updatedData: Partial<Action>) => {
     try {
+      console.log('Atualizando ação:', id, updatedData);
       const supabaseData: any = {};
       
       if (updatedData.subject) supabaseData.title = updatedData.subject;
@@ -513,8 +450,21 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (updatedData.notes) {
         supabaseData.notes = convertNotesToJsonObjects(updatedData.notes);
       }
+
+      if (updatedData.completionNotes) {
+        supabaseData.completion_notes = updatedData.completionNotes;
+      }
+      
+      // Handle completed_at
+      if (updatedData.status === 'concluido' || updatedData.status === 'aguardando_aprovacao') {
+        supabaseData.completed_at = new Date().toISOString();
+      } else if (updatedData.status === 'pendente' || updatedData.status === 'atrasado') {
+        supabaseData.completed_at = null;
+      }
       
       supabaseData.updated_at = new Date().toISOString();
+      
+      console.log('Dados para atualização no Supabase:', supabaseData);
       
       const { error } = await supabase
         .from('actions')
@@ -529,17 +479,25 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setActions(prevActions =>
         prevActions.map(action => {
           if (action.id === id) {
-            return { ...action, ...updatedData, updatedAt: new Date() };
+            const updatedAction = { 
+              ...action, 
+              ...updatedData,
+              updatedAt: new Date(),
+              completedAt: (updatedData.status === 'concluido' || updatedData.status === 'aguardando_aprovacao') ? 
+                new Date() : action.completedAt
+            };
+            return updatedAction;
           }
           return action;
         })
       );
       
       toast.success('Ação atualizada com sucesso!');
+      return true;
     } catch (error: any) {
       console.error('Erro ao atualizar ação:', error);
       toast.error(error.message || 'Erro ao atualizar ação.');
-      throw error;
+      return false;
     }
   };
 
@@ -681,7 +639,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return actions.find(action => action.id === id);
   };
 
-  const updateActionStatus = async (id: string, status: "pendente" | "concluido" | "atrasado", completedAt?: Date) => {
+  const updateActionStatus = async (id: string, status: "pendente" | "concluido" | "atrasado" | "aguardando_aprovacao", completedAt?: Date) => {
     try {
       const updateData: any = {
         status: status,
