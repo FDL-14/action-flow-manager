@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, users, addUser } = useAuth();
+  const { isAuthenticated, users } = useAuth();
   const { companies, addCompany } = useCompany();
 
   // Verificar se o Supabase está conectado
@@ -133,7 +132,7 @@ const Index = () => {
 
     // Executa a inicialização de dados
     initializeDefaultData();
-  }, [companies, users, addCompany, addUser]);
+  }, [companies, users, addCompany]);
 
   useEffect(() => {
     const handleRedirection = () => {

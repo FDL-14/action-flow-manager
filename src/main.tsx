@@ -9,4 +9,10 @@ console.log('Environment variables status:', {
   VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Not set'
 });
 
+// Initialize logging for Supabase client
+console.info('Initializing Supabase client with:', {
+  supabaseUrl: import.meta.env.VITE_SUPABASE_URL || 'URL not set',
+  supabaseKeyProvided: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'YES' : 'NO'
+});
+
 createRoot(document.getElementById("root")!).render(<App />);
