@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { 
@@ -25,6 +26,7 @@ interface WorkflowReportFilterProps {
     status: string;
     responsibleId: string;
     clientId: string;
+    companyId: string;
     startDate: Date | null;
     endDate: Date | null;
     showNotes: boolean;
@@ -34,6 +36,7 @@ interface WorkflowReportFilterProps {
     status: string;
     responsibleId: string;
     clientId: string;
+    companyId: string;
     startDate: Date | null;
     endDate: Date | null;
     showNotes: boolean;
@@ -56,6 +59,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
       status: 'all',
       responsibleId: 'all',
       clientId: 'all',
+      companyId: 'all',
       startDate: null,
       endDate: null,
       showNotes: true,
