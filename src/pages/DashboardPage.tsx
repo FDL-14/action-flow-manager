@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, ChevronRight } from 'lucide-react';
@@ -51,21 +50,18 @@ const DashboardPage = () => {
     return true;
   });
 
-  // Handle action deletion - simple implementation
+  const recentActions = actions.filter(action => action.createdAt >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+
   const handleActionDeleted = () => {
-    // This function will be called after an action is deleted
-    // No need for further logic as the actions context is already updated
     toast.success("Ação excluída com sucesso");
   };
   
-  // Data for pie chart
   const pieChartData = [
     { name: 'Pendentes', value: actionSummary.pending, color: '#FBBF24' },
     { name: 'Concluídas', value: actionSummary.completed, color: '#10B981' },
     { name: 'Atrasadas', value: actionSummary.delayed, color: '#EF4444' },
   ];
   
-  // Data for bar chart - last 7 days activity
   const getBarChartData = () => {
     const today = new Date();
     const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -74,7 +70,6 @@ const DashboardPage = () => {
       return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' });
     });
     
-    // Sample data - in a real app, you'd count actions per day
     return last7Days.map(day => ({
       day,
       novas: Math.floor(Math.random() * 5),
@@ -95,7 +90,6 @@ const DashboardPage = () => {
         </Button>
       </div>
 
-      {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-l-4 border-l-green-500 shadow-md hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
@@ -153,7 +147,6 @@ const DashboardPage = () => {
         </Card>
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
@@ -227,11 +220,11 @@ const DashboardPage = () => {
                 <p className="text-sm mt-2">Tente modificar seus filtros ou criar uma nova ação.</p>
               </div>
             ) : (
-              filteredActions.slice(0, 3).map(action => (
+              recentActions.map(action => (
                 <ActionCard 
                   key={action.id} 
                   action={action} 
-                  onDelete={handleActionDeleted}
+                  onDelete={() => handleActionDeleted()} 
                 />
               ))
             )}

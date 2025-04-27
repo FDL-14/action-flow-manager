@@ -1,177 +1,179 @@
 
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Company } from '@/lib/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import CompanyFormFields from './company/CompanyFormFields';
+import LogoUpload from './company/LogoUpload';
 
-interface CompanyFormProps {
+// Define the form schema with validation
+const companyFormSchema = z.object({
+  name: z.string().min(2, { message: 'Nome da empresa deve ter no mínimo 2 caracteres' }),
+  cnpj: z.string().optional(),
+  inscriptionType: z.enum(['CNPJ', 'CPF', 'CAEPF', 'CNO']).default('CNPJ'),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  logo: z.string().optional(),
+});
+
+export interface CompanyFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editCompany?: Company | null;
+  initialData: Company | null;
+  isNewCompany: boolean;
 }
 
-const CompanyForm = ({ open, onOpenChange, editCompany }: CompanyFormProps) => {
+const CompanyForm: React.FC<CompanyFormProps> = ({
+  open,
+  onOpenChange,
+  initialData,
+  isNewCompany
+}) => {
   const { addCompany, updateCompany } = useCompany();
-  const [loading, setLoading] = useState(false);
-  const [registrationType, setRegistrationType] = useState<string>('CNPJ');
-  
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
+  // Initialize the form with the schema
+  const form = useForm<z.infer<typeof companyFormSchema>>({
+    resolver: zodResolver(companyFormSchema),
     defaultValues: {
-      name: '',
-      address: '',
-      registrationNumber: '',
-      phone: '',
-      logo: ''
-    }
+      name: initialData?.name || '',
+      cnpj: initialData?.cnpj || '',
+      inscriptionType: 'CNPJ',
+      address: initialData?.address || '',
+      phone: initialData?.phone || '',
+      logo: initialData?.logo || '',
+    },
   });
 
+  // Set form values when initialData changes
   useEffect(() => {
-    if (editCompany) {
-      setValue('name', editCompany.name);
-      setValue('address', editCompany.address || '');
-      setValue('registrationNumber', editCompany.cnpj || '');
-      setValue('phone', editCompany.phone || '');
-      setValue('logo', editCompany.logo || '');
-      // If editing, try to determine registration type from existing data
-      if (editCompany.cnpj) {
-        if (editCompany.cnpj.length === 14) setRegistrationType('CNPJ');
-        else if (editCompany.cnpj.length === 11) setRegistrationType('CPF');
-        else if (editCompany.cnpj.length === 12) setRegistrationType('CAEPF');
-        else if (editCompany.cnpj.length === 13) setRegistrationType('CNO');
-        else setRegistrationType('CNPJ');
-      }
-    } else {
-      reset({
-        name: '',
-        address: '',
-        registrationNumber: '',
-        phone: '',
-        logo: ''
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        cnpj: initialData.cnpj || '',
+        inscriptionType: 'CNPJ', // Default value, you might need to extract this from CNPJ field
+        address: initialData.address || '',
+        phone: initialData.phone || '',
+        logo: initialData.logo || '',
       });
-      setRegistrationType('CNPJ');
+      setLogoPreview(initialData.logo || null);
+    } else {
+      form.reset({
+        name: '',
+        cnpj: '',
+        inscriptionType: 'CNPJ',
+        address: '',
+        phone: '',
+        logo: '',
+      });
+      setLogoPreview(null);
     }
-  }, [editCompany, setValue, reset]);
+  }, [initialData, form]);
 
-  const onSubmit = async (data: any) => {
-    setLoading(true);
+  const handleLogoChange = (file: File | null) => {
+    setLogoFile(file);
     
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setLogoPreview(initialData?.logo || null);
+    }
+  };
+
+  const onSubmit = async (data: z.infer<typeof companyFormSchema>) => {
     try {
+      // Handle logo upload if there's a new file
+      let logoUrl = data.logo;
+      if (logoFile) {
+        // This would be replaced with your actual file upload logic
+        logoUrl = logoPreview || '';
+      }
+
       const companyData = {
-        name: data.name,
-        address: data.address,
-        cnpj: data.registrationNumber,
-        phone: data.phone,
-        logo: data.logo,
+        ...data,
+        logo: logoUrl,
       };
 
-      if (editCompany) {
-        await updateCompany({
-          ...companyData,
-          id: editCompany.id,
-          createdAt: editCompany.createdAt,
-          updatedAt: new Date()
-        });
-        toast.success('Empresa atualizada com sucesso');
-      } else {
+      if (isNewCompany) {
         await addCompany({
-          ...companyData,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          name: companyData.name,
+          cnpj: companyData.cnpj,
+          address: companyData.address,
+          phone: companyData.phone,
+          logo: companyData.logo,
         });
-        toast.success('Empresa cadastrada com sucesso');
+        toast.success('Empresa adicionada', { description: 'A empresa foi criada com sucesso.' });
+      } else if (initialData) {
+        await updateCompany({
+          ...initialData,
+          name: companyData.name,
+          cnpj: companyData.cnpj,
+          address: companyData.address,
+          phone: companyData.phone,
+          logo: companyData.logo,
+        });
+        toast.success('Empresa atualizada', { description: 'Os dados da empresa foram atualizados.' });
       }
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
-      toast.error('Erro ao salvar empresa. Por favor, tente novamente.');
-    } finally {
-      setLoading(false);
+      toast.error('Erro ao salvar', { description: 'Não foi possível salvar os dados da empresa.' });
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{editCompany ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
+          <DialogTitle>{isNewCompany ? 'Nova Empresa' : 'Editar Empresa'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                {...register('name', { required: 'Nome é obrigatório' })}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message?.toString()}</p>
-              )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="w-full md:w-2/3">
+                <CompanyFormFields form={form} />
+              </div>
+              <div className="w-full md:w-1/3">
+                <FormField
+                  control={form.control}
+                  name="logo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Logo</FormLabel>
+                      <FormControl>
+                        <LogoUpload
+                          value={logoPreview}
+                          onChange={handleLogoChange}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-
-            <div className="grid gap-2">
-              <Label>Tipo de Inscrição CNPJ/CPF/CAEPF/CNO</Label>
-              <Select value={registrationType} onValueChange={setRegistrationType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CNPJ">CNPJ</SelectItem>
-                  <SelectItem value="CPF">CPF</SelectItem>
-                  <SelectItem value="CAEPF">CAEPF</SelectItem>
-                  <SelectItem value="CNO">CNO</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="registrationNumber">Número da Inscrição {registrationType}</Label>
-              <Input
-                id="registrationNumber"
-                {...register('registrationNumber')}
-                placeholder={`Digite o ${registrationType}`}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="address">Endereço</Label>
-              <Textarea
-                id="address"
-                {...register('address')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                {...register('phone')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="logo">URL do Logo</Label>
-              <Input
-                id="logo"
-                type="url"
-                {...register('logo')}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

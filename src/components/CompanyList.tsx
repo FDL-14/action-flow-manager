@@ -1,13 +1,9 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Plus, Edit, Building, Trash2 } from 'lucide-react';
-import CompanyForm from './CompanyForm';
 import { Company } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,168 +14,128 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import CompanyForm from './CompanyForm';
+import { useToast } from '@/hooks/use-toast';
+
+interface CompanyListProps {
+  // No props needed for now
+}
 
 const CompanyList = () => {
-  const { companies, addCompany, deleteCompany } = useCompany();
+  const { companies, deleteCompany } = useCompany();
   const { user } = useAuth();
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [companyToDelete, setCompanyToDelete] = useState<string>("");
+  const [companyNameToDelete, setCompanyNameToDelete] = useState<string>("");
   const { toast } = useToast();
-  const [companiesList, setCompaniesList] = useState<Company[]>([]);
 
-  // Update companies list when companies state changes
-  useEffect(() => {
-    if (companies && companies.length > 0) {
-      console.log("Companies list updated:", companies.length);
-      setCompaniesList([...companies]);
-    }
-  }, [companies]);
-
-  const handleAddCompany = () => {
-    setEditingCompany(null);
-    setShowCompanyForm(true);
+  const handleEdit = (company: Company) => {
+    setSelectedCompany(company);
+    setShowEditForm(true);
   };
 
-  const handleEditCompany = (companyToEdit: Company) => {
-    setEditingCompany(companyToEdit);
-    setShowCompanyForm(true);
-  };
-
-  const handleDeleteCompany = (company: Company) => {
-    if (company.id === companies[0]?.id) {
-      toast({
-        title: "Operação não permitida",
-        description: "Não é possível excluir a empresa principal",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setCompanyToDelete(company);
-    setDeleteDialogOpen(true);
+  const handleDelete = (company: Company) => {
+    setCompanyToDelete(company.id);
+    setCompanyNameToDelete(company.name);
+    setShowDeleteDialog(true);
   };
 
   const confirmDelete = () => {
-    if (companyToDelete) {
-      deleteCompany(companyToDelete.id);
-      setDeleteDialogOpen(false);
-      setCompanyToDelete(null);
-      
-      toast({
-        title: "Empresa excluída",
-        description: "A empresa foi excluída com sucesso",
-        variant: "default",
-      });
-    }
+    deleteCompany(companyToDelete);
+    setShowDeleteDialog(false);
+    toast({
+      title: "Empresa excluída",
+      description: `A empresa "${companyNameToDelete}" foi excluída com sucesso.`,
+    });
   };
 
-  // Verify if user has permission to edit/delete companies
+  const cancelDelete = () => {
+    setShowDeleteDialog(false);
+  };
+
   const canEditCompany = user?.role === 'master' || user?.permissions.some(p => p.canEditCompany);
   const canDeleteCompany = user?.role === 'master' || user?.permissions.some(p => p.canDeleteCompany);
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gerenciamento de Empresas</h1>
-        {canEditCompany && (
-          <Button onClick={handleAddCompany}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Empresa
-          </Button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {companiesList.map((companyItem) => (
-          <Card key={companyItem.id} className="overflow-hidden">
-            <CardHeader className="bg-gray-50">
-              <div className="flex justify-between items-start">
-                <CardTitle>{companyItem.name}</CardTitle>
-                <div className="flex space-x-1">
-                  {canEditCompany && (
-                    <Button variant="ghost" size="icon" onClick={() => handleEditCompany(companyItem)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {canDeleteCompany && companyItem.id !== companies[0]?.id && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDeleteCompany(companyItem)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <CardDescription>
-                {companyItem.id === companies[0]?.id ? 'Empresa Principal' : 'Cliente/Filial'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                {companyItem.logo && (
-                  <div className="mb-4 flex justify-center">
-                    <img 
-                      src={companyItem.logo} 
-                      alt={`${companyItem.name} Logo`} 
-                      className="h-16 object-contain" 
-                    />
-                  </div>
-                )}
-                <div className="flex items-start">
-                  <Building className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold">Endereço</p>
-                    <p className="text-sm text-gray-600">
-                      {companyItem.address || 'Não informado'}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">CNPJ</p>
-                  <p className="text-sm text-gray-600">
-                    {companyItem.cnpj || 'Não informado'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Telefone</p>
-                  <p className="text-sm text-gray-600">
-                    {companyItem.phone || 'Não informado'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-gray-50 flex justify-between">
-              <p className="text-xs text-gray-500">
-                Cadastrado em: {new Date(companyItem.createdAt).toLocaleDateString()}
-              </p>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-
-      <CompanyForm
-        open={showCompanyForm}
-        onOpenChange={setShowCompanyForm}
-        initialData={editingCompany}
-        isNewCompany={editingCompany === null}
-      />
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+    <div>
+      {companies.length === 0 ? (
+        <div className="text-center py-4 text-gray-500">
+          Nenhuma empresa cadastrada.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nome
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  CNPJ
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Telefone
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {companies.map((company) => (
+                <tr key={company.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {company.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {company.cnpj || 'Não informado'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {company.phone || 'Não informado'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {canEditCompany && (
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(company)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeleteCompany && (
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(company)} className="text-red-500">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      
+      {/* Company edit form */}
+      {selectedCompany && (
+        <CompanyForm
+          open={showEditForm}
+          onOpenChange={setShowEditForm}
+          initialData={selectedCompany}
+          isNewCompany={false}
+        />
+      )}
+      
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Empresa</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a empresa {companyToDelete?.name}? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a empresa "{companyNameToDelete}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogCancel onClick={cancelDelete}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-700 text-white">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
