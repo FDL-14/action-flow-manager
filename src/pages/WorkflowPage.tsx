@@ -52,7 +52,7 @@ const WorkflowPage = () => {
           </div>
         </div>
       ) : (
-        <WorkflowReport />
+        <WorkflowReport onClose={() => setActiveTab("workflow")} />
       )}
 
       <ActionForm 

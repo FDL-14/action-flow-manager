@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,16 @@ import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Filter, X } from 'lucide-react';
 
 interface WorkflowReportFilterProps {
-  onFilterChange: (filters: {
+  filter: {
+    status: string;
+    responsibleId: string;
+    clientId: string;
+    startDate: Date | null;
+    endDate: Date | null;
+    showNotes: boolean;
+    showAttachments: boolean;
+  };
+  setFilter: (filters: {
     status: string;
     responsibleId: string;
     clientId: string;
@@ -31,32 +39,20 @@ interface WorkflowReportFilterProps {
     showNotes: boolean;
     showAttachments: boolean;
   }) => void;
-  activeFilters: {
-    status: string;
-    responsibleId: string;
-    clientId: string;
-    startDate: Date | null;
-    endDate: Date | null;
-    showNotes: boolean;
-    showAttachments: boolean;
-  };
 }
 
 const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
-  onFilterChange,
-  activeFilters,
+  filter,
+  setFilter,
 }) => {
   const { responsibles, clients } = useCompany();
-  const [filters, setFilters] = useState(activeFilters);
 
-  const updateFilter = (key: keyof typeof filters, value: any) => {
-    const updatedFilters = { ...filters, [key]: value };
-    setFilters(updatedFilters);
-    onFilterChange(updatedFilters);
+  const updateFilter = (key: keyof typeof filter, value: any) => {
+    setFilter({ ...filter, [key]: value });
   };
 
   const clearFilters = () => {
-    const resetFilters = {
+    setFilter({
       status: 'all',
       responsibleId: 'all',
       clientId: 'all',
@@ -64,9 +60,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
       endDate: null,
       showNotes: true,
       showAttachments: true,
-    };
-    setFilters(resetFilters);
-    onFilterChange(resetFilters);
+    });
   };
 
   return (
@@ -87,7 +81,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
         <div className="space-y-2">
           <Label htmlFor="status-filter">Status</Label>
           <Select
-            value={filters.status}
+            value={filter.status}
             onValueChange={(value) => updateFilter('status', value)}
           >
             <SelectTrigger id="status-filter">
@@ -106,7 +100,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
         <div className="space-y-2">
           <Label htmlFor="responsible-filter">Responsável</Label>
           <Select
-            value={filters.responsibleId}
+            value={filter.responsibleId}
             onValueChange={(value) => updateFilter('responsibleId', value)}
           >
             <SelectTrigger id="responsible-filter">
@@ -127,7 +121,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
         <div className="space-y-2">
           <Label htmlFor="client-filter">Cliente</Label>
           <Select
-            value={filters.clientId}
+            value={filter.clientId}
             onValueChange={(value) => updateFilter('clientId', value)}
           >
             <SelectTrigger id="client-filter">
@@ -154,8 +148,8 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
                 className="w-full justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.startDate ? (
-                  format(filters.startDate, "dd/MM/yyyy", { locale: ptBR })
+                {filter.startDate ? (
+                  format(filter.startDate, "dd/MM/yyyy", { locale: ptBR })
                 ) : (
                   <span>Selecione a data inicial</span>
                 )}
@@ -164,12 +158,12 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={filters.startDate || undefined}
+                selected={filter.startDate || undefined}
                 onSelect={(date) => updateFilter('startDate', date)}
                 initialFocus
                 locale={ptBR}
               />
-              {filters.startDate && (
+              {filter.startDate && (
                 <div className="p-2 border-t border-border">
                   <Button
                     variant="ghost"
@@ -195,8 +189,8 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
                 className="w-full justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.endDate ? (
-                  format(filters.endDate, "dd/MM/yyyy", { locale: ptBR })
+                {filter.endDate ? (
+                  format(filter.endDate, "dd/MM/yyyy", { locale: ptBR })
                 ) : (
                   <span>Selecione a data final</span>
                 )}
@@ -205,12 +199,12 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={filters.endDate || undefined}
+                selected={filter.endDate || undefined}
                 onSelect={(date) => updateFilter('endDate', date)}
                 initialFocus
                 locale={ptBR}
               />
-              {filters.endDate && (
+              {filter.endDate && (
                 <div className="p-2 border-t border-border">
                   <Button
                     variant="ghost"
@@ -234,7 +228,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
             </Label>
             <Switch
               id="show-notes"
-              checked={filters.showNotes}
+              checked={filter.showNotes}
               onCheckedChange={(checked) => updateFilter('showNotes', checked)}
             />
           </div>
@@ -245,7 +239,7 @@ const WorkflowReportFilter: React.FC<WorkflowReportFilterProps> = ({
             </Label>
             <Switch
               id="show-attachments"
-              checked={filters.showAttachments}
+              checked={filter.showAttachments}
               onCheckedChange={(checked) => updateFilter('showAttachments', checked)}
             />
           </div>

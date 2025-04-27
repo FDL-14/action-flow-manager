@@ -695,26 +695,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      if (userData.permissions) {
+      if (userData.permissions && userData.permissions.length > 0) {
+        const permissionData = userData.permissions[0]; // Access the first permission object in the array
+        
         const { error: permissionsError } = await supabase
           .from('user_permissions')
           .update({
-            can_create: userData.permissions.canCreate,
-            can_edit: userData.permissions.canEdit,
-            can_delete: userData.permissions.canDelete,
-            can_mark_complete: userData.permissions.canMarkComplete,
-            can_mark_delayed: userData.permissions.canMarkDelayed,
-            can_add_notes: userData.permissions.canAddNotes,
-            can_view_reports: userData.permissions.canViewReports,
-            view_all_actions: userData.permissions.viewAllActions,
-            can_edit_user: userData.permissions.canEditUser,
-            can_edit_action: userData.permissions.canEditAction,
-            can_edit_client: userData.permissions.canEditClient,
-            can_delete_client: userData.permissions.canDeleteClient,
-            can_create_client: userData.permissions.canCreateClient,
-            can_edit_company: userData.permissions.canEditCompany,
-            can_delete_company: userData.permissions.canDeleteCompany,
-            view_only_assigned_actions: userData.permissions.viewOnlyAssignedActions,
+            can_create: permissionData.canCreate,
+            can_edit: permissionData.canEdit,
+            can_delete: permissionData.canDelete,
+            can_mark_complete: permissionData.canMarkComplete,
+            can_mark_delayed: permissionData.canMarkDelayed,
+            can_add_notes: permissionData.canAddNotes,
+            can_view_reports: permissionData.canViewReports,
+            view_all_actions: permissionData.viewAllActions,
+            can_edit_user: permissionData.canEditUser,
+            can_edit_action: permissionData.canEditAction,
+            can_edit_client: permissionData.canEditClient,
+            can_delete_client: permissionData.canDeleteClient,
+            can_create_client: permissionData.canCreateClient,
+            can_edit_company: permissionData.canEditCompany,
+            can_delete_company: permissionData.canDeleteCompany,
+            view_only_assigned_actions: permissionData.viewOnlyAssignedActions,
           })
           .eq('user_id', userData.id);
           

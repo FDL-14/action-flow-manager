@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAction } from '@/contexts/ActionContext';
+import { useActions } from '@/contexts/ActionContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,22 +14,22 @@ import {
   Clock, 
   User, 
   Building2, 
-  FileText as FileIcon,
+  FileText as FileIcon, 
   ImageIcon, 
   FileText, 
   File 
 } from 'lucide-react';
-import { WorkflowReportFilter } from './WorkflowReportFilter';
+import WorkflowReportFilter from './WorkflowReportFilter';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { toast } from 'sonner';
 
 interface WorkflowReportProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
-  const { actions } = useAction();
+  const { actions } = useActions();
   const { clients, companies, responsibles } = useCompany();
   const [filter, setFilter] = useState({
     companyId: 'all',
@@ -37,7 +37,9 @@ const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
     responsibleId: 'all',
     startDate: null as Date | null,
     endDate: null as Date | null,
-    status: 'all'
+    status: 'all',
+    showNotes: true,
+    showAttachments: true
   });
 
   const formatDate = (date: Date | null): string => {
@@ -86,7 +88,6 @@ const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
   const generatePDF = () => {
     const doc = new jsPDF();
 
-    // Define columns
     const columns = [
       { header: 'Assunto', dataKey: 'subject' },
       { header: 'Status', dataKey: 'status' },
@@ -97,7 +98,6 @@ const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
       { header: 'Fim', dataKey: 'endDate' },
     ];
 
-    // Prepare data for the table
     const rows = filteredActions.map(action => ({
       subject: action.subject,
       status: action.status,
@@ -108,10 +108,8 @@ const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
       endDate: formatDate(action.endDate),
     }));
 
-    // Add title
     doc.text("Relatório de Workflow", 14, 16);
 
-    // Add filters used
     let filterText = "Filtros: ";
     if (filter.companyId !== 'all') filterText += `Empresa: ${getCompanyNameById(filter.companyId)}, `;
     if (filter.clientId !== 'all') filterText += `Cliente: ${getClientNameById(filter.clientId)}, `;
@@ -122,14 +120,12 @@ const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
     doc.setFontSize(10);
     doc.text(filterText, 14, 22);
 
-    // Add table
     (doc as any).autoTable({
       columns: columns,
       body: rows,
       startY: 30,
     });
 
-    // Save the PDF
     doc.save("relatorio_workflow.pdf");
     toast.success("PDF gerado com sucesso!");
   };
@@ -253,9 +249,11 @@ const WorkflowReport: React.FC<WorkflowReportProps> = ({ onClose }) => {
         </div>
         <Separator />
         <div className="flex justify-between">
-          <Button variant="outline" onClick={onClose}>
-            Fechar
-          </Button>
+          {onClose && (
+            <Button variant="outline" onClick={onClose}>
+              Fechar
+            </Button>
+          )}
           <Button onClick={generatePDF}>
             <Download className="h-4 w-4 mr-2" />
             Gerar PDF
