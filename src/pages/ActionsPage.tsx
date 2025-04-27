@@ -1,19 +1,22 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import ActionCard from '@/components/ActionCard';
 import ActionForm from '@/components/ActionForm';
 import ActionFilter from '@/components/ActionFilter';
+import ActionView from '@/components/ActionView'; // We'll create this component next
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import { Action } from '@/lib/types';
 
 const ActionsPage = () => {
   const { company } = useCompany();
   const { actions } = useActions();
   const [showActionForm, setShowActionForm] = useState(false);
+  const [viewingAction, setViewingAction] = useState<Action | null>(null);
   const isMobile = useIsMobile();
   const [filters, setFilters] = useState({
     status: 'all',
@@ -92,6 +95,7 @@ const ActionsPage = () => {
               onDelete={handleActionDeleted} 
               onMenuClick={() => handleActionMenuClick(action.id)}
               isProcessing={processingAction === action.id}
+              onView={() => setViewingAction(action)}
             />
           ))
         )}
@@ -101,6 +105,14 @@ const ActionsPage = () => {
         open={showActionForm}
         onOpenChange={setShowActionForm}
       />
+
+      {viewingAction && (
+        <ActionView 
+          action={viewingAction}
+          onClose={() => setViewingAction(null)}
+          open={!!viewingAction}
+        />
+      )}
     </div>
   );
 };

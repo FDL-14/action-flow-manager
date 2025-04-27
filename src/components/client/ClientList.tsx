@@ -78,7 +78,7 @@ export const ClientList = ({
                       {client.name}
                     </div>
                   </TableCell>
-                  <TableCell>{companyName}</TableCell>
+                  <TableCell>{companyName || 'Empresa não encontrada'}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       {client.email && (

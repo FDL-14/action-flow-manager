@@ -11,19 +11,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
+import { Client } from "@/lib/types";
+import { toast } from "sonner";
 
 interface DeleteClientDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  clientName?: string; // Nome opcional do cliente para mostrar na mensagem
+  client?: Client; // Passando o objeto cliente completo ao invés de apenas o nome
 }
 
 export const DeleteClientDialog = ({
   isOpen,
   onClose,
   onConfirm,
-  clientName = 'este cliente'
+  client
 }: DeleteClientDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -31,6 +33,17 @@ export const DeleteClientDialog = ({
     setIsDeleting(true);
     try {
       await onConfirm();
+      toast({
+        title: "Cliente excluído",
+        description: `O cliente ${client?.name || ''} foi excluído com sucesso.`,
+      });
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir este cliente. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
       onClose();
@@ -46,8 +59,13 @@ export const DeleteClientDialog = ({
             Confirmar exclusão
           </AlertDialogTitle>
           <AlertDialogDescription>
-            <p className="mb-2 font-medium">Tem certeza que deseja excluir {clientName}?</p>
+            <p className="mb-2 font-medium">Tem certeza que deseja excluir o cliente {client?.name || ''}?</p>
             <p>Esta ação não pode ser desfeita e todas as ações associadas a este cliente podem ser afetadas.</p>
+            {client?.companyId && (
+              <p className="mt-2 text-amber-600">
+                Este cliente está associado a uma empresa e sua exclusão pode afetar o relacionamento com outras entidades.
+              </p>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
