@@ -1,154 +1,113 @@
-
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Client } from '@/lib/types';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Form } from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
-import { toast } from "sonner";
-import { CompanySelector } from './client/CompanySelector';
-import { ClientBasicInfo } from './client/ClientBasicInfo';
-import { ClientAdditionalInfo } from './client/ClientAdditionalInfo';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface ClientFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editClient?: Client | null;
+  editClient?: Client;
 }
 
-const formSchema = z.object({
-  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
-  address: z.string().optional().or(z.literal('')),
-  cnpj: z.string().optional().or(z.literal('')),
-  companyId: z.string({
-    required_error: "A empresa é obrigatória",
-  }),
-});
+const ClientForm = ({ open, onOpenChange, editClient }: ClientFormProps) => {
+  const { user } = useAuth();
+  const { addClient, updateClient, companies } = useCompany();
+  const [loading, setLoading] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
 
-type FormValues = z.infer<typeof formSchema>;
-
-const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient }) => {
-  const { addClient, updateClient, companies, company } = useCompany();
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
     defaultValues: {
       name: '',
       email: '',
       phone: '',
-      address: '',
-      cnpj: '',
-      companyId: company?.id || '',
-    },
-    mode: 'onChange',
+    }
   });
 
+  // Filter companies based on user's permissions
   useEffect(() => {
-    if (open) {
-      console.log("Formulário aberto, empresa atual:", company?.id);
-      
-      // Se não houver empresa selecionada e houver empresas disponíveis, selecione a primeira
-      const companyIdToUse = company?.id || (companies.length > 0 ? companies[0].id : '');
-      
-      if (editClient) {
-        console.log("Editando cliente:", editClient);
-        console.log("Company ID do cliente:", editClient.companyId);
-        
-        // Garantir que sempre temos um ID de empresa válido
-        let clientCompanyId = editClient.companyId;
-        if (!clientCompanyId && companies.length > 0) {
-          clientCompanyId = companies[0].id;
-        }
-        
-        setSelectedCompanyId(clientCompanyId);
-        
-        form.reset({
-          name: editClient.name,
-          email: editClient.email || '',
-          phone: editClient.phone || '',
-          address: editClient.address || '',
-          cnpj: editClient.cnpj || '',
-          companyId: clientCompanyId,
-        });
+    if (user) {
+      // If user is master or has permission to manage all companies, show all companies
+      if (user.role === 'master' || user.permissions.some(p => p.canEditCompany)) {
+        setAvailableCompanies(companies);
       } else {
-        console.log("Formulário para novo cliente");
-        
-        setSelectedCompanyId(companyIdToUse);
-        
-        form.reset({
-          name: '',
-          email: '',
-          phone: '',
-          address: '',
-          cnpj: '',
-          companyId: companyIdToUse,
-        });
+        // Otherwise, filter companies user has access to
+        const userCompanies = companies.filter(company => 
+          user.companyIds.includes(company.id)
+        );
+        setAvailableCompanies(userCompanies);
       }
     }
-  }, [editClient, form, company, companies, open]);
+  }, [user, companies]);
 
-  const onSubmit = async (values: FormValues) => {
+  useEffect(() => {
+    if (editClient) {
+      setValue('name', editClient.name);
+      setValue('email', editClient.email || '');
+      setValue('phone', editClient.phone || '');
+      setSelectedCompanyId(editClient.companyId);
+    } else {
+      reset({
+        name: '',
+        email: '',
+        phone: '',
+      });
+      
+      // Set default company if user only has access to one company
+      if (availableCompanies.length === 1) {
+        setSelectedCompanyId(availableCompanies[0].id);
+      } else if (user?.companyIds?.length === 1) {
+        setSelectedCompanyId(user.companyIds[0]);
+      } else {
+        setSelectedCompanyId('');
+      }
+    }
+  }, [editClient, setValue, reset, availableCompanies, user]);
+
+  const onSubmit = async (data: any) => {
+    if (!selectedCompanyId) {
+      toast.error("É necessário selecionar uma empresa");
+      return;
+    }
+
+    setLoading(true);
+    
     try {
-      console.log("Enviando dados do formulário:", values);
-      
-      if (!values.companyId) {
-        toast.error("Empresa obrigatória", {
-          description: "Selecione uma empresa para continuar."
-        });
-        return;
-      }
-      
-      const selectedCompany = companies.find(c => c.id === values.companyId);
-      if (!selectedCompany) {
-        toast.error("Empresa inválida", {
-          description: "A empresa selecionada não foi encontrada."
-        });
-        return;
-      }
-      
-      console.log("Associando cliente à empresa:", selectedCompany.name, selectedCompany.id);
-      
+      const clientData = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        companyId: selectedCompanyId,
+      };
+
       if (editClient) {
         await updateClient({
-          ...editClient,
-          name: values.name,
-          email: values.email || undefined,
-          phone: values.phone || undefined,
-          address: values.address || undefined,
-          cnpj: values.cnpj || undefined,
-          companyId: values.companyId,
-          updatedAt: new Date(),
+          ...clientData,
+          id: editClient.id,
+          createdAt: editClient.createdAt,
+          updatedAt: new Date()
         });
+        toast.success('Cliente atualizado com sucesso');
       } else {
         await addClient({
-          name: values.name,
-          email: values.email || undefined,
-          phone: values.phone || undefined,
-          address: values.address || undefined,
-          cnpj: values.cnpj || undefined,
-          companyId: values.companyId,
+          ...clientData
         });
+        toast.success('Cliente cadastrado com sucesso');
       }
       
       onOpenChange(false);
     } catch (error) {
-      console.error('Error submitting client form:', error);
-      toast.error("Erro ao salvar", {
-        description: "Ocorreu um erro ao salvar o cliente. Por favor, tente novamente."
-      });
+      console.error('Erro ao salvar cliente:', error);
+      toast.error('Erro ao salvar cliente');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -157,35 +116,67 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{editClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
-          <DialogDescription>
-            {editClient 
-              ? 'Edite as informações do cliente abaixo.' 
-              : 'Preencha os detalhes do novo cliente.'}
-          </DialogDescription>
         </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                {...register('name', { required: 'Nome é obrigatório' })}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name.message?.toString()}</p>
+              )}
+            </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <CompanySelector 
-              form={form}
-              companies={companies}
-              selectedCompanyId={selectedCompanyId}
-              setSelectedCompanyId={setSelectedCompanyId}
-            />
-            
-            <ClientBasicInfo form={form} />
-            <ClientAdditionalInfo form={form} />
+            <div className="grid gap-2">
+              <Label htmlFor="company">Empresa</Label>
+              <Select 
+                value={selectedCompanyId} 
+                onValueChange={setSelectedCompanyId}
+                disabled={editClient && !user?.permissions.some(p => p.canEditClient)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCompanies.map(company => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!selectedCompanyId && (
+                <p className="text-sm text-amber-500">É necessário selecionar uma empresa</p>
+              )}
+            </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                {editClient ? 'Atualizar Cliente' : 'Adicionar Cliente'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                {...register('email')}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                {...register('phone')}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit" disabled={loading || !selectedCompanyId}>
+              {loading ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

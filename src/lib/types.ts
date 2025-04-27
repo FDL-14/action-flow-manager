@@ -40,7 +40,7 @@ export interface Action {
   id: string;
   subject: string;
   description: string;
-  status: 'pendente' | 'concluido' | 'atrasado';
+  status: 'pendente' | 'concluido' | 'atrasado' | 'aguardando_aprovacao';
   responsibleId: string;
   startDate: Date;
   endDate: Date;
@@ -57,6 +57,7 @@ export interface Action {
   approved?: boolean; // Added for requester approval
   approvedAt?: Date; // Date when the action was approved
   approvedBy?: string; // ID of the user who approved the action
+  completionNotes?: string; // Notes added when marking as completed
 }
 
 export interface ActionNote {
@@ -66,6 +67,7 @@ export interface ActionNote {
   createdBy: string;
   createdAt: Date;
   isDeleted: boolean;
+  attachments?: string[]; // Added support for attachments in notes
 }
 
 export interface ActionAttachment {

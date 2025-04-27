@@ -1,16 +1,16 @@
 
-import React, { useState } from 'react';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2 } from 'lucide-react';
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { useActions } from '@/contexts/ActionContext';
 import { toast } from 'sonner';
 
@@ -22,13 +22,13 @@ interface DeleteActionDialogProps {
   onDeleted?: () => void;
 }
 
-const DeleteActionDialog: React.FC<DeleteActionDialogProps> = ({ 
-  isOpen, 
-  onClose, 
-  actionId, 
+const DeleteActionDialog = ({
+  isOpen,
+  onClose,
+  actionId,
   actionSubject,
-  onDeleted 
-}) => {
+  onDeleted
+}: DeleteActionDialogProps) => {
   const { deleteAction } = useActions();
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -36,11 +36,17 @@ const DeleteActionDialog: React.FC<DeleteActionDialogProps> = ({
     setIsDeleting(true);
     try {
       await deleteAction(actionId);
-      toast.success(`Ação "${actionSubject}" excluída com sucesso.`);
-      onDeleted && onDeleted();
+      toast.success(`Ação excluída`, {
+        description: `A ação "${actionSubject}" foi excluída com sucesso.`
+      });
+      if (onDeleted) {
+        onDeleted();
+      }
     } catch (error) {
       console.error("Erro ao excluir ação:", error);
-      toast.error("Não foi possível excluir esta ação. Tente novamente.");
+      toast.error("Erro ao excluir", {
+        description: "Não foi possível excluir esta ação. Tente novamente."
+      });
     } finally {
       setIsDeleting(false);
       onClose();
@@ -57,7 +63,7 @@ const DeleteActionDialog: React.FC<DeleteActionDialogProps> = ({
           </AlertDialogTitle>
           <AlertDialogDescription>
             <p className="mb-2 font-medium">Tem certeza que deseja excluir a ação "{actionSubject}"?</p>
-            <p>Esta ação não pode ser desfeita.</p>
+            <p>Esta ação não pode ser desfeita e todos os registros associados serão excluídos.</p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
