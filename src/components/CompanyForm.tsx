@@ -113,6 +113,8 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
           address: companyData.address,
           phone: companyData.phone,
           logo: companyData.logo,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
         toast.success('Empresa adicionada', { description: 'A empresa foi criada com sucesso.' });
       } else if (initialData) {
@@ -155,9 +157,13 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                       <FormLabel>Logo</FormLabel>
                       <FormControl>
                         <LogoUpload
-                          value={logoPreview}
-                          onChange={handleLogoChange}
-                          onValueChange={field.onChange}
+                          logoPreview={logoPreview}
+                          onLogoChange={handleLogoChange}
+                          onRemoveLogo={() => {
+                            setLogoPreview(null);
+                            setLogoFile(null);
+                            field.onChange('');
+                          }}
                         />
                       </FormControl>
                       <FormMessage />

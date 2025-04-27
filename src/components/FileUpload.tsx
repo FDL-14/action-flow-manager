@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { UploadCloud, X, FileIcon, FileText, FileImage } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -17,81 +18,53 @@ const FileUpload = ({
   acceptedFileTypes = ['.png', '.jpg', '.jpeg', '.pdf', '.docx', '.xlsx'] 
 }: FileUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
-  const [isDragActive, setIsDragActive] = useState(false);
   
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles) return;
-    
-    // Check for file limit
-    if (files.length + selectedFiles.length > maxFiles) {
-      alert(`Você só pode enviar até ${maxFiles} arquivos.`);
-      return;
-    }
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      // Check for file limit
+      if (files.length + acceptedFiles.length > maxFiles) {
+        alert(`Você só pode enviar até ${maxFiles} arquivos.`);
+        return;
+      }
 
-    // Filter files by size
-    const validFiles = Array.from(selectedFiles).filter(file => file.size <= maxSize);
-    
-    // Alert if any files were rejected due to size
-    if (validFiles.length < selectedFiles.length) {
-      alert(`Alguns arquivos excedem o tamanho máximo de ${Math.round(maxSize / 1048576)}MB.`);
-    }
+      // Filter files by size
+      const validFiles = acceptedFiles.filter(file => file.size <= maxSize);
+      
+      // Alert if any files were rejected due to size
+      if (validFiles.length < acceptedFiles.length) {
+        alert(`Alguns arquivos excedem o tamanho máximo de ${Math.round(maxSize / 1048576)}MB.`);
+      }
 
-    const newFiles = [...files, ...validFiles];
-    setFiles(newFiles);
-    onFilesChange(newFiles);
-    
-    // Reset the input value so selecting the same file again works
-    e.target.value = "";
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(true);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-    
-    const droppedFiles = e.dataTransfer.files;
-    if (!droppedFiles) return;
-    
-    // Check for file limit
-    if (files.length + droppedFiles.length > maxFiles) {
-      alert(`Você só pode enviar até ${maxFiles} arquivos.`);
-      return;
-    }
-
-    // Filter files by size and type
-    const validFiles = Array.from(droppedFiles).filter(file => {
-      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-      const isValidType = acceptedFileTypes.includes(fileExtension) || acceptedFileTypes.includes(file.type);
-      return file.size <= maxSize && isValidType;
-    });
-    
-    // Alert if any files were rejected
-    if (validFiles.length < droppedFiles.length) {
-      alert(`Alguns arquivos foram rejeitados devido ao tamanho ou tipo incompatível.`);
-    }
-
-    const newFiles = [...files, ...validFiles];
-    setFiles(newFiles);
-    onFilesChange(newFiles);
-  };
+      const newFiles = [...files, ...validFiles];
+      setFiles(newFiles);
+      onFilesChange(newFiles);
+    },
+    accept: acceptedFileTypes.reduce((acc, type) => {
+      let mimeType;
+      switch (type) {
+        case '.png':
+          mimeType = 'image/png';
+          break;
+        case '.jpg':
+        case '.jpeg':
+          mimeType = 'image/jpeg';
+          break;
+        case '.pdf':
+          mimeType = 'application/pdf';
+          break;
+        case '.docx':
+          mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          break;
+        case '.xlsx':
+          mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          break;
+        default:
+          mimeType = type;
+      }
+      return { ...acc, [mimeType]: [] };
+    }, {}),
+    maxSize
+  });
 
   const removeFile = (index: number) => {
     const newFiles = [...files];
@@ -114,22 +87,11 @@ const FileUpload = ({
   return (
     <div className="space-y-3">
       <div 
+        {...getRootProps()}
         className={`border-2 border-dashed rounded-md p-6 cursor-pointer text-center 
         ${isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => document.getElementById('file-input')?.click()}
       >
-        <input 
-          id="file-input"
-          type="file" 
-          multiple 
-          accept={acceptedFileTypes.join(',')}
-          onChange={handleFileSelect}
-          className="hidden" 
-        />
+        <input {...getInputProps()} />
         <div className="flex flex-col items-center space-y-2">
           <UploadCloud className="h-8 w-8 text-gray-400" />
           <p className="text-sm font-medium">
