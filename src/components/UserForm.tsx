@@ -17,6 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -126,7 +127,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
   });
 
   useEffect(() => {
-    // Update default values when editUser changes
     form.reset({
       name: editUser?.name || "",
       cpf: editUser?.cpf || "",

@@ -75,6 +75,7 @@ const LoginPage = () => {
     // Preencher para testes em desenvolvimento, substituir por dados reais em produção
     if (import.meta.env.DEV) {
       form.setValue('cpf', '802.430.881-91');
+      console.log("CPF pré-preenchido para testes: 802.430.881-91");
     }
   }, [form]);
 
@@ -110,6 +111,7 @@ const LoginPage = () => {
   };
 
   if (isAuthenticated) {
+    console.log("Usuário autenticado, redirecionando para a home");
     return <Navigate to="/" />;
   }
 

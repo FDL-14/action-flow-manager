@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,14 +39,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Verificar se estamos em modo de produção ou desenvolvimento (com mock data)
   const useMockData = import.meta.env.DEV && !import.meta.env.VITE_USE_SUPABASE;
-  
-  // Carregar usuários do localStorage (mock) se estiver usando dados simulados
+
   useEffect(() => {
     if (useMockData) {
       console.log("Carregando usuários do mock-data");
-      // Importação dinâmica para evitar problemas de circular dependency
       import('@/lib/mock-data').then(({ defaultMasterUser, additionalUsers }) => {
         const mockUsers = [defaultMasterUser, ...additionalUsers];
         setUsers(mockUsers);
@@ -189,15 +185,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log(`Attempting login with CPF: ${cpf}, password length: ${password.length}`);
       
-      // Limpar o CPF para evitar problemas de formatação
       const cleanedCpf = cpf.replace(/[^\d]/g, '');
       console.log(`CPF limpo para autenticação: ${cleanedCpf}`);
       
-      // Verificar se estamos usando dados mock
       if (useMockData) {
-        console.log("Usando mock data para login");
-        
-        // Encontrar usuário pelo CPF nos dados mock
         const mockUser = users.find(u => u.cpf.replace(/[^\d]/g, '') === cleanedCpf);
         console.log("Usuário encontrado no mock:", mockUser);
         
@@ -212,8 +203,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Se não estiver usando mock data, usar o Supabase
-      // First, find the user by CPF to get their email
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('email')
@@ -227,7 +216,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log(`Found user with email: ${profileData.email}`);
 
-      // Now login with the email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email: profileData.email,
         password,

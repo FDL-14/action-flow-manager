@@ -2,9 +2,9 @@
 import { User, Company, Responsible, Client, Action, ActionNote } from './types';
 
 export const defaultMasterUser: User = {
-  id: "1", // Adicionando o ID que estava faltando
+  id: "1",
   name: "Administrador",
-  cpf: "80243088191",
+  cpf: "80243088191", // Ensuring this is the correct CPF without formatting
   email: "admin@totaldata.com.br",
   role: "master" as const,
   companyIds: ["1"],
