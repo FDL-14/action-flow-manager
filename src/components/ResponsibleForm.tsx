@@ -19,6 +19,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -28,20 +35,27 @@ import { useEffect } from 'react';
 interface ResponsibleFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editResponsible?: Responsible;
+  initialData?: Responsible | null;
+  isNewResponsible?: boolean;
 }
 
 const formSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('Email inválido'),
-  phone: z.string().min(10, 'Telefone deve ter pelo menos 10 dígitos').max(15, 'Telefone muito longo'),
+  phone: z.string().min(10, 'Telefone deve ter pelo menos 10 dígitos').max(15, 'Telefone muito longo').optional().nullable(),
   department: z.string().min(2, 'Departamento deve ter pelo menos 2 caracteres'),
   role: z.string().min(2, 'Função deve ter pelo menos 2 caracteres'),
+  type: z.enum(['responsible', 'requester']),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, editResponsible }) => {
+const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ 
+  open, 
+  onOpenChange, 
+  initialData, 
+  isNewResponsible = true 
+}) => {
   const { addResponsible, updateResponsible } = useCompany();
   
   const form = useForm<FormValues>({
@@ -50,20 +64,22 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
       name: '',
       email: '',
       phone: '',
-      department: 'Solicitantes',
-      role: 'Solicitante',
+      department: '',
+      role: '',
+      type: 'requester',
     },
   });
 
   // Populate form when in edit mode
   useEffect(() => {
-    if (editResponsible) {
+    if (initialData) {
       form.reset({
-        name: editResponsible.name,
-        email: editResponsible.email,
-        phone: editResponsible.phone || '',
-        department: editResponsible.department,
-        role: editResponsible.role,
+        name: initialData.name,
+        email: initialData.email,
+        phone: initialData.phone || '',
+        department: initialData.department || '',
+        role: initialData.role || '',
+        type: initialData.type || 'requester',
       });
     } else {
       // Reset form when not in edit mode
@@ -71,63 +87,98 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
         name: '',
         email: '',
         phone: '',
-        department: 'Solicitantes',
-        role: 'Solicitante',
+        department: '',
+        role: '',
+        type: 'requester',
       });
     }
-  }, [editResponsible, form, open]);
+  }, [initialData, form, open]);
 
   const onSubmit = (values: FormValues) => {
     try {
-      if (editResponsible) {
+      if (initialData) {
         // Update existing responsible
         updateResponsible({
-          ...editResponsible,
+          ...initialData,
           name: values.name,
           email: values.email,
-          phone: values.phone,
+          phone: values.phone || null,
           department: values.department,
           role: values.role,
+          type: values.type,
           updatedAt: new Date()
         });
 
-        toast.success("Solicitante atualizado com sucesso!");
+        toast.success("Responsável/Solicitante atualizado com sucesso!");
       } else {
         // Add new responsible
         addResponsible({
           name: values.name,
           email: values.email,
-          phone: values.phone,
+          phone: values.phone || null,
           department: values.department,
           role: values.role,
-          type: 'requester', // Explicitly mark as requester
+          type: values.type,
         });
         
-        toast.success("Solicitante adicionado com sucesso!");
+        toast.success("Responsável/Solicitante adicionado com sucesso!");
       }
 
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error handling solicitante:', error);
-      toast.error("Ocorreu um erro ao salvar o solicitante");
+      console.error('Error handling responsible:', error);
+      toast.error("Ocorreu um erro ao salvar o responsável/solicitante");
     }
+  };
+
+  const getTitle = () => {
+    if (initialData) {
+      return initialData.type === 'requester' ? 'Editar Solicitante' : 'Editar Responsável';
+    }
+    return form.watch('type') === 'requester' ? 'Cadastrar Solicitante' : 'Cadastrar Responsável';
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{editResponsible ? 'Editar Solicitante' : 'Cadastrar Solicitante'}</DialogTitle>
+          <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>
-            {editResponsible 
-              ? 'Edite as informações do solicitante para atribuição de ações.'
-              : 'Adicione um novo solicitante para atribuição de ações.'}
+            {initialData 
+              ? 'Edite as informações do responsável/solicitante para atribuição de ações.'
+              : 'Adicione um novo responsável/solicitante para atribuição de ações.'}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="responsible">Responsável</SelectItem>
+                      <SelectItem value="requester">Solicitante</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="name"
@@ -170,7 +221,8 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
                     <Input 
                       placeholder="(xx) xxxxx-xxxx" 
                       type="tel"
-                      {...field} 
+                      {...field}
+                      value={field.value || ''}
                     />
                   </FormControl>
                   <FormMessage />
@@ -216,7 +268,7 @@ const ResponsibleForm: React.FC<ResponsibleFormProps> = ({ open, onOpenChange, e
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">{editResponsible ? 'Atualizar' : 'Salvar Solicitante'}</Button>
+              <Button type="submit">{initialData ? 'Atualizar' : 'Salvar'}</Button>
             </DialogFooter>
           </form>
         </Form>
