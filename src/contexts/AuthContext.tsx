@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 interface AuthContextType {
   user: User | null;
   users: User[];
-  permissions: Permission | null;
+  permissions: Permission[] | null;
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
@@ -23,7 +23,7 @@ interface AuthContextType {
   createResponsibleFromUser: (userId: string, responsible: Omit<Responsible, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   addUser: (userData: Partial<User>) => Promise<void>;
-  updateUser: (userId: string, userData: Partial<User>) => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
   resetUserPassword: (userId: string) => Promise<void>;
 }
 
@@ -54,7 +54,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [permissions, setPermissions] = useState<Permission | null>(null);
+  const [permissions, setPermissions] = useState<Permission[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [authSession, setAuthSession] = useState<AuthUser | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -145,46 +145,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('Error fetching user permissions:', permissionsError);
       }
       
-      const userPermissions = permissionsData ? {
-        id: permissionsData.id,
+      const userPermission: Permission = {
+        id: permissionsData?.id || '',
         name: 'Default Permissions',
         description: 'Default user permissions',
-        canCreate: permissionsData.can_create || false,
-        canEdit: permissionsData.can_edit || false,
-        canDelete: permissionsData.can_delete || false,
-        canMarkComplete: permissionsData.can_mark_complete || false,
-        canMarkDelayed: permissionsData.can_mark_delayed || false,
-        canAddNotes: permissionsData.can_add_notes || false,
-        canViewReports: permissionsData.can_view_reports || false,
-        viewAllActions: permissionsData.view_all_actions || false,
-        canEditUser: permissionsData.can_edit_user || false,
-        canEditAction: permissionsData.can_edit_action || false,
-        canEditClient: permissionsData.can_edit_client || false,
-        canDeleteClient: permissionsData.can_delete_client || false,
-        canCreateClient: permissionsData.can_create_client || false,
-        canEditCompany: permissionsData.can_edit_company || false,
-        canDeleteCompany: permissionsData.can_delete_company || false,
-        viewOnlyAssignedActions: permissionsData.view_only_assigned_actions || false,
-      } : {
-        id: '',
-        name: 'Default Permissions',
-        description: 'Default user permissions',
-        canCreate: false,
-        canEdit: false,
-        canDelete: false,
-        canMarkComplete: false,
-        canMarkDelayed: false,
-        canAddNotes: false,
-        canViewReports: false,
-        viewAllActions: false,
-        canEditUser: false,
-        canEditAction: false,
-        canEditClient: false,
-        canDeleteClient: false,
-        canCreateClient: false,
-        canEditCompany: false,
-        canDeleteCompany: false,
-        viewOnlyAssignedActions: false,
+        canCreate: permissionsData?.can_create || false,
+        canEdit: permissionsData?.can_edit || false,
+        canDelete: permissionsData?.can_delete || false,
+        canMarkComplete: permissionsData?.can_mark_complete || false,
+        canMarkDelayed: permissionsData?.can_mark_delayed || false,
+        canAddNotes: permissionsData?.can_add_notes || false,
+        canViewReports: permissionsData?.can_view_reports || false,
+        viewAllActions: permissionsData?.view_all_actions || false,
+        canEditUser: permissionsData?.can_edit_user || false,
+        canEditAction: permissionsData?.can_edit_action || false,
+        canEditClient: permissionsData?.can_edit_client || false,
+        canDeleteClient: permissionsData?.can_delete_client || false,
+        canCreateClient: permissionsData?.can_create_client || false,
+        canEditCompany: permissionsData?.can_edit_company || false,
+        canDeleteCompany: permissionsData?.can_delete_company || false,
+        viewOnlyAssignedActions: permissionsData?.view_only_assigned_actions || false,
       };
       
       const userWithPermissions: User = {
@@ -195,13 +175,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         role: data.role || 'user',
         companyIds: data.company_ids || [],
         clientIds: data.client_ids || [],
-        permissions: userPermissions
+        permissions: [userPermission]
       };
       
       setUser(userWithPermissions);
-      setPermissions(userPermissions);
+      setPermissions([userPermission]);
 
-      if (userWithPermissions.role === 'master' || userPermissions.canEditUser) {
+      if (userWithPermissions.role === 'master' || userPermission.canEditUser) {
         fetchAllUsers();
       }
     } catch (error) {
@@ -227,46 +207,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', profile.id)
           .single();
           
-        const userPermissions = permissionsData ? {
-          id: permissionsData.id,
+        const userPermission: Permission = {
+          id: permissionsData?.id || '',
           name: 'Default Permissions',
           description: 'Default user permissions',
-          canCreate: permissionsData.can_create || false,
-          canEdit: permissionsData.can_edit || false,
-          canDelete: permissionsData.can_delete || false,
-          canMarkComplete: permissionsData.can_mark_complete || false,
-          canMarkDelayed: permissionsData.can_mark_delayed || false,
-          canAddNotes: permissionsData.can_add_notes || false,
-          canViewReports: permissionsData.can_view_reports || false,
-          viewAllActions: permissionsData.view_all_actions || false,
-          canEditUser: permissionsData.can_edit_user || false,
-          canEditAction: permissionsData.can_edit_action || false,
-          canEditClient: permissionsData.can_edit_client || false,
-          canDeleteClient: permissionsData.can_delete_client || false,
-          canCreateClient: permissionsData.can_create_client || false,
-          canEditCompany: permissionsData.can_edit_company || false,
-          canDeleteCompany: permissionsData.can_delete_company || false,
-          viewOnlyAssignedActions: permissionsData.view_only_assigned_actions || false,
-        } : {
-          id: '',
-          name: 'Default Permissions',
-          description: 'Default user permissions',
-          canCreate: false,
-          canEdit: false,
-          canDelete: false,
-          canMarkComplete: false,
-          canMarkDelayed: false,
-          canAddNotes: false,
-          canViewReports: false,
-          viewAllActions: false,
-          canEditUser: false,
-          canEditAction: false,
-          canEditClient: false,
-          canDeleteClient: false,
-          canCreateClient: false,
-          canEditCompany: false,
-          canDeleteCompany: false,
-          viewOnlyAssignedActions: false,
+          canCreate: permissionsData?.can_create || false,
+          canEdit: permissionsData?.can_edit || false,
+          canDelete: permissionsData?.can_delete || false,
+          canMarkComplete: permissionsData?.can_mark_complete || false,
+          canMarkDelayed: permissionsData?.can_mark_delayed || false,
+          canAddNotes: permissionsData?.can_add_notes || false,
+          canViewReports: permissionsData?.can_view_reports || false,
+          viewAllActions: permissionsData?.view_all_actions || false,
+          canEditUser: permissionsData?.can_edit_user || false,
+          canEditAction: permissionsData?.can_edit_action || false,
+          canEditClient: permissionsData?.can_edit_client || false,
+          canDeleteClient: permissionsData?.can_delete_client || false,
+          canCreateClient: permissionsData?.can_create_client || false,
+          canEditCompany: permissionsData?.can_edit_company || false,
+          canDeleteCompany: permissionsData?.can_delete_company || false,
+          viewOnlyAssignedActions: permissionsData?.view_only_assigned_actions || false,
         };
           
         return {
@@ -277,7 +237,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           role: profile.role || 'user',
           companyIds: profile.company_ids || [],
           clientIds: profile.client_ids || [],
-          permissions: userPermissions
+          permissions: [userPermission]
         } as User;
       });
       
@@ -469,7 +429,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (user.role === 'master') return true;
     
-    return Boolean(permissions[permission]);
+    return Boolean(permissions[0]?.[permission]);
   };
 
   const hasPermission = checkPermission;
@@ -544,10 +504,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (user && userId === user.id) {
         setPermissions(prev => {
           if (!prev) return null;
-          return {
-            ...prev,
+          return [{
+            ...prev[0],
             ...newPermissions,
-          };
+          }];
         });
       }
       
@@ -671,27 +631,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw profileError;
       }
       
-      if (userData.permissions) {
+      if (userData.permissions && userData.permissions.length > 0) {
+        const permissionData = userData.permissions[0]; // Get the first permission object
+
         const { error: permissionsError } = await supabase
           .from('user_permissions')
           .insert({
             user_id: data.user.id,
-            can_create: userData.permissions.canCreate || false,
-            can_edit: userData.permissions.canEdit || false,
-            can_delete: userData.permissions.canDelete || false,
-            can_mark_complete: userData.permissions.canMarkComplete || false,
-            can_mark_delayed: userData.permissions.canMarkDelayed || false,
-            can_add_notes: userData.permissions.canAddNotes || false,
-            can_view_reports: userData.permissions.canViewReports || false,
-            view_all_actions: userData.permissions.viewAllActions || false,
-            can_edit_user: userData.permissions.canEditUser || false,
-            can_edit_action: userData.permissions.canEditAction || false,
-            can_edit_client: userData.permissions.canEditClient || false,
-            can_delete_client: userData.permissions.canDeleteClient || false,
-            can_create_client: userData.permissions.canCreateClient || false,
-            can_edit_company: userData.permissions.canEditCompany || false,
-            can_delete_company: userData.permissions.canDeleteCompany || false,
-            view_only_assigned_actions: userData.permissions.viewOnlyAssignedActions || false,
+            can_create: permissionData.canCreate || false,
+            can_edit: permissionData.canEdit || false,
+            can_delete: permissionData.canDelete || false,
+            can_mark_complete: permissionData.canMarkComplete || false,
+            can_mark_delayed: permissionData.canMarkDelayed || false,
+            can_add_notes: permissionData.canAddNotes || false,
+            can_view_reports: permissionData.canViewReports || false,
+            view_all_actions: permissionData.viewAllActions || false,
+            can_edit_user: permissionData.canEditUser || false,
+            can_edit_action: permissionData.canEditAction || false,
+            can_edit_client: permissionData.canEditClient || false,
+            can_delete_client: permissionData.canDeleteClient || false,
+            can_create_client: permissionData.canCreateClient || false,
+            can_edit_company: permissionData.canEditCompany || false,
+            can_delete_company: permissionData.canDeleteCompany || false,
+            view_only_assigned_actions: permissionData.viewOnlyAssignedActions || false,
           });
           
         if (permissionsError) {
@@ -714,7 +676,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateUser = async (userId: string, userData: Partial<User>) => {
+  const updateUser = async (userData: Partial<User>) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -727,7 +689,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           company_ids: userData.companyIds,
           client_ids: userData.clientIds,
         })
-        .eq('id', userId);
+        .eq('id', userData.id);
         
       if (error) {
         throw error;
@@ -754,7 +716,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             can_delete_company: userData.permissions.canDeleteCompany,
             view_only_assigned_actions: userData.permissions.viewOnlyAssignedActions,
           })
-          .eq('user_id', userId);
+          .eq('user_id', userData.id);
           
         if (permissionsError) {
           throw permissionsError;

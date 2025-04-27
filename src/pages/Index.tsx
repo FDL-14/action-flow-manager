@@ -8,10 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, users } = useAuth();
+  const { isAuthenticated, users, addUser } = useAuth();
   const { companies, addCompany } = useCompany();
 
-  // Verificar se o Supabase está conectado
+  // Check if Supabase is connected
   useEffect(() => {
     const checkSupabaseConnection = async () => {
       try {
@@ -36,13 +36,13 @@ const Index = () => {
     checkSupabaseConnection();
   }, []);
 
-  // Função para inicializar os dados de exemplo - modificada para verificar se já foram inicializados
+  // Function to initialize default data - modified to check if already initialized
   useEffect(() => {
-    // Verificar se já inicializou os dados
+    // Check if data has already been initialized
     const alreadyInitialized = localStorage.getItem('data_initialized');
     
     const initializeDefaultData = async () => {
-      // Se já inicializou os dados, não faz nada
+      // If data was already initialized, do nothing
       if (alreadyInitialized === 'true') {
         console.log("Dados já foram inicializados anteriormente, pulando inicialização");
         return;
@@ -51,13 +51,13 @@ const Index = () => {
       try {
         console.log("Inicializando dados padrão...");
         
-        // Verificar e adicionar empresas adicionais
+        // Check and add additional companies
         if (companies) {
           console.log(`Total de empresas existentes: ${companies.length}`);
           
-          // Verificar cada empresa adicional
+          // Check each additional company
           for (const company of additionalCompanies) {
-            // Verificar se já existe uma empresa com este ID
+            // Check if company with this ID already exists
             if (!companies.some(c => c.id === company.id)) {
               console.log(`Adicionando empresa ${company.name} (ID: ${company.id}) ao localStorage`);
               addCompany({
@@ -74,13 +74,13 @@ const Index = () => {
           }
         }
 
-        // Verificar e adicionar usuário master padrão se não existir
+        // Check and add default master user if it doesn't exist
         if (users) {
           console.log(`Total de usuários existentes: ${users.length}`);
           
           const normalizedMasterCPF = defaultMasterUser.cpf.replace(/\D/g, '');
           
-          // Verificar se já existe usuário com este CPF
+          // Check if user with this CPF already exists
           const existingMasterUser = users.find(u => u.cpf.replace(/\D/g, '') === normalizedMasterCPF);
           
           if (!existingMasterUser) {
@@ -91,15 +91,15 @@ const Index = () => {
               email: defaultMasterUser.email,
               role: defaultMasterUser.role,
               companyIds: defaultMasterUser.companyIds,
-              permissions: defaultMasterUser.permissions[0]
+              permissions: defaultMasterUser.permissions
             });
           } else {
             console.log(`Usuário master ${defaultMasterUser.name} já existe no localStorage (ID: ${existingMasterUser.id})`);
           }
           
-          // Verificar e adicionar usuários adicionais
+          // Check and add additional users
           for (const userToAdd of additionalUsers) {
-            // Normaliza CPFs para comparação
+            // Normalize CPFs for comparison
             const normalizedCPFs = users.map(u => u.cpf.replace(/\D/g, ''));
             const normalizedCpf = userToAdd.cpf.replace(/\D/g, '');
             
@@ -112,7 +112,7 @@ const Index = () => {
                 role: userToAdd.role,
                 companyIds: userToAdd.companyIds,
                 clientIds: userToAdd.clientIds,
-                permissions: userToAdd.permissions[0]
+                permissions: userToAdd.permissions
               });
             } else {
               console.log(`Usuário ${userToAdd.name} já existe no localStorage`);
@@ -120,7 +120,7 @@ const Index = () => {
           }
         }
         
-        // Marcar como inicializado depois de concluir
+        // Mark as initialized after completion
         localStorage.setItem('data_initialized', 'true');
       } catch (error) {
         console.error("Erro ao inicializar dados padrão:", error);
@@ -130,14 +130,14 @@ const Index = () => {
       }
     };
 
-    // Executa a inicialização de dados
+    // Execute data initialization
     initializeDefaultData();
-  }, [companies, users, addCompany]);
+  }, [companies, users, addCompany, addUser]);
 
   useEffect(() => {
     const handleRedirection = () => {
       if (isAuthenticated) {
-        // Se autenticado, vai para o dashboard
+        // If autenticado, vai para o dashboard
         console.log("Usuário autenticado, redirecionando para o dashboard");
         navigate('/dashboard');
       } else {
@@ -147,12 +147,12 @@ const Index = () => {
       }
     };
 
-    // Adicionar um pequeno atraso para garantir que os dados foram carregados
+    // Add a small delay to ensure that data is loaded
     const timer = setTimeout(() => {
       handleRedirection();
     }, 500);
 
-    // Adicionar um listener para o evento storage para sincronização entre abas
+    // Add a listener for the storage event to synchronize between tabs
     const handleStorageChange = () => {
       console.log("Alteração no localStorage detectada, recarregando dados");
       handleRedirection();
@@ -166,7 +166,7 @@ const Index = () => {
     };
   }, [isAuthenticated, navigate]);
 
-  return null; // Esta página apenas redireciona
+  return null; // This page just redirects
 };
 
 export default Index;

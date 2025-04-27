@@ -9,7 +9,7 @@ type JsonObject = Record<string, any>;
 interface ActionContextType {
   actions: Action[];
   setActions: React.Dispatch<React.SetStateAction<Action[]>>;
-  addAction: (action: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'attachments'> & { attachments?: string[] }) => Promise<void>;
+  addAction: (action: Omit<Action, "id" | "status" | "notes" | "createdAt" | "updatedAt" | "attachments"> & { attachments?: string[] }) => Promise<void>;
   updateAction: (id: string, updatedData: Partial<Action>) => void;
   deleteAction: (id: string) => void;
   addActionNote: (actionId: string, content: string) => void;
@@ -260,7 +260,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const addAction = async (newActionData: Omit<Action, 'id' | 'status' | 'notes' | 'createdAt' | 'updatedAt' | 'attachments'> & { attachments?: string[] }) => {
+  const addAction = async (newActionData: Omit<Action, "id" | "status" | "notes" | "createdAt" | "updatedAt" | "attachments"> & { attachments?: string[] }): Promise<void> => {
     try {
       console.log('Adicionando nova ação com dados:', newActionData);
       
@@ -380,8 +380,6 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       setActions(prevActions => [newAction, ...prevActions]);
       toast.success('Ação criada com sucesso!');
-      
-      return newAction;
     } catch (error: any) {
       console.error('Erro ao adicionar ação:', error);
       toast.error(error.message || 'Erro ao criar ação.');

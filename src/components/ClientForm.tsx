@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,37 +23,43 @@ const clientFormSchema = z.object({
 export interface ClientFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData: Client | null;
-  isNewClient: boolean;
+  initialData?: Client | null;
+  editClient?: Client;
+  isNewClient?: boolean;
 }
 
 const ClientForm: React.FC<ClientFormProps> = ({
   open,
   onOpenChange,
   initialData,
-  isNewClient
+  editClient,
+  isNewClient = false
 }) => {
   const { addClient, updateClient, companies } = useCompany();
+  
+  // Use editClient or initialData for backwards compatibility
+  const clientData = editClient || initialData;
+  const isNew = isNewClient || !clientData;
   
   // Initialize form with schema
   const form = useForm<z.infer<typeof clientFormSchema>>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
-      name: initialData?.name || '',
-      email: initialData?.email || '',
-      phone: initialData?.phone || '',
-      companyId: initialData?.companyId || '',
+      name: clientData?.name || '',
+      email: clientData?.email || '',
+      phone: clientData?.phone || '',
+      companyId: clientData?.companyId || '',
     },
   });
 
-  // Reset form when initialData changes
+  // Reset form when initialData/editClient changes
   useEffect(() => {
-    if (initialData) {
+    if (clientData) {
       form.reset({
-        name: initialData.name,
-        email: initialData.email || '',
-        phone: initialData.phone || '',
-        companyId: initialData.companyId || '',
+        name: clientData.name,
+        email: clientData.email || '',
+        phone: clientData.phone || '',
+        companyId: clientData.companyId || '',
       });
     } else {
       form.reset({
@@ -64,14 +69,14 @@ const ClientForm: React.FC<ClientFormProps> = ({
         companyId: '',
       });
     }
-  }, [initialData, form, open]);
+  }, [clientData, form, open]);
 
   // Handle form submission
   const onSubmit = async (data: z.infer<typeof clientFormSchema>) => {
     try {
       console.log("Form data:", data); // Debug log
       
-      if (isNewClient) {
+      if (isNew) {
         await addClient({
           name: data.name,
           email: data.email,
@@ -81,9 +86,9 @@ const ClientForm: React.FC<ClientFormProps> = ({
           cnpj: ''
         });
         toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
-      } else if (initialData) {
+      } else if (clientData) {
         await updateClient({
-          ...initialData,
+          ...clientData,
           name: data.name,
           email: data.email,
           phone: data.phone,
@@ -103,7 +108,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isNewClient ? 'Novo Cliente' : 'Editar Cliente'}</DialogTitle>
+          <DialogTitle>{isNew ? 'Novo Cliente' : 'Editar Cliente'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

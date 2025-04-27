@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
-import { User } from '@/lib/types';
+import { User, Permission } from '@/lib/types';
 import { toast } from 'sonner';
 
 interface UserFormProps {
@@ -166,6 +166,29 @@ const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
     setLoading(true);
     
     try {
+      // Create a Permission object from the permissions state
+      const permissionObject: Permission = {
+        id: editUser?.permissions?.[0]?.id || '',
+        name: 'Default Permissions',
+        description: 'Default user permissions',
+        canCreate: permissions.canCreate,
+        canEdit: permissions.canEdit,
+        canDelete: permissions.canDelete,
+        canMarkComplete: permissions.canMarkComplete,
+        canMarkDelayed: permissions.canMarkDelayed,
+        canAddNotes: permissions.canAddNotes,
+        canViewReports: permissions.canViewReports,
+        viewAllActions: permissions.viewAllActions,
+        canEditUser: permissions.canEditUser,
+        canEditAction: permissions.canEditAction,
+        canEditClient: permissions.canEditClient,
+        canDeleteClient: permissions.canDeleteClient,
+        canCreateClient: permissions.canCreateClient,
+        canEditCompany: permissions.canEditCompany,
+        canDeleteCompany: permissions.canDeleteCompany,
+        viewOnlyAssignedActions: permissions.viewOnlyAssignedActions
+      };
+
       const userData = {
         name: data.name,
         cpf: data.cpf,
@@ -175,7 +198,7 @@ const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
         clientIds: selectedClientIds,
         department: data.department,
         phone: data.phone,
-        permissions: permissions
+        permissions: [permissionObject] // Pass as array
       };
 
       if (editUser) {

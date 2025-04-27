@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -27,14 +26,12 @@ const ClientsPage = () => {
   const canDeleteClients = user?.role === 'master' || 
                         user?.permissions?.some(p => p.canDelete || p.canDeleteClient);
 
-  // Atualizar o ID da empresa quando o contexto mudar
   useEffect(() => {
     if (company) {
       setSelectedCompanyId(company.id);
     }
   }, [company]);
 
-  // Filtrar clientes com base na empresa selecionada
   useEffect(() => {
     if (selectedCompanyId && selectedCompanyId !== 'all') {
       try {
@@ -134,6 +131,7 @@ const ClientsPage = () => {
         open={showClientForm}
         onOpenChange={handleCloseForm}
         editClient={editingClient}
+        isNewClient={!editingClient}
       />
 
       <DeleteClientDialog
