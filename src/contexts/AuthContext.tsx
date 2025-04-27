@@ -40,8 +40,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Verificar se estamos em modo de produção ou desenvolvimento (com mock data)
+  const useMockData = import.meta.env.DEV && !import.meta.env.VITE_USE_SUPABASE;
+  
+  // Carregar usuários do localStorage (mock) se estiver usando dados simulados
+  useEffect(() => {
+    if (useMockData) {
+      console.log("Carregando usuários do mock-data");
+      // Importação dinâmica para evitar problemas de circular dependency
+      import('@/lib/mock-data').then(({ defaultMasterUser, additionalUsers }) => {
+        const mockUsers = [defaultMasterUser, ...additionalUsers];
+        setUsers(mockUsers);
+        console.log("Usuários carregados do mock:", mockUsers);
+      });
+    }
+  }, [useMockData]);
+
   useEffect(() => {
     const fetchSession = async () => {
+      if (useMockData) return;
+      
       try {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
@@ -83,54 +101,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     fetchSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          setIsAuthenticated(true);
-          const { data: userData, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+    if (!useMockData) {
+      const { data: authListener } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            setIsAuthenticated(true);
+            const { data: userData, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-          if (error) {
-            console.error('Error fetching user data:', error);
-            return;
+            if (error) {
+              console.error('Error fetching user data:', error);
+              return;
+            }
+
+            const { data: permissionsData, error: permissionsError } = await supabase
+              .from('user_permissions')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .limit(1);
+
+            if (permissionsError) {
+              console.error('Error fetching user permissions:', permissionsError);
+            }
+
+            const permissions: Permission[] = permissionsData || [];
+
+            setUser({
+              ...userData,
+              id: session.user.id,
+              email: session.user.email || '',
+              permissions,
+            });
+          } else if (event === 'SIGNED_OUT') {
+            setIsAuthenticated(false);
+            setUser(null);
           }
-
-          const { data: permissionsData, error: permissionsError } = await supabase
-            .from('user_permissions')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .limit(1);
-
-          if (permissionsError) {
-            console.error('Error fetching user permissions:', permissionsError);
-          }
-
-          const permissions: Permission[] = permissionsData || [];
-
-          setUser({
-            ...userData,
-            id: session.user.id,
-            email: session.user.email || '',
-            permissions,
-          });
-        } else if (event === 'SIGNED_OUT') {
-          setIsAuthenticated(false);
-          setUser(null);
         }
-      }
-    );
+      );
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
+      return () => {
+        authListener.subscription.unsubscribe();
+      };
+    }
+  }, [useMockData]);
 
   useEffect(() => {
     const fetchUsers = async () => {
-      if (isAuthenticated) {
+      if (isAuthenticated && !useMockData) {
         try {
           const { data, error } = await supabase
             .from('profiles')
@@ -162,18 +182,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     fetchUsers();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, useMockData]);
 
   const login = async (cpf: string, password: string) => {
     setLoading(true);
     try {
-      console.log(`Attempting login with CPF: ${cpf}`);
+      console.log(`Attempting login with CPF: ${cpf}, password length: ${password.length}`);
       
+      // Limpar o CPF para evitar problemas de formatação
+      const cleanedCpf = cpf.replace(/[^\d]/g, '');
+      console.log(`CPF limpo para autenticação: ${cleanedCpf}`);
+      
+      // Verificar se estamos usando dados mock
+      if (useMockData) {
+        console.log("Usando mock data para login");
+        
+        // Encontrar usuário pelo CPF nos dados mock
+        const mockUser = users.find(u => u.cpf.replace(/[^\d]/g, '') === cleanedCpf);
+        console.log("Usuário encontrado no mock:", mockUser);
+        
+        if (mockUser && password === '@54321') {
+          console.log("Login bem-sucedido com mock data");
+          setIsAuthenticated(true);
+          setUser(mockUser);
+          return true;
+        } else {
+          console.error("Login falhou com mock data - usuário não encontrado ou senha incorreta");
+          throw new Error('CPF ou senha incorretos');
+        }
+      }
+      
+      // Se não estiver usando mock data, usar o Supabase
       // First, find the user by CPF to get their email
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('email')
-        .eq('cpf', cpf)
+        .eq('cpf', cleanedCpf)
         .single();
 
       if (profileError || !profileData) {
@@ -209,7 +253,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      if (!useMockData) {
+        await supabase.auth.signOut();
+      }
       setIsAuthenticated(false);
       setUser(null);
     } catch (error) {
@@ -483,6 +529,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetUserPassword = async (userId: string) => {
     try {
+      if (useMockData) {
+        console.log(`Simulando reset de senha para usuário ID: ${userId}`);
+        toast.success('Senha resetada com sucesso para @54321');
+        return true;
+      }
+      
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('email')
@@ -535,3 +587,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
+export { AuthProvider };

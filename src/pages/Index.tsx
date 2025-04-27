@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +51,7 @@ const Index = () => {
       
       try {
         console.log("Inicializando dados padrão...");
+        localStorage.removeItem('data_initialized'); // Reset para garantir inicialização correta
         
         // Check and add additional companies
         if (companies) {
@@ -86,6 +88,7 @@ const Index = () => {
           if (!existingMasterUser) {
             console.log(`Adicionando usuário master ${defaultMasterUser.name} (CPF: ${defaultMasterUser.cpf}) ao localStorage`);
             await addUser({
+              id: defaultMasterUser.id,
               name: defaultMasterUser.name,
               cpf: defaultMasterUser.cpf,
               email: defaultMasterUser.email,
@@ -106,6 +109,7 @@ const Index = () => {
             if (!normalizedCPFs.includes(normalizedCpf)) {
               console.log(`Adicionando usuário ${userToAdd.name} (CPF: ${userToAdd.cpf}) ao localStorage`);
               await addUser({
+                id: userToAdd.id,
                 name: userToAdd.name,
                 cpf: userToAdd.cpf,
                 email: userToAdd.email,
@@ -152,17 +156,8 @@ const Index = () => {
       handleRedirection();
     }, 500);
 
-    // Add a listener for the storage event to synchronize between tabs
-    const handleStorageChange = () => {
-      console.log("Alteração no localStorage detectada, recarregando dados");
-      handleRedirection();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('storage', handleStorageChange);
     };
   }, [isAuthenticated, navigate]);
 

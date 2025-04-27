@@ -1,6 +1,8 @@
+
 import { User, Company, Responsible, Client, Action, ActionNote } from './types';
 
 export const defaultMasterUser: User = {
+  id: "1", // Adicionando o ID que estava faltando
   name: "Administrador",
   cpf: "80243088191",
   email: "admin@totaldata.com.br",

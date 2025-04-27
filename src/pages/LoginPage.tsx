@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,6 +38,30 @@ const LoginPage = () => {
     },
   });
 
+  // Função para formatar CPF automaticamente (XXX.XXX.XXX-XX)
+  const formatCPF = useCallback((value: string) => {
+    const digits = value.replace(/\D/g, '');
+    let formattedValue = digits;
+    
+    if (digits.length > 3) {
+      formattedValue = `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    }
+    if (digits.length > 6) {
+      formattedValue = `${formattedValue.slice(0, 7)}.${formattedValue.slice(7)}`;
+    }
+    if (digits.length > 9) {
+      formattedValue = `${formattedValue.slice(0, 11)}-${formattedValue.slice(11, 13)}`;
+    }
+    
+    return formattedValue.slice(0, 14); // Limita ao tamanho máximo de um CPF formatado
+  }, []);
+
+  // Handler para atualizar o campo CPF formatado
+  const handleCPFChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCPF(e.target.value);
+    form.setValue('cpf', formatted);
+  }, [form, formatCPF]);
+
   // Foco automático no campo CPF ao carregar a página
   useEffect(() => {
     const cpfInput = document.getElementById('cpf');
@@ -46,13 +70,21 @@ const LoginPage = () => {
     }
   }, []);
 
+  // Pré-preencher CPF do usuário master para facilitar teste
+  useEffect(() => {
+    // Preencher para testes em desenvolvimento, substituir por dados reais em produção
+    if (import.meta.env.DEV) {
+      form.setValue('cpf', '802.430.881-91');
+    }
+  }, [form]);
+
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     
     try {
       // Limpar o CPF de qualquer formatação (pontos, traços)
       const cleanedCpf = data.cpf.replace(/\D/g, '');
-      console.log(`Tentando login com CPF: ${cleanedCpf}, senha: ${data.password}`);
+      console.log(`Tentando login com CPF: ${cleanedCpf}, senha: ${data.password.substring(0, 1)}${'*'.repeat(data.password.length - 1)}`);
       
       const success = await login(cleanedCpf, data.password);
       
@@ -109,7 +141,12 @@ const LoginPage = () => {
                     <FormItem>
                       <FormLabel>CPF</FormLabel>
                       <FormControl>
-                        <Input id="cpf" placeholder="Digite seu CPF" {...field} />
+                        <Input 
+                          id="cpf" 
+                          placeholder="Digite seu CPF" 
+                          {...field} 
+                          onChange={(e) => handleCPFChange(e)}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
