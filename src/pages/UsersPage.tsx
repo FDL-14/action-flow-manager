@@ -10,7 +10,7 @@ import { User } from '@/lib/types';
 
 const UsersPage = () => {
   const { companies } = useCompany();
-  const { users, resetUserPassword, user } = useAuth();
+  const { users, resetUserPassword, user } = useAuth(); // Now resetUserPassword is properly defined
   const [showUserForm, setShowUserForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);

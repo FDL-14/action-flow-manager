@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -120,7 +119,6 @@ const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
     }
   }, [editUser, setValue, reset]);
 
-  // Update available clients based on selected companies
   useEffect(() => {
     if (selectedCompanyIds.length > 0) {
       const filteredClients = clients.filter(
@@ -134,7 +132,6 @@ const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
 
   const toggleCompany = (companyId: string) => {
     if (selectedCompanyIds.includes(companyId)) {
-      // Remove company and also remove any clients from that company
       setSelectedCompanyIds(prev => prev.filter(id => id !== companyId));
       setSelectedClientIds(prev => 
         prev.filter(clientId => {
@@ -166,7 +163,6 @@ const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
     setLoading(true);
     
     try {
-      // Create a Permission object from the permissions state
       const permissionObject: Permission = {
         id: editUser?.permissions?.[0]?.id || '',
         name: 'Default Permissions',
@@ -198,14 +194,11 @@ const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
         clientIds: selectedClientIds,
         department: data.department,
         phone: data.phone,
-        permissions: [permissionObject] // Pass as array
+        permissions: [permissionObject]
       };
 
       if (editUser) {
-        await updateUser({
-          ...userData,
-          id: editUser.id
-        });
+        await updateUser(editUser.id, userData);
         toast.success('Usuário atualizado com sucesso');
       } else {
         await addUser(userData);

@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +14,7 @@ interface AuthContextType {
   addUser: (userData: Partial<User>) => Promise<boolean>;
   updateUser: (userId: string, userData: Partial<User>) => Promise<boolean>;
   deleteUser: (userId: string) => Promise<boolean>;
+  resetUserPassword: (userId: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,12 +28,11 @@ const AuthContext = createContext<AuthContextType>({
   addUser: async () => false,
   updateUser: async () => false,
   deleteUser: async () => false,
+  resetUserPassword: async () => false,
 });
 
-// Export the useAuth hook
 export const useAuth = () => useContext(AuthContext);
 
-// Export the AuthProvider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
@@ -57,7 +56,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
 
-          // Fetch user permissions
           const { data: permissionsData, error: permissionsError } = await supabase
             .from('user_permissions')
             .select('*')
@@ -99,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
 
-          // Fetch user permissions
           const { data: permissionsData, error: permissionsError } = await supabase
             .from('user_permissions')
             .select('*')
@@ -125,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Clean up subscription
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -154,8 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clientIds: userData.client_ids || [],
             department: userData.department || '',
             phone: userData.phone || '',
-            permissions: userData.user_permissions || [],
-            createdAt: userData.created_at ? new Date(userData.created_at) : new Date(),
+            permissions: userData.user_permissions || []
           }));
 
           setUsers(formattedUsers);
@@ -171,7 +166,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (cpf: string, password: string) => {
     setLoading(true);
     try {
-      // First, find the user by CPF in the profiles table
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('email')
@@ -182,7 +176,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Usuário não encontrado');
       }
 
-      // Then use the email from the profile to login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: profileData.email,
         password,
@@ -216,7 +209,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
     try {
-      // First, get the user's email
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('email')
@@ -229,7 +221,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Sign in with current password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: userData.email,
         password: currentPassword,
@@ -241,7 +232,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Change password
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -263,7 +253,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addUser = async (userData: Partial<User>) => {
     try {
-      // Create auth user
       const email = userData.email;
       const password = userData.password || '@54321';
       
@@ -279,7 +268,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Create profile
       const userId = data.user.id;
       
       const profileData = {
@@ -304,7 +292,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Create permissions
       if (userData.permissions && userData.permissions.length > 0) {
         const permissionsData = {
           user_id: userId,
@@ -338,7 +325,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       toast.success('Usuário criado com sucesso');
       
-      // Update the users list
       setUsers((prevUsers) => {
         const newUser: User = {
           id: userId,
@@ -350,8 +336,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           clientIds: userData.clientIds || [],
           department: userData.department || '',
           phone: userData.phone || '',
-          permissions: userData.permissions || [],
-          createdAt: new Date(),
+          permissions: userData.permissions || []
         };
         
         return [...prevUsers, newUser];
@@ -377,7 +362,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userData.department) profileData.department = userData.department;
       if (userData.phone) profileData.phone = userData.phone;
       
-      // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update(profileData)
@@ -389,7 +373,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Update permissions if provided
       if (userData.permissions && userData.permissions.length > 0) {
         const permissionsData: any = {
           can_create: userData.permissions[0].canCreate,
@@ -421,7 +404,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Update email if provided
       if (userData.email) {
         const { error: emailError } = await supabase.auth.admin.updateUserById(
           userId,
@@ -434,7 +416,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Update password if provided
       if (userData.password) {
         const { error: passwordError } = await supabase.auth.admin.updateUserById(
           userId,
@@ -449,7 +430,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       toast.success('Usuário atualizado com sucesso');
       
-      // Update the users list
       setUsers((prevUsers) =>
         prevUsers.map((u) =>
           u.id === userId
@@ -458,7 +438,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         )
       );
       
-      // Update current user if it's the same user
       if (user && user.id === userId) {
         setUser({ ...user, ...userData });
       }
@@ -481,7 +460,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Update the users list
       setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
       
       toast.success('Usuário excluído com sucesso');
@@ -489,6 +467,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error('Erro ao excluir usuário');
+      return false;
+    }
+  };
+
+  const resetUserPassword = async (userId: string) => {
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .single();
+
+      if (userError || !userData) {
+        console.error('Error finding user:', userError);
+        toast.error('Usuário não encontrado');
+        return false;
+      }
+
+      const { error } = await supabase.auth.admin.updateUserById(
+        userId,
+        { password: '@54321' }
+      );
+
+      if (error) {
+        console.error('Error resetting password:', error);
+        toast.error('Erro ao resetar senha');
+        return false;
+      }
+
+      toast.success('Senha resetada com sucesso para @54321');
+      return true;
+    } catch (error) {
+      console.error('Error resetting user password:', error);
+      toast.error('Erro ao resetar senha do usuário');
       return false;
     }
   };
@@ -506,10 +518,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addUser,
         updateUser,
         deleteUser,
+        resetUserPassword,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
-
