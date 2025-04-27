@@ -13,12 +13,11 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'sonner';
 
 interface ClientListProps {
   clients: Client[];
   onEdit: (client: Client) => void;
-  onDelete: (id: string) => void;
+  onDelete: (client: Client) => void;
   getCompanyNameById: (id: string) => string;
   canEditClients: boolean;
   canDeleteClients: boolean;
@@ -117,7 +116,7 @@ export const ClientList = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => onDelete(client.id)}
+                          onClick={() => onDelete(client)}
                           className="text-red-500 hover:text-red-700"
                         >
                           <Trash className="h-4 w-4 mr-1" />

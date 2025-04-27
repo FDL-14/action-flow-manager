@@ -9,7 +9,6 @@ import {
   updateSupabaseClient,
   deleteSupabaseClient 
 } from './use-supabase-clients';
-import { convertToUUID } from '@/integrations/supabase/client';
 
 export const useClientOperations = () => {
   const { clients, setClients } = useClientState();
@@ -51,9 +50,8 @@ export const useClientOperations = () => {
       console.log("Adicionando cliente com dados:", clientData);
       
       const originalCompanyId = clientData.companyId;
-      const companyId = convertToUUID(clientData.companyId);
       
-      const supabaseClient = await addSupabaseClient({ ...clientData, companyId });
+      const supabaseClient = await addSupabaseClient({ ...clientData });
       
       const newClient: Client = {
         id: supabaseClient.id,
@@ -89,12 +87,8 @@ export const useClientOperations = () => {
       }
       
       const originalCompanyId = updatedClient.companyId;
-      const companyId = convertToUUID(updatedClient.companyId);
       
-      await updateSupabaseClient(updatedClient.id, { 
-        ...updatedClient, 
-        companyId 
-      });
+      await updateSupabaseClient(updatedClient.id, updatedClient);
       
       const updatedClients = clients.map(c => 
         c.id === updatedClient.id ? { 
@@ -147,6 +141,7 @@ export const useClientOperations = () => {
     });
     
     console.log("Clientes filtrados para a empresa:", filteredClients);
+    console.log("Atualizando clientes para empresa " + companyId + ":", filteredClients);
     return filteredClients;
   };
 

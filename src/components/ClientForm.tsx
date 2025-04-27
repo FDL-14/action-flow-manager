@@ -60,12 +60,20 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
     if (open) {
       console.log("Formulário aberto, empresa atual:", company?.id);
       
+      // Se não houver empresa selecionada e houver empresas disponíveis, selecione a primeira
+      const companyIdToUse = company?.id || (companies.length > 0 ? companies[0].id : '');
+      
       if (editClient) {
         console.log("Editando cliente:", editClient);
         console.log("Company ID do cliente:", editClient.companyId);
         
-        const companyIdToUse = editClient.companyId || company?.id || '';
-        setSelectedCompanyId(companyIdToUse);
+        // Garantir que sempre temos um ID de empresa válido
+        let clientCompanyId = editClient.companyId;
+        if (!clientCompanyId && companies.length > 0) {
+          clientCompanyId = companies[0].id;
+        }
+        
+        setSelectedCompanyId(clientCompanyId);
         
         form.reset({
           name: editClient.name,
@@ -73,12 +81,11 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           phone: editClient.phone || '',
           address: editClient.address || '',
           cnpj: editClient.cnpj || '',
-          companyId: companyIdToUse,
+          companyId: clientCompanyId,
         });
       } else {
         console.log("Formulário para novo cliente");
         
-        const companyIdToUse = company?.id || '';
         setSelectedCompanyId(companyIdToUse);
         
         form.reset({
@@ -91,7 +98,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
         });
       }
     }
-  }, [editClient, form, company, open]);
+  }, [editClient, form, company, companies, open]);
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -125,8 +132,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           companyId: values.companyId,
           updatedAt: new Date(),
         });
-        
-        toast.success("Cliente atualizado com sucesso");
       } else {
         await addClient({
           name: values.name,
@@ -136,8 +141,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ open, onOpenChange, editClient 
           cnpj: values.cnpj || undefined,
           companyId: values.companyId,
         });
-        
-        toast.success("Cliente adicionado com sucesso");
       }
       
       onOpenChange(false);

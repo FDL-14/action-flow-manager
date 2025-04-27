@@ -16,7 +16,7 @@ const ClientsPage = () => {
   const { user } = useAuth();
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
-  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(company?.id);
 
@@ -27,12 +27,14 @@ const ClientsPage = () => {
   const canDeleteClients = user?.role === 'master' || 
                         user?.permissions?.some(p => p.canDelete || p.canDeleteClient);
 
+  // Atualizar o ID da empresa quando o contexto mudar
   useEffect(() => {
     if (company) {
       setSelectedCompanyId(company.id);
     }
   }, [company]);
 
+  // Filtrar clientes com base na empresa selecionada
   useEffect(() => {
     if (selectedCompanyId && selectedCompanyId !== 'all') {
       try {
@@ -69,9 +71,9 @@ const ClientsPage = () => {
     }
   };
 
-  const handleDeleteClient = (id: string) => {
+  const handleDeleteClient = (client: Client) => {
     if (canDeleteClients) {
-      setClientToDelete(id);
+      setClientToDelete(client);
     } else {
       toast.error("Permissão negada", {
         description: "Você não tem permissão para excluir clientes."
@@ -79,10 +81,17 @@ const ClientsPage = () => {
     }
   };
 
-  const confirmDeleteClient = () => {
+  const confirmDeleteClient = async () => {
     if (clientToDelete) {
-      deleteClient(clientToDelete);
-      setClientToDelete(null);
+      try {
+        await deleteClient(clientToDelete.id);
+        setClientToDelete(null);
+      } catch (error) {
+        console.error("Erro ao excluir cliente:", error);
+        toast.error("Erro ao excluir cliente", {
+          description: "Não foi possível excluir o cliente. Por favor, tente novamente."
+        });
+      }
     }
   };
 
@@ -115,7 +124,7 @@ const ClientsPage = () => {
       <ClientList
         clients={filteredClients}
         onEdit={handleEditClient}
-        onDelete={handleDeleteClient}
+        onDelete={client => handleDeleteClient(client)}
         getCompanyNameById={getCompanyNameById}
         canEditClients={canEditClients}
         canDeleteClients={canDeleteClients}
@@ -131,6 +140,7 @@ const ClientsPage = () => {
         isOpen={!!clientToDelete}
         onClose={() => setClientToDelete(null)}
         onConfirm={confirmDeleteClient}
+        clientName={clientToDelete?.name}
       />
     </div>
   );
