@@ -32,10 +32,11 @@ export const CompanySelector = ({
               field.onChange(value);
               form.trigger("companyId");
             }}
-            value={selectedCompanyId || field.value}
+            defaultValue={field.value}
+            value={field.value || selectedCompanyId}
           >
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white">
                 <SelectValue placeholder="Selecione uma empresa" />
               </SelectTrigger>
             </FormControl>

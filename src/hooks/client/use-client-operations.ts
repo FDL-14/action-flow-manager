@@ -7,7 +7,8 @@ import {
   fetchSupabaseClients, 
   addSupabaseClient, 
   updateSupabaseClient,
-  deleteSupabaseClient 
+  deleteSupabaseClient,
+  checkSupabaseCompanyExists
 } from './use-supabase-clients';
 
 export const useClientOperations = () => {
@@ -39,19 +40,30 @@ export const useClientOperations = () => {
   }, [setClients]);
 
   const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!clientData.companyId) {
-      toast.error("Erro ao salvar cliente", {
-        description: "É necessário selecionar uma empresa para este cliente."
-      });
-      return;
-    }
-    
     try {
-      console.log("Adicionando cliente com dados:", clientData);
+      if (!clientData.companyId) {
+        toast.error("Erro ao salvar cliente", {
+          description: "É necessário selecionar uma empresa para este cliente."
+        });
+        return null;
+      }
       
-      const originalCompanyId = clientData.companyId;
+      console.log("Adicionando cliente com dados:", clientData);
+
+      // Verifica se a empresa existe antes de continuar
+      const companyExists = await checkSupabaseCompanyExists(clientData.companyId);
+      if (!companyExists) {
+        toast.error("Empresa não encontrada", {
+          description: "A empresa selecionada não existe ou foi removida."
+        });
+        return null;
+      }
       
       const supabaseClient = await addSupabaseClient({ ...clientData });
+      
+      if (!supabaseClient) {
+        throw new Error("Falha ao adicionar cliente no banco de dados");
+      }
       
       const newClient: Client = {
         id: supabaseClient.id,
@@ -60,7 +72,7 @@ export const useClientOperations = () => {
         phone: supabaseClient.contact_phone || undefined,
         address: undefined,
         cnpj: undefined,
-        companyId: originalCompanyId,
+        companyId: clientData.companyId, // Use o original fornecido pelo formulário
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
@@ -73,7 +85,7 @@ export const useClientOperations = () => {
       toast.error("Erro ao salvar cliente", {
         description: "Não foi possível salvar o cliente. Por favor, tente novamente."
       });
-      throw error;
+      return null;
     }
   };
 
@@ -83,28 +95,36 @@ export const useClientOperations = () => {
         toast.error("Erro ao atualizar cliente", {
           description: "É necessário selecionar uma empresa para este cliente."
         });
-        return;
+        return false;
       }
       
-      const originalCompanyId = updatedClient.companyId;
+      // Verifica se a empresa existe antes de continuar
+      const companyExists = await checkSupabaseCompanyExists(updatedClient.companyId);
+      if (!companyExists) {
+        toast.error("Empresa não encontrada", {
+          description: "A empresa selecionada não existe ou foi removida."
+        });
+        return false;
+      }
       
       await updateSupabaseClient(updatedClient.id, updatedClient);
       
       const updatedClients = clients.map(c => 
         c.id === updatedClient.id ? { 
           ...updatedClient, 
-          companyId: originalCompanyId,
           updatedAt: new Date() 
         } : c
       );
       
       setClients(updatedClients);
       toast.success("Cliente atualizado com sucesso");
+      return true;
     } catch (error) {
       console.error("Erro ao atualizar cliente:", error);
       toast.error("Erro ao atualizar cliente", {
         description: "Não foi possível atualizar o cliente. Por favor, tente novamente."
       });
+      return false;
     }
   };
 
@@ -113,11 +133,13 @@ export const useClientOperations = () => {
       await deleteSupabaseClient(id);
       setClients(clients.filter(c => c.id !== id));
       toast.success("Cliente excluído com sucesso");
+      return true;
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
       toast.error("Erro ao excluir cliente", {
         description: "Não foi possível excluir o cliente. Por favor, tente novamente."
       });
+      return false;
     }
   };
 
@@ -141,7 +163,6 @@ export const useClientOperations = () => {
     });
     
     console.log("Clientes filtrados para a empresa:", filteredClients);
-    console.log("Atualizando clientes para empresa " + companyId + ":", filteredClients);
     return filteredClients;
   };
 

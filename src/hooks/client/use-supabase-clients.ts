@@ -3,34 +3,41 @@ import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
 export const fetchSupabaseClients = async () => {
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*');
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*');
+      
+    if (error) {
+      console.error("Erro ao buscar clientes do Supabase:", error);
+      return null;
+    }
     
-  if (error) {
-    console.error("Erro ao buscar clientes do Supabase:", error);
+    if (data && data.length > 0) {
+      return data.map(c => ({
+        id: c.id,
+        name: c.name,
+        email: c.contact_email || undefined,
+        phone: c.contact_phone || undefined,
+        address: undefined,
+        cnpj: undefined,
+        companyId: c.company_id || '',
+        createdAt: new Date(c.created_at || new Date()),
+        updatedAt: new Date(c.updated_at || new Date())
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
     return null;
   }
-  
-  if (data && data.length > 0) {
-    return data.map(c => ({
-      id: c.id,
-      name: c.name,
-      email: c.contact_email || undefined,
-      phone: c.contact_phone || undefined,
-      address: undefined,
-      cnpj: undefined,
-      companyId: c.company_id || '',
-      createdAt: new Date(c.created_at || new Date()),
-      updatedAt: new Date(c.updated_at || new Date())
-    }));
-  }
-  
-  return null;
 };
 
-// Função para verificar se uma empresa existe no Supabase antes de usar
-export const checkSupabaseCompanyExists = async (companyId: string) => {
+// Função para verificar se uma empresa existe no Supabase
+export const checkSupabaseCompanyExists = async (companyId: string): Promise<boolean> => {
+  if (!companyId) return false;
+  
   console.log("Verificando se empresa existe no Supabase:", companyId);
   
   try {
@@ -41,6 +48,10 @@ export const checkSupabaseCompanyExists = async (companyId: string) => {
       .single();
     
     if (error) {
+      if (error.code === 'PGRST116') { // Código para nenhum registro encontrado
+        console.log("Empresa não encontrada no Supabase");
+        return false;
+      }
       console.error("Erro ao verificar empresa:", error);
       return false;
     }
@@ -99,6 +110,10 @@ export const ensureSupabaseCompanyExists = async (companyData: any) => {
 
 export const addSupabaseClient = async (clientData: any) => {
   try {
+    if (!clientData.companyId) {
+      throw new Error("ID da empresa é obrigatório");
+    }
+    
     // Garante que a empresa existe antes de vincular o cliente
     const companyId = await ensureSupabaseCompanyExists({
       id: clientData.companyId,
@@ -135,6 +150,10 @@ export const addSupabaseClient = async (clientData: any) => {
 
 export const updateSupabaseClient = async (clientId: string, clientData: any) => {
   try {
+    if (!clientData.companyId) {
+      throw new Error("ID da empresa é obrigatório");
+    }
+    
     // Garante que a empresa existe antes de vincular o cliente
     const companyId = await ensureSupabaseCompanyExists({
       id: clientData.companyId,
@@ -152,7 +171,8 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
         contact_email: clientData.email || null,
         contact_phone: clientData.phone || null,
         contact_name: clientData.name,
-        company_id: companyId
+        company_id: companyId,
+        updated_at: new Date().toISOString()
       })
       .eq('id', clientId);
       
@@ -160,6 +180,8 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
       console.error('Erro ao atualizar cliente no Supabase:', error);
       throw error;
     }
+    
+    return true;
   } catch (error) {
     console.error('Erro ao atualizar cliente:', error);
     throw error;
@@ -167,13 +189,20 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
 };
 
 export const deleteSupabaseClient = async (clientId: string) => {
-  const { error } = await supabase
-    .from('clients')
-    .delete()
-    .eq('id', clientId);
+  try {
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', clientId);
+      
+    if (error) {
+      console.error('Erro ao excluir cliente no Supabase:', error);
+      throw error;
+    }
     
-  if (error) {
-    console.error('Erro ao excluir cliente no Supabase:', error);
+    return true;
+  } catch (error) {
+    console.error('Erro ao excluir cliente:', error);
     throw error;
   }
 };
