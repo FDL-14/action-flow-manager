@@ -78,17 +78,16 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
     }
   }, [initialData, form]);
 
-  const handleLogoChange = (file: File | null) => {
-    setLogoFile(file);
-    
-    if (file) {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLogoFile(file);
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-    } else {
-      setLogoPreview(initialData?.logo || null);
     }
   };
 

@@ -15,12 +15,6 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
   onLogoChange,
   onRemoveLogo,
 }) => {
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      onLogoChange(e);
-    }
-  };
-
   return (
     <div>
       <div className="mt-2 flex flex-col items-center">
@@ -53,7 +47,7 @@ const LogoUpload: React.FC<LogoUploadProps> = ({
           id="logo-upload"
           className="hidden"
           accept="image/*"
-          onChange={handleFileChange}
+          onChange={onLogoChange}
         />
         <label htmlFor="logo-upload">
           <Button type="button" variant="outline" asChild>
