@@ -27,7 +27,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const LoginPage = () => {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<FormData>({
@@ -57,10 +57,12 @@ const LoginPage = () => {
       const success = await login(cleanedCpf, data.password);
       
       if (!success) {
+        console.error("Falha no login");
         toast.error("Erro no login", {
           description: "CPF ou senha incorretos"
         });
       } else {
+        console.log("Login bem-sucedido");
         toast.success("Login bem-sucedido", {
           description: "Você foi autenticado com sucesso"
         });
@@ -129,8 +131,8 @@ const LoginPage = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar'}
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
+                  {loading || authLoading ? 'Entrando...' : 'Entrar'}
                 </Button>
               </form>
             </Form>

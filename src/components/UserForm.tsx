@@ -1,15 +1,87 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Plus, Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
-import { User, Permission } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { User } from '@/lib/types';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "Nome deve ter pelo menos 2 caracteres.",
+  }),
+  cpf: z.string().min(11, {
+    message: "CPF deve ter pelo menos 11 caracteres.",
+  }),
+  email: z.string().email({
+    message: "Email inválido.",
+  }),
+  role: z.enum(['user', 'master']).default('user'),
+  companyIds: z.array(z.string()).optional(),
+  clientIds: z.array(z.string()).optional(),
+  department: z.string().optional(),
+  phone: z.string().optional(),
+  canCreate: z.boolean().default(false),
+  canEdit: z.boolean().default(false),
+  canDelete: z.boolean().default(false),
+  canMarkComplete: z.boolean().default(false),
+  canMarkDelayed: z.boolean().default(false),
+  canAddNotes: z.boolean().default(false),
+  canViewReports: z.boolean().default(false),
+  viewAllActions: z.boolean().default(false),
+  canEditUser: z.boolean().default(false),
+  canEditAction: z.boolean().default(false),
+  canEditClient: z.boolean().default(false),
+  canDeleteClient: z.boolean().default(false),
+  canCreateClient: z.boolean().default(false),
+  canEditCompany: z.boolean().default(false),
+  canDeleteCompany: z.boolean().default(false),
+  viewOnlyAssignedActions: z.boolean().default(false),
+})
+
+type FormData = z.infer<typeof formSchema>
 
 interface UserFormProps {
   open: boolean;
@@ -17,466 +89,715 @@ interface UserFormProps {
   editUser?: User;
 }
 
-const UserForm = ({ open, onOpenChange, editUser }: UserFormProps) => {
-  const { addUser, updateUser } = useAuth();
+const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => {
+  const { addUser, updateUser, deleteUser } = useAuth();
   const { companies, clients } = useCompany();
-  const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'user' | 'master'>('user');
-  const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
-  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
-  const [availableClients, setAvailableClients] = useState<any[]>([]);
-  const [permissions, setPermissions] = useState({
-    canCreate: false,
-    canEdit: false,
-    canDelete: false,
-    canMarkComplete: true,
-    canMarkDelayed: true,
-    canAddNotes: true,
-    canViewReports: false,
-    viewAllActions: false,
-    canEditUser: false,
-    canEditAction: false,
-    canEditClient: false,
-    canDeleteClient: false,
-    canCreateClient: false,
-    canEditCompany: false,
-    canDeleteCompany: false,
-    viewOnlyAssignedActions: true,
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
-      cpf: '',
-      email: '',
-      department: '',
-      phone: '',
-    }
+      name: editUser?.name || "",
+      cpf: editUser?.cpf || "",
+      email: editUser?.email || "",
+      role: editUser?.role || 'user',
+      companyIds: editUser?.companyIds || [],
+      clientIds: editUser?.clientIds || [],
+      department: editUser?.department || '',
+      phone: editUser?.phone || '',
+      canCreate: editUser?.permissions?.[0]?.canCreate || false,
+      canEdit: editUser?.permissions?.[0]?.canEdit || false,
+      canDelete: editUser?.permissions?.[0]?.canDelete || false,
+      canMarkComplete: editUser?.permissions?.[0]?.canMarkComplete || false,
+      canMarkDelayed: editUser?.permissions?.[0]?.canMarkDelayed || false,
+      canAddNotes: editUser?.permissions?.[0]?.canAddNotes || false,
+      canViewReports: editUser?.permissions?.[0]?.canViewReports || false,
+      viewAllActions: editUser?.permissions?.[0]?.viewAllActions || false,
+      canEditUser: editUser?.permissions?.[0]?.canEditUser || false,
+      canEditAction: editUser?.permissions?.[0]?.canEditAction || false,
+      canEditClient: editUser?.permissions?.[0]?.canEditClient || false,
+      canDeleteClient: editUser?.permissions?.[0]?.canDeleteClient || false,
+      canCreateClient: editUser?.permissions?.[0]?.canCreateClient || false,
+      canEditCompany: editUser?.permissions?.[0]?.canEditCompany || false,
+      canDeleteCompany: editUser?.permissions?.[0]?.canDeleteCompany || false,
+      viewOnlyAssignedActions: editUser?.permissions?.[0]?.viewOnlyAssignedActions || false,
+    },
   });
 
   useEffect(() => {
-    if (editUser) {
-      setValue('name', editUser.name);
-      setValue('cpf', editUser.cpf);
-      setValue('email', editUser.email || '');
-      setValue('department', editUser.department || '');
-      setValue('phone', editUser.phone || '');
-      
-      setSelectedRole(editUser.role);
-      setSelectedCompanyIds(editUser.companyIds || []);
-      setSelectedClientIds(editUser.clientIds || []);
-      
-      if (editUser.permissions && editUser.permissions.length > 0) {
-        const userPermissions = editUser.permissions[0];
-        setPermissions({
-          canCreate: userPermissions.canCreate,
-          canEdit: userPermissions.canEdit,
-          canDelete: userPermissions.canDelete,
-          canMarkComplete: userPermissions.canMarkComplete,
-          canMarkDelayed: userPermissions.canMarkDelayed,
-          canAddNotes: userPermissions.canAddNotes,
-          canViewReports: userPermissions.canViewReports,
-          viewAllActions: userPermissions.viewAllActions,
-          canEditUser: userPermissions.canEditUser,
-          canEditAction: userPermissions.canEditAction,
-          canEditClient: userPermissions.canEditClient,
-          canDeleteClient: userPermissions.canDeleteClient,
-          canCreateClient: userPermissions.canCreateClient || false,
-          canEditCompany: userPermissions.canEditCompany || false,
-          canDeleteCompany: userPermissions.canDeleteCompany || false,
-          viewOnlyAssignedActions: userPermissions.viewOnlyAssignedActions,
-        });
-      }
-    } else {
-      reset({
-        name: '',
-        cpf: '',
-        email: '',
-        department: '',
-        phone: '',
-      });
-      setSelectedRole('user');
-      setSelectedCompanyIds([]);
-      setSelectedClientIds([]);
-      setPermissions({
-        canCreate: false,
-        canEdit: false,
-        canDelete: false,
-        canMarkComplete: true,
-        canMarkDelayed: true,
-        canAddNotes: true,
-        canViewReports: false,
-        viewAllActions: false,
-        canEditUser: false,
-        canEditAction: false,
-        canEditClient: false,
-        canDeleteClient: false,
-        canCreateClient: false,
-        canEditCompany: false,
-        canDeleteCompany: false,
-        viewOnlyAssignedActions: true,
-      });
-    }
-  }, [editUser, setValue, reset]);
+    // Update default values when editUser changes
+    form.reset({
+      name: editUser?.name || "",
+      cpf: editUser?.cpf || "",
+      email: editUser?.email || "",
+      role: editUser?.role || 'user',
+      companyIds: editUser?.companyIds || [],
+      clientIds: editUser?.clientIds || [],
+      department: editUser?.department || '',
+      phone: editUser?.phone || '',
+      canCreate: editUser?.permissions?.[0]?.canCreate || false,
+      canEdit: editUser?.permissions?.[0]?.canEdit || false,
+      canDelete: editUser?.permissions?.[0]?.canDelete || false,
+      canMarkComplete: editUser?.permissions?.[0]?.canMarkComplete || false,
+      canMarkDelayed: editUser?.permissions?.[0]?.canMarkDelayed || false,
+      canAddNotes: editUser?.permissions?.[0]?.canAddNotes || false,
+      canViewReports: editUser?.permissions?.[0]?.canViewReports || false,
+      viewAllActions: editUser?.permissions?.[0]?.viewAllActions || false,
+      canEditUser: editUser?.permissions?.[0]?.canEditUser || false,
+      canEditAction: editUser?.permissions?.[0]?.canEditAction || false,
+      canEditClient: editUser?.permissions?.[0]?.canEditClient || false,
+      canDeleteClient: editUser?.permissions?.[0]?.canDeleteClient || false,
+      canCreateClient: editUser?.permissions?.[0]?.canCreateClient || false,
+      canEditCompany: editUser?.permissions?.[0]?.canEditCompany || false,
+      canDeleteCompany: editUser?.permissions?.[0]?.canDeleteCompany || false,
+      viewOnlyAssignedActions: editUser?.permissions?.[0]?.viewOnlyAssignedActions || false,
+    });
+  }, [editUser, form]);
 
-  useEffect(() => {
-    if (selectedCompanyIds.length > 0) {
-      const filteredClients = clients.filter(
-        client => selectedCompanyIds.includes(client.companyId)
-      );
-      setAvailableClients(filteredClients);
-    } else {
-      setAvailableClients(clients);
-    }
-  }, [selectedCompanyIds, clients]);
-
-  const toggleCompany = (companyId: string) => {
-    if (selectedCompanyIds.includes(companyId)) {
-      setSelectedCompanyIds(prev => prev.filter(id => id !== companyId));
-      setSelectedClientIds(prev => 
-        prev.filter(clientId => {
-          const client = clients.find(c => c.id === clientId);
-          return client && client.companyId !== companyId;
-        })
-      );
-    } else {
-      setSelectedCompanyIds(prev => [...prev, companyId]);
-    }
-  };
-
-  const toggleClient = (clientId: string) => {
-    if (selectedClientIds.includes(clientId)) {
-      setSelectedClientIds(prev => prev.filter(id => id !== clientId));
-    } else {
-      setSelectedClientIds(prev => [...prev, clientId]);
-    }
-  };
-
-  const togglePermission = (permission: string) => {
-    setPermissions(prev => ({
-      ...prev,
-      [permission]: !prev[permission as keyof typeof prev]
-    }));
-  };
-
-  const onSubmit = async (data: any) => {
-    setLoading(true);
+  const onSubmit = async (data: FormData) => {
+    setIsSubmitting(true);
     
     try {
-      const permissionObject: Permission = {
-        id: editUser?.permissions?.[0]?.id || '',
-        name: 'Default Permissions',
-        description: 'Default user permissions',
-        canCreate: permissions.canCreate,
-        canEdit: permissions.canEdit,
-        canDelete: permissions.canDelete,
-        canMarkComplete: permissions.canMarkComplete,
-        canMarkDelayed: permissions.canMarkDelayed,
-        canAddNotes: permissions.canAddNotes,
-        canViewReports: permissions.canViewReports,
-        viewAllActions: permissions.viewAllActions,
-        canEditUser: permissions.canEditUser,
-        canEditAction: permissions.canEditAction,
-        canEditClient: permissions.canEditClient,
-        canDeleteClient: permissions.canDeleteClient,
-        canCreateClient: permissions.canCreateClient,
-        canEditCompany: permissions.canEditCompany,
-        canDeleteCompany: permissions.canDeleteCompany,
-        viewOnlyAssignedActions: permissions.viewOnlyAssignedActions
-      };
-
-      const userData = {
-        name: data.name,
-        cpf: data.cpf,
-        email: data.email,
-        role: selectedRole,
-        companyIds: selectedCompanyIds,
-        clientIds: selectedClientIds,
-        department: data.department,
-        phone: data.phone,
-        permissions: [permissionObject]
-      };
-
-      if (editUser) {
-        await updateUser(editUser.id, userData);
-        toast.success('Usuário atualizado com sucesso');
-      } else {
-        await addUser(userData);
-        toast.success('Usuário criado com sucesso');
-      }
+      let success;
       
-      onOpenChange(false);
+      if (editUser) {
+        success = await updateUser(editUser.id, {
+          name: data.name,
+          cpf: data.cpf,
+          email: data.email,
+          role: data.role,
+          companyIds: data.companyIds,
+          clientIds: data.clientIds || [],
+          department: data.department,
+          phone: data.phone,
+          permissions: [
+            {
+              id: editUser.permissions?.[0]?.id || '',
+              name: '',
+              description: '',
+              canCreate: data.canCreate,
+              canEdit: data.canEdit,
+              canDelete: data.canDelete,
+              canMarkComplete: data.canMarkComplete,
+              canMarkDelayed: data.canMarkDelayed,
+              canAddNotes: data.canAddNotes,
+              canViewReports: data.canViewReports,
+              viewAllActions: data.viewAllActions,
+              canEditUser: data.canEditUser,
+              canEditAction: data.canEditAction,
+              canEditClient: data.canEditClient,
+              canDeleteClient: data.canDeleteClient,
+              canCreateClient: data.canCreateClient,
+              canEditCompany: data.canEditCompany,
+              canDeleteCompany: data.canDeleteCompany,
+              viewOnlyAssignedActions: data.viewOnlyAssignedActions,
+            }
+          ]
+        });
+      } else {
+        success = await addUser({
+          name: data.name,
+          cpf: data.cpf,
+          email: data.email,
+          role: data.role,
+          companyIds: data.companyIds,
+          clientIds: data.clientIds || [],
+          department: data.department,
+          phone: data.phone,
+          permissions: [
+            {
+              id: 'new',
+              name: '',
+              description: '',
+              canCreate: data.canCreate,
+              canEdit: data.canEdit,
+              canDelete: data.canDelete,
+              canMarkComplete: data.canMarkComplete,
+              canMarkDelayed: data.canMarkDelayed,
+              canAddNotes: data.canAddNotes,
+              canViewReports: data.canViewReports,
+              viewAllActions: data.viewAllActions,
+              canEditUser: data.canEditUser,
+              canEditAction: data.canEditAction,
+              canEditClient: data.canEditClient,
+              canDeleteClient: data.canDeleteClient,
+              canCreateClient: data.canCreateClient,
+              canEditCompany: data.canEditCompany,
+              canDeleteCompany: data.canDeleteCompany,
+              viewOnlyAssignedActions: data.viewOnlyAssignedActions,
+            }
+          ]
+        });
+      }
+  
+      if (success) {
+        onOpenChange(false);
+        form.reset();
+      }
     } catch (error) {
-      console.error('Erro ao salvar usuário:', error);
+      console.error('Error submitting form:', error);
       toast.error('Erro ao salvar usuário');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    setIsDeleting(true);
+    try {
+      if (editUser) {
+        const success = await deleteUser(editUser.id);
+        if (success) {
+          onOpenChange(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Erro ao excluir usuário');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>{editUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
+          <DialogTitle>{editUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+          <DialogDescription>
+            {editUser ? "Edite os campos do usuário." : "Adicione um novo usuário."}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome Completo</Label>
-              <Input
-                id="name"
-                {...register('name', { required: 'Nome é obrigatório' })}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message?.toString()}</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                {...register('cpf', { required: 'CPF é obrigatório' })}
-              />
-              {errors.cpf && (
-                <p className="text-sm text-red-500">{errors.cpf.message?.toString()}</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                {...register('email')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="department">Departamento</Label>
-              <Input
-                id="department"
-                {...register('department')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                {...register('phone')}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="role">Função</Label>
-              <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as 'user' | 'master')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a função" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">Usuário</SelectItem>
-                  <SelectItem value="master">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Empresas</Label>
-              <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-36 overflow-y-auto">
-                {companies.map((company) => (
-                  <div key={company.id} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`company-${company.id}`} 
-                      checked={selectedCompanyIds.includes(company.id)}
-                      onCheckedChange={() => toggleCompany(company.id)}
-                    />
-                    <Label htmlFor={`company-${company.id}`} className="text-sm cursor-pointer">{company.name}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Clientes</Label>
-              <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-36 overflow-y-auto">
-                {availableClients.length > 0 ? (
-                  availableClients.map((client) => (
-                    <div key={client.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`client-${client.id}`} 
-                        checked={selectedClientIds.includes(client.id)}
-                        onCheckedChange={() => toggleClient(client.id)}
-                      />
-                      <Label htmlFor={`client-${client.id}`} className="text-sm cursor-pointer">
-                        {client.name} 
-                        <span className="text-xs text-gray-500 block">
-                          {companies.find(c => c.id === client.companyId)?.name || 'Sem empresa'}
-                        </span>
-                      </Label>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 col-span-2 text-center py-2">
-                    {selectedCompanyIds.length === 0 
-                      ? "Selecione uma empresa para ver seus clientes" 
-                      : "Nenhum cliente disponível para as empresas selecionadas"}
-                  </p>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome do usuário" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
+              />
+              <FormField
+                control={form.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="CPF do usuário" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Email do usuário" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Função</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a função" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="master">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Departamento</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Departamento" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Telefone" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="companyIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Empresas</FormLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {companies.map((company) => (
+                      <div key={company.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`company-${company.id}`}
+                          checked={field.value?.includes(company.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange([...(field.value || []), company.id]);
+                            } else {
+                              field.onChange(field.value?.filter((id) => id !== company.id));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`company-${company.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          {company.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="clientIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Clientes</FormLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {clients.map((client) => (
+                      <div key={client.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`client-${client.id}`}
+                          checked={field.value?.includes(client.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange([...(field.value || []), client.id]);
+                            } else {
+                              field.onChange(field.value?.filter((id) => id !== client.id));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`client-${client.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          {client.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div>
+              <h3 className="text-lg font-medium">Permissões</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                <FormField
+                  control={form.control}
+                  name="canCreate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Criar</FormLabel>
+                        <FormDescription>
+                          Permissão para criar novos registros.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canEdit"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Editar</FormLabel>
+                        <FormDescription>
+                          Permissão para editar registros existentes.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canDelete"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Deletar</FormLabel>
+                        <FormDescription>
+                          Permissão para deletar registros.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canMarkComplete"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Marcar como Completo</FormLabel>
+                        <FormDescription>
+                          Permissão para marcar ações como completas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canMarkDelayed"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Marcar como Atrasado</FormLabel>
+                        <FormDescription>
+                          Permissão para marcar ações como atrasadas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canAddNotes"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Adicionar Notas</FormLabel>
+                        <FormDescription>
+                          Permissão para adicionar notas às ações.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canViewReports"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Visualizar Relatórios</FormLabel>
+                        <FormDescription>
+                          Permissão para visualizar relatórios.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="viewAllActions"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Visualizar Todas as Ações</FormLabel>
+                        <FormDescription>
+                          Permissão para visualizar todas as ações, independentemente da atribuição.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canEditUser"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Editar Usuários</FormLabel>
+                        <FormDescription>
+                          Permissão para editar informações de outros usuários.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canEditAction"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Editar Ações</FormLabel>
+                        <FormDescription>
+                          Permissão para editar informações das ações.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="canEditClient"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Editar Clientes</FormLabel>
+                        <FormDescription>
+                          Permissão para editar informações dos clientes.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canDeleteClient"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Deletar Clientes</FormLabel>
+                        <FormDescription>
+                          Permissão para deletar clientes.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canCreateClient"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Criar Clientes</FormLabel>
+                        <FormDescription>
+                          Permissão para criar novos clientes.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canEditCompany"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Editar Empresas</FormLabel>
+                        <FormDescription>
+                          Permissão para editar informações das empresas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canDeleteCompany"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Deletar Empresas</FormLabel>
+                        <FormDescription>
+                          Permissão para deletar empresas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="viewOnlyAssignedActions"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Visualizar Apenas Ações Atribuídas</FormLabel>
+                        <FormDescription>
+                          Permissão para visualizar apenas as ações que foram atribuídas a este usuário.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
-
-            <div className="grid gap-2">
-              <Label>Permissões</Label>
-              <div className="grid grid-cols-2 gap-2 border rounded-md p-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canCreate"
-                    checked={permissions.canCreate}
-                    onCheckedChange={() => togglePermission('canCreate')}
-                  />
-                  <Label htmlFor="canCreate" className="text-sm cursor-pointer">Criar ações</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canEdit"
-                    checked={permissions.canEdit}
-                    onCheckedChange={() => togglePermission('canEdit')}
-                  />
-                  <Label htmlFor="canEdit" className="text-sm cursor-pointer">Editar ações</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canDelete"
-                    checked={permissions.canDelete}
-                    onCheckedChange={() => togglePermission('canDelete')}
-                  />
-                  <Label htmlFor="canDelete" className="text-sm cursor-pointer">Excluir ações</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canMarkComplete"
-                    checked={permissions.canMarkComplete}
-                    onCheckedChange={() => togglePermission('canMarkComplete')}
-                  />
-                  <Label htmlFor="canMarkComplete" className="text-sm cursor-pointer">Marcar como concluído</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canMarkDelayed"
-                    checked={permissions.canMarkDelayed}
-                    onCheckedChange={() => togglePermission('canMarkDelayed')}
-                  />
-                  <Label htmlFor="canMarkDelayed" className="text-sm cursor-pointer">Marcar como atrasado</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canAddNotes"
-                    checked={permissions.canAddNotes}
-                    onCheckedChange={() => togglePermission('canAddNotes')}
-                  />
-                  <Label htmlFor="canAddNotes" className="text-sm cursor-pointer">Adicionar notas</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canViewReports"
-                    checked={permissions.canViewReports}
-                    onCheckedChange={() => togglePermission('canViewReports')}
-                  />
-                  <Label htmlFor="canViewReports" className="text-sm cursor-pointer">Ver relatórios</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="viewAllActions"
-                    checked={permissions.viewAllActions}
-                    onCheckedChange={() => togglePermission('viewAllActions')}
-                  />
-                  <Label htmlFor="viewAllActions" className="text-sm cursor-pointer">Ver todas as ações</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canEditUser"
-                    checked={permissions.canEditUser}
-                    onCheckedChange={() => togglePermission('canEditUser')}
-                  />
-                  <Label htmlFor="canEditUser" className="text-sm cursor-pointer">Gerenciar usuários</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canEditClient"
-                    checked={permissions.canEditClient}
-                    onCheckedChange={() => togglePermission('canEditClient')}
-                  />
-                  <Label htmlFor="canEditClient" className="text-sm cursor-pointer">Editar clientes</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canCreateClient"
-                    checked={permissions.canCreateClient}
-                    onCheckedChange={() => togglePermission('canCreateClient')}
-                  />
-                  <Label htmlFor="canCreateClient" className="text-sm cursor-pointer">Cadastrar clientes</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canDeleteClient"
-                    checked={permissions.canDeleteClient}
-                    onCheckedChange={() => togglePermission('canDeleteClient')}
-                  />
-                  <Label htmlFor="canDeleteClient" className="text-sm cursor-pointer">Excluir clientes</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canEditCompany"
-                    checked={permissions.canEditCompany}
-                    onCheckedChange={() => togglePermission('canEditCompany')}
-                  />
-                  <Label htmlFor="canEditCompany" className="text-sm cursor-pointer">Editar empresas</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="canDeleteCompany"
-                    checked={permissions.canDeleteCompany}
-                    onCheckedChange={() => togglePermission('canDeleteCompany')}
-                  />
-                  <Label htmlFor="canDeleteCompany" className="text-sm cursor-pointer">Excluir empresas</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="viewOnlyAssignedActions"
-                    checked={permissions.viewOnlyAssignedActions}
-                    onCheckedChange={() => togglePermission('viewOnlyAssignedActions')}
-                  />
-                  <Label htmlFor="viewOnlyAssignedActions" className="text-sm cursor-pointer">Ver apenas ações atribuídas</Label>
-                </div>
-              </div>
+            <div className="flex justify-end space-x-2">
+              {editUser && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isDeleting}>
+                      {isDeleting ? (
+                        <>
+                          <Trash className="mr-2 h-4 w-4 animate-spin" />
+                          Excluindo...
+                        </>
+                      ) : (
+                        <>
+                          <Trash className="mr-2 h-4 w-4" />
+                          Excluir
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação irá excluir o usuário permanentemente. Tem certeza que deseja
+                        continuar?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteUser} disabled={isDeleting}>
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    Salvar
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

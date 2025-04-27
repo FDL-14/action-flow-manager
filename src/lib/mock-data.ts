@@ -1,18 +1,16 @@
-
 import { User, Company, Responsible, Client, Action, ActionNote } from './types';
 
 export const defaultMasterUser: User = {
-  id: '1',
-  cpf: '80243088191',
-  name: 'Administrador Master',
-  email: 'fabiano@totalseguranca.net',
-  role: 'master',
-  companyIds: ['1'],
+  name: "Administrador",
+  cpf: "80243088191",
+  email: "admin@totaldata.com.br",
+  role: "master" as const,
+  companyIds: ["1"],
   permissions: [
-    { 
-      id: '1', 
-      name: 'all', 
-      description: 'Acesso total ao sistema',
+    {
+      id: "1",
+      name: "Master",
+      description: "All permissions",
       canCreate: true,
       canEdit: true,
       canDelete: true,
@@ -25,7 +23,7 @@ export const defaultMasterUser: User = {
       canEditAction: true,
       canEditClient: true,
       canDeleteClient: true,
-      canCreateClient: true,  // Adding this property
+      canCreateClient: true,
       canEditCompany: true,
       canDeleteCompany: true,
       viewOnlyAssignedActions: false
@@ -33,7 +31,6 @@ export const defaultMasterUser: User = {
   ]
 };
 
-// Usuários reais conforme a imagem
 export const additionalUsers: User[] = [
   {
     id: '2',
@@ -60,7 +57,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: false,
         canDeleteClient: false,
-        canCreateClient: false,  // Adding this property
+        canCreateClient: false,
         canEditCompany: false,
         canDeleteCompany: false,
         viewOnlyAssignedActions: true
@@ -92,7 +89,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: false,
         canDeleteClient: false,
-        canCreateClient: false,  // Adding this property
+        canCreateClient: false,
         canEditCompany: false,
         canDeleteCompany: false,
         viewOnlyAssignedActions: true
@@ -124,7 +121,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: true,
         canDeleteClient: true,
-        canCreateClient: true,  // Adding this property
+        canCreateClient: true,
         canEditCompany: true,
         canDeleteCompany: true,
         viewOnlyAssignedActions: false
@@ -156,7 +153,7 @@ export const additionalUsers: User[] = [
         canEditAction: true,
         canEditClient: true,
         canDeleteClient: true,
-        canCreateClient: true,  // Adding this property
+        canCreateClient: true,
         canEditCompany: true,
         canDeleteCompany: true,
         viewOnlyAssignedActions: false
@@ -175,7 +172,6 @@ export const defaultCompany: Company = {
   updatedAt: new Date('2025-04-11')
 };
 
-// Empresas adicionais para testes
 export const additionalCompanies: Company[] = [
   {
     id: '2',

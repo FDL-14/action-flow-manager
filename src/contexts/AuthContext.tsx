@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -166,6 +167,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (cpf: string, password: string) => {
     setLoading(true);
     try {
+      console.log(`Attempting login with CPF: ${cpf}`);
+      
+      // First, find the user by CPF to get their email
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('email')
@@ -173,18 +177,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (profileError || !profileData) {
-        throw new Error('Usuário não encontrado');
+        console.error('User lookup error:', profileError);
+        throw new Error('Usuário não encontrado com este CPF');
       }
+      
+      console.log(`Found user with email: ${profileData.email}`);
 
+      // Now login with the email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email: profileData.email,
         password,
       });
       
       if (error) {
+        console.error('Login error:', error);
         throw error;
       }
       
+      console.log('Login successful');
       return true;
     } catch (error: any) {
       console.error('Login error:', error);
