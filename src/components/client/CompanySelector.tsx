@@ -44,6 +44,11 @@ export const CompanySelector = ({
           <Select
             onValueChange={(value) => {
               console.log("Empresa selecionada:", value);
+              // Also set company name in form if available
+              const selectedCompany = companies.find(c => c.id === value);
+              if (selectedCompany) {
+                form.setValue("companyName", selectedCompany.name);
+              }
               setSelectedCompanyId(value);
               field.onChange(value);
               form.trigger("companyId");
