@@ -32,6 +32,7 @@ export const ClientList = ({
   canDeleteClients 
 }: ClientListProps) => {
   const { getActionsByClient } = useActions();
+  const { companies } = useCompany();
 
   if (clients.length === 0) {
     return (
@@ -45,6 +46,18 @@ export const ClientList = ({
       </Card>
     );
   }
+
+  // Função auxiliar para depuração
+  const debugCompanyInfo = (companyId: string) => {
+    console.log(`Buscando empresa com ID: ${companyId}`);
+    console.log(`Total de empresas disponíveis: ${companies.length}`);
+    companies.forEach(c => {
+      console.log(`Empresa disponível: ID=${c.id}, Nome=${c.name}`);
+    });
+    
+    const foundCompany = companies.find(c => c.id === companyId);
+    console.log(`Empresa encontrada: ${foundCompany ? foundCompany.name : 'Não encontrada'}`);
+  };
 
   return (
     <Card>
@@ -70,6 +83,11 @@ export const ClientList = ({
               const clientActions = getActionsByClient(client.id);
               const companyName = getCompanyNameById(client.companyId);
               
+              // Log para depuração
+              if (!companyName || companyName === 'Empresa não encontrada') {
+                debugCompanyInfo(client.companyId);
+              }
+              
               return (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
@@ -78,7 +96,7 @@ export const ClientList = ({
                       {client.name}
                     </div>
                   </TableCell>
-                  <TableCell>{companyName || 'Empresa não encontrada'}</TableCell>
+                  <TableCell>{companyName || 'Empresa não associada'}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       {client.email && (

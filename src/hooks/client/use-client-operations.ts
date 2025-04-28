@@ -39,7 +39,7 @@ export const useClientOperations = () => {
     initClients();
   }, [setClients]);
 
-  const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> & { companyName?: string }) => {
     try {
       if (!clientData.companyId) {
         toast.error("Erro ao salvar cliente", {
@@ -50,13 +50,19 @@ export const useClientOperations = () => {
       
       console.log("Adicionando cliente com dados:", clientData);
 
-      // Verifica se a empresa existe antes de continuar
-      const companyExists = await checkSupabaseCompanyExists(clientData.companyId);
+      // Se estamos lidando com uma string de ID numérico (não-UUID), não verificamos existência
+      const isNumericId = /^\d+$/.test(clientData.companyId);
+      let companyExists = true;
+      
+      if (!isNumericId) {
+        // Verifica se a empresa existe antes de continuar
+        companyExists = await checkSupabaseCompanyExists(clientData.companyId);
+      }
+      
       if (!companyExists) {
-        toast.error("Empresa não encontrada", {
-          description: "A empresa selecionada não existe ou foi removida."
+        toast.warning("ID de empresa inválido", {
+          description: "O ID da empresa selecionada não é válido. Tentando usar o nome da empresa."
         });
-        return null;
       }
       
       const supabaseClient = await addSupabaseClient({ ...clientData });
@@ -72,7 +78,7 @@ export const useClientOperations = () => {
         phone: supabaseClient.contact_phone || undefined,
         address: undefined,
         cnpj: undefined,
-        companyId: clientData.companyId, // Use o original fornecido pelo formulário
+        companyId: supabaseClient.company_id, // Use o ID retornado do Supabase
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
@@ -89,7 +95,7 @@ export const useClientOperations = () => {
     }
   };
 
-  const updateClient = async (updatedClient: Client) => {
+  const updateClient = async (updatedClient: Client & { companyName?: string }) => {
     try {
       if (!updatedClient.companyId) {
         toast.error("Erro ao atualizar cliente", {
@@ -98,13 +104,19 @@ export const useClientOperations = () => {
         return false;
       }
       
-      // Verifica se a empresa existe antes de continuar
-      const companyExists = await checkSupabaseCompanyExists(updatedClient.companyId);
+      // Se estamos lidando com uma string de ID numérico (não-UUID), não verificamos existência
+      const isNumericId = /^\d+$/.test(updatedClient.companyId);
+      let companyExists = true;
+      
+      if (!isNumericId) {
+        // Verifica se a empresa existe antes de continuar
+        companyExists = await checkSupabaseCompanyExists(updatedClient.companyId);
+      }
+      
       if (!companyExists) {
-        toast.error("Empresa não encontrada", {
-          description: "A empresa selecionada não existe ou foi removida."
+        toast.warning("ID de empresa inválido", {
+          description: "O ID da empresa selecionada não é válido. Tentando usar o nome da empresa."
         });
-        return false;
       }
       
       await updateSupabaseClient(updatedClient.id, updatedClient);

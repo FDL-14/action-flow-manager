@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -48,6 +49,7 @@ const ClientsPage = () => {
   }, [clients, selectedCompanyId, getClientsByCompanyId]);
 
   const handleEditClient = (client: Client) => {
+    console.log("Editando cliente:", client);
     setEditingClient(client);
     setShowClientForm(true);
   };
@@ -94,8 +96,20 @@ const ClientsPage = () => {
 
   const getCompanyNameById = (companyId: string): string => {
     if (!companyId) return 'Empresa não associada';
+    
+    console.log(`Buscando nome da empresa: ${companyId}`);
+    console.log(`Total de empresas: ${companies.length}`);
+    
     const foundCompany = companies.find(c => c.id === companyId);
-    return foundCompany ? foundCompany.name : 'Empresa não encontrada';
+    
+    if (foundCompany) {
+      console.log(`Empresa encontrada: ${foundCompany.name}`);
+      return foundCompany.name;
+    } else {
+      console.log(`Empresa não encontrada para ID: ${companyId}`);
+      companies.forEach(c => console.log(`Empresas disponíveis: ${c.id} - ${c.name}`));
+      return 'Empresa não encontrada';
+    }
   };
 
   return (

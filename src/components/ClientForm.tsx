@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +37,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
   isNewClient = false
 }) => {
   const { addClient, updateClient, companies } = useCompany();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   
   // Use editClient or initialData for backwards compatibility
   const clientData = editClient || initialData;
@@ -54,27 +56,46 @@ const ClientForm: React.FC<ClientFormProps> = ({
 
   // Reset form when initialData/editClient changes
   useEffect(() => {
-    if (clientData) {
-      form.reset({
-        name: clientData.name,
-        email: clientData.email || '',
-        phone: clientData.phone || '',
-        companyId: clientData.companyId || '',
-      });
-    } else {
-      form.reset({
-        name: '',
-        email: '',
-        phone: '',
-        companyId: '',
-      });
+    if (open) {
+      if (clientData) {
+        form.reset({
+          name: clientData.name,
+          email: clientData.email || '',
+          phone: clientData.phone || '',
+          companyId: clientData.companyId || '',
+        });
+        
+        setSelectedCompanyId(clientData.companyId || '');
+      } else {
+        // Para novos clientes, inicializar com a primeira empresa disponível
+        const defaultCompanyId = companies.length > 0 ? companies[0].id : '';
+        
+        form.reset({
+          name: '',
+          email: '',
+          phone: '',
+          companyId: defaultCompanyId,
+        });
+        
+        setSelectedCompanyId(defaultCompanyId);
+      }
     }
-  }, [clientData, form, open]);
+  }, [clientData, form, open, companies]);
 
   // Handle form submission
   const onSubmit = async (data: z.infer<typeof clientFormSchema>) => {
     try {
-      console.log("Form data:", data); // Debug log
+      console.log("Form data:", data);
+      
+      const companyInfo = companies.find(c => c.id === data.companyId);
+      console.log("Empresa selecionada:", companyInfo);
+      
+      if (!data.companyId || data.companyId.trim() === '') {
+        toast.error("Selecione uma empresa", { 
+          description: "É necessário selecionar uma empresa para o cliente."
+        });
+        return;
+      }
       
       if (isNew) {
         await addClient({
@@ -83,7 +104,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
           phone: data.phone,
           companyId: data.companyId,
           address: '',
-          cnpj: ''
+          cnpj: '',
+          companyName: companyInfo?.name // Adicionar nome da empresa para fallback
         });
         toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
       } else if (clientData) {
@@ -93,6 +115,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           email: data.email,
           phone: data.phone,
           companyId: data.companyId,
+          companyName: companyInfo?.name // Adicionar nome da empresa para fallback
         });
         toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
       }
@@ -161,7 +184,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
                 <FormItem>
                   <FormLabel>Empresa</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
+                    onValueChange={(value) => {
+                      console.log("Empresa selecionada:", value);
+                      field.onChange(value);
+                      setSelectedCompanyId(value);
+                    }} 
                     defaultValue={field.value}
                     value={field.value}
                   >
