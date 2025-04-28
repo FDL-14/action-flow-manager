@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -39,7 +40,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const useMockData = import.meta.env.DEV && !import.meta.env.VITE_USE_SUPABASE;
+  // Força o uso de mock data em desenvolvimento
+  const useMockData = import.meta.env.DEV;
 
   useEffect(() => {
     if (useMockData) {
@@ -189,7 +191,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`CPF limpo para autenticação: ${cleanedCpf}`);
       
       if (useMockData) {
-        const mockUser = users.find(u => u.cpf.replace(/[^\d]/g, '') === cleanedCpf);
+        console.log("Usando mock data para autenticação");
+        
+        // Busca o usuário pelo CPF nos dados mockados
+        const mockUser = users.find(u => {
+          const userCpf = u.cpf.replace(/[^\d]/g, '');
+          const matches = userCpf === cleanedCpf;
+          console.log(`Comparando CPF ${userCpf} com ${cleanedCpf}: ${matches}`);
+          return matches;
+        });
+        
         console.log("Usuário encontrado no mock:", mockUser);
         
         if (mockUser && password === '@54321') {
@@ -198,11 +209,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(mockUser);
           return true;
         } else {
-          console.error("Login falhou com mock data - usuário não encontrado ou senha incorreta");
-          throw new Error('CPF ou senha incorretos');
+          if (!mockUser) {
+            console.error(`Usuário com CPF ${cleanedCpf} não encontrado nos dados mockados`);
+            toast.error("CPF não encontrado", {
+              description: "Verifique o CPF digitado e tente novamente."
+            });
+          } else {
+            console.error("Senha incorreta para mock data");
+            toast.error("Senha incorreta", {
+              description: "Verifique a senha digitada e tente novamente."
+            });
+          }
+          return false;
         }
       }
       
+      // Modo Supabase (produção)
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('email')
@@ -211,7 +233,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError || !profileData) {
         console.error('User lookup error:', profileError);
-        throw new Error('Usuário não encontrado com este CPF');
+        toast.error("Usuário não encontrado", {
+          description: "Verifique o CPF digitado e tente novamente."
+        });
+        return false;
       }
       
       console.log(`Found user with email: ${profileData.email}`);
@@ -223,7 +248,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Login error:', error);
-        throw error;
+        toast.error("Senha incorreta", {
+          description: "Verifique a senha digitada e tente novamente."
+        });
+        return false;
       }
       
       console.log('Login successful');

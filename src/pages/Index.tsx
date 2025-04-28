@@ -37,21 +37,14 @@ const Index = () => {
     checkSupabaseConnection();
   }, []);
 
-  // Function to initialize default data - modified to check if already initialized
+  // Function to initialize default data
   useEffect(() => {
-    // Check if data has already been initialized
-    const alreadyInitialized = localStorage.getItem('data_initialized');
+    // Force re-initializing data
+    localStorage.removeItem('data_initialized');
     
     const initializeDefaultData = async () => {
-      // If data was already initialized, do nothing
-      if (alreadyInitialized === 'true') {
-        console.log("Dados já foram inicializados anteriormente, pulando inicialização");
-        return;
-      }
-      
       try {
         console.log("Inicializando dados padrão...");
-        localStorage.removeItem('data_initialized'); // Reset para garantir inicialização correta
         
         // Check and add additional companies
         if (companies) {
@@ -81,9 +74,14 @@ const Index = () => {
           console.log(`Total de usuários existentes: ${users.length}`);
           
           const normalizedMasterCPF = defaultMasterUser.cpf.replace(/\D/g, '');
+          console.log(`CPF master normalizado: ${normalizedMasterCPF}`);
           
           // Check if user with this CPF already exists
-          const existingMasterUser = users.find(u => u.cpf.replace(/\D/g, '') === normalizedMasterCPF);
+          const existingMasterUser = users.find(u => {
+            const userCpf = u.cpf.replace(/\D/g, '');
+            console.log(`Comparando CPF ${userCpf} com ${normalizedMasterCPF}`);
+            return userCpf === normalizedMasterCPF;
+          });
           
           if (!existingMasterUser) {
             console.log(`Adicionando usuário master ${defaultMasterUser.name} (CPF: ${defaultMasterUser.cpf}) ao localStorage`);
@@ -97,7 +95,7 @@ const Index = () => {
               permissions: defaultMasterUser.permissions
             });
           } else {
-            console.log(`Usuário master ${defaultMasterUser.name} já existe no localStorage (ID: ${existingMasterUser.id})`);
+            console.log(`Usuário master ${defaultMasterUser.name} já existe (ID: ${existingMasterUser.id})`);
           }
           
           // Check and add additional users
