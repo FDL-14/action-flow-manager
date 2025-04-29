@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const fetchSupabaseClients = async () => {
   try {
+    // Modificado para incluir o join com a tabela companies
     const { data, error } = await supabase
       .from('clients')
       .select('*, companies(name)');
@@ -14,18 +15,24 @@ export const fetchSupabaseClients = async () => {
     }
     
     if (data && data.length > 0) {
-      return data.map(c => ({
-        id: c.id,
-        name: c.name,
-        email: c.contact_email || undefined,
-        phone: c.contact_phone || undefined,
-        address: undefined,
-        cnpj: undefined,
-        companyId: c.company_id || '',
-        companyName: c.companies?.name || undefined, // Use company name from join if available
-        createdAt: new Date(c.created_at || new Date()),
-        updatedAt: new Date(c.updated_at || new Date())
-      }));
+      return data.map(c => {
+        // Extrair o nome da empresa do join, se disponível
+        const companyName = c.companies?.name || undefined;
+        console.log(`Cliente carregado: ${c.name}, Empresa: ${companyName || 'não definida'}`);
+        
+        return {
+          id: c.id,
+          name: c.name,
+          email: c.contact_email || undefined,
+          phone: c.contact_phone || undefined,
+          address: undefined,
+          cnpj: undefined,
+          companyId: c.company_id || '',
+          companyName: companyName, // Usar o nome da empresa do join
+          createdAt: new Date(c.created_at || new Date()),
+          updatedAt: new Date(c.updated_at || new Date())
+        };
+      });
     }
     
     return [];
@@ -50,7 +57,7 @@ export const checkSupabaseCompanyExists = async (companyId: string): Promise<boo
     
     const { data, error } = await supabase
       .from('companies')
-      .select('id')
+      .select('id, name')
       .eq('id', companyId)
       .single();
     
@@ -130,28 +137,31 @@ export const addSupabaseClient = async (clientData: any) => {
     // Verificamos se o ID da empresa é um UUID válido
     // Se não for, precisamos obter o UUID correto da empresa pelo nome ou criar uma nova
     let companyId = clientData.companyId;
+    let companyName = clientData.companyName;
+    
+    console.log("Adicionando cliente para empresa:", { id: companyId, nome: companyName });
     
     // Se não for um UUID válido, tratamos como um ID temporário e procuramos a empresa pelo nome
     if (!isValidUUID(companyId)) {
       console.log("ID da empresa não é um UUID válido, buscando empresa por nome ou criando uma nova");
       
       // Buscar empresa por nome se disponível
-      if (clientData.companyName) {
+      if (companyName) {
         const { data: existingCompanies } = await supabase
           .from('companies')
-          .select('id')
-          .eq('name', clientData.companyName)
+          .select('id, name')
+          .eq('name', companyName)
           .limit(1);
           
         if (existingCompanies && existingCompanies.length > 0) {
           companyId = existingCompanies[0].id;
-          console.log(`Empresa encontrada pelo nome "${clientData.companyName}": ${companyId}`);
+          console.log(`Empresa encontrada pelo nome "${companyName}": ${companyId}`);
         } else {
           // Criar uma nova empresa
           const { data: newCompany, error } = await supabase
             .from('companies')
             .insert({
-              name: clientData.companyName || 'Empresa do Cliente',
+              name: companyName || 'Empresa do Cliente',
             })
             .select()
             .single();
@@ -162,20 +172,36 @@ export const addSupabaseClient = async (clientData: any) => {
           }
           
           companyId = newCompany.id;
-          console.log(`Nova empresa criada com ID: ${companyId} e nome: ${clientData.companyName}`);
+          companyName = newCompany.name;
+          console.log(`Nova empresa criada com ID: ${companyId} e nome: ${companyName}`);
         }
       } else {
         // Fallback para empresas existentes
         const { data: fallbackCompany } = await supabase
           .from('companies')
-          .select('id')
+          .select('id, name')
           .limit(1);
           
         if (fallbackCompany && fallbackCompany.length > 0) {
           companyId = fallbackCompany[0].id;
-          console.log(`Usando empresa existente como fallback: ${companyId}`);
+          companyName = fallbackCompany[0].name;
+          console.log(`Usando empresa existente como fallback: ${companyId} (${companyName})`);
         } else {
           throw new Error("Não foi possível encontrar ou criar uma empresa válida");
+        }
+      }
+    } else {
+      // Se temos um UUID válido, vamos buscar o nome da empresa para garantir que temos essa informação
+      if (!companyName) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', companyId)
+          .single();
+          
+        if (companyData) {
+          companyName = companyData.name;
+          console.log(`Nome da empresa recuperado para ID ${companyId}: ${companyName}`);
         }
       }
     }
@@ -197,10 +223,17 @@ export const addSupabaseClient = async (clientData: any) => {
       throw error;
     }
     
-    console.log('Cliente salvo com sucesso:', supabaseClient);
+    // Garantir que temos o nome da empresa
+    const finalCompanyName = supabaseClient.companies?.name || companyName || 'Empresa associada';
+    
+    console.log('Cliente salvo com sucesso:', {
+      ...supabaseClient,
+      company_name: finalCompanyName
+    });
+    
     return {
       ...supabaseClient,
-      company_name: supabaseClient.companies?.name // Adicionar nome da empresa ao resultado
+      company_name: finalCompanyName
     };
   } catch (error) {
     console.error('Erro ao adicionar cliente:', error);
@@ -216,26 +249,29 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
     
     // Tratamento similar ao addSupabaseClient para garantir UUID válido
     let companyId = clientData.companyId;
+    let companyName = clientData.companyName;
+    
+    console.log("Atualizando cliente com dados de empresa:", { id: companyId, nome: companyName });
     
     if (!isValidUUID(companyId)) {
       console.log("ID da empresa na atualização não é um UUID válido, buscando empresa existente");
       
-      if (clientData.companyName) {
+      if (companyName) {
         const { data: existingCompanies } = await supabase
           .from('companies')
-          .select('id')
-          .eq('name', clientData.companyName)
+          .select('id, name')
+          .eq('name', companyName)
           .limit(1);
           
         if (existingCompanies && existingCompanies.length > 0) {
           companyId = existingCompanies[0].id;
-          console.log(`Empresa encontrada pelo nome "${clientData.companyName}": ${companyId}`);
+          console.log(`Empresa encontrada pelo nome "${companyName}": ${companyId}`);
         } else {
           // Criar uma nova empresa se necessário
           const { data: newCompany, error } = await supabase
             .from('companies')
             .insert({
-              name: clientData.companyName
+              name: companyName
             })
             .select()
             .single();
@@ -245,33 +281,52 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           }
           
           companyId = newCompany.id;
-          console.log(`Nova empresa criada com ID: ${companyId} e nome: ${clientData.companyName}`);
+          companyName = newCompany.name;
+          console.log(`Nova empresa criada com ID: ${companyId} e nome: ${companyName}`);
         }
       } else {
         // Obter o ID atual da empresa para preservar a relação
         const { data: currentClient } = await supabase
           .from('clients')
-          .select('company_id')
+          .select('company_id, companies(name)')
           .eq('id', clientId)
           .single();
           
         if (currentClient && currentClient.company_id) {
           companyId = currentClient.company_id;
+          companyName = currentClient.companies?.name;
+          console.log(`Mantendo empresa atual: ${companyId} (${companyName || 'sem nome'})`);
         } else {
           // Fallback para qualquer empresa existente
           const { data: fallbackCompany } = await supabase
             .from('companies')
-            .select('id')
+            .select('id, name')
             .limit(1);
             
           if (fallbackCompany && fallbackCompany.length > 0) {
             companyId = fallbackCompany[0].id;
+            companyName = fallbackCompany[0].name;
+            console.log(`Usando empresa de fallback: ${companyId} (${companyName})`);
           } else {
             throw new Error("Não foi possível encontrar uma empresa válida");
           }
         }
       }
+    } else if (!companyName) {
+      // Se temos um UUID válido, vamos buscar o nome da empresa
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', companyId)
+        .single();
+        
+      if (companyData) {
+        companyName = companyData.name;
+        console.log(`Nome da empresa recuperado para ID ${companyId}: ${companyName}`);
+      }
     }
+    
+    console.log(`Atualizando cliente ${clientId} com empresa: ${companyId} (${companyName || 'sem nome'})`);
     
     const { error } = await supabase
       .from('clients')

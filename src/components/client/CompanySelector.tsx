@@ -83,7 +83,7 @@ export const CompanySelector = ({
               {companies.length > 0 ? (
                 companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
-                    {company.name} (ID: {company.id})
+                    {company.name}
                   </SelectItem>
                 ))
               ) : (

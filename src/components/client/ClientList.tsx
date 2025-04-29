@@ -70,9 +70,11 @@ export const ClientList = ({
             {clients.map((client) => {
               const clientActions = getActionsByClient(client.id);
               
-              // Use companyName from client if available, otherwise lookup by ID
+              // Modificação: Dá prioridade ao companyName do cliente, se existir
               let companyName = client.companyName;
-              if (!companyName) {
+              
+              // Se não tiver companyName, procura pelo ID da empresa
+              if (!companyName && client.companyId) {
                 companyName = getCompanyNameById(client.companyId);
                 console.log(`Empresa para cliente ${client.name}: ID=${client.companyId}, Nome=${companyName}`);
               }

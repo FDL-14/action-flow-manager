@@ -49,6 +49,7 @@ export const useClientOperations = () => {
       }
       
       console.log("Adicionando cliente com dados:", clientData);
+      console.log("Nome da empresa a ser associada:", clientData.companyName);
 
       // Se estamos lidando com uma string de ID numérico (não-UUID), não verificamos existência
       const isNumericId = /^\d+$/.test(clientData.companyId);
@@ -79,11 +80,13 @@ export const useClientOperations = () => {
         phone: supabaseClient.contact_phone || undefined,
         address: undefined,
         cnpj: undefined,
-        companyId: supabaseClient.company_id, // Use o ID retornado do Supabase
-        companyName: clientData.companyName, // Guarda o nome da empresa
+        companyId: supabaseClient.company_id, 
+        companyName: clientData.companyName || supabaseClient.company_name || 'Empresa não encontrada',
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
+      
+      console.log("Cliente adicionado com companyName:", newClient.companyName);
       
       setClients(prev => [...prev, newClient]);
       toast.success("Cliente adicionado com sucesso");
@@ -107,6 +110,7 @@ export const useClientOperations = () => {
       }
       
       console.log("Atualizando cliente:", updatedClient);
+      console.log("Nome da empresa associada:", updatedClient.companyName);
       
       // Se estamos lidando com uma string de ID numérico (não-UUID), não verificamos existência
       const isNumericId = /^\d+$/.test(updatedClient.companyId);
@@ -175,7 +179,7 @@ export const useClientOperations = () => {
     
     const filteredClients = clients.filter(client => {
       const result = client.companyId === companyId;
-      console.log(`Cliente ${client.name}: companyId=${client.companyId}, target=${companyId}, match=${result}`);
+      console.log(`Cliente ${client.name}: companyId=${client.companyId}, target=${companyId}, match=${result}, companyName=${client.companyName || 'não definido'}`);
       return result;
     });
     
