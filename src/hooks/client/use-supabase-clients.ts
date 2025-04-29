@@ -1,3 +1,4 @@
+
 import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -223,7 +224,10 @@ export const addSupabaseClient = async (clientData: any) => {
     }
     
     // Garantir que temos o nome da empresa
-    const finalCompanyName = supabaseClient.companies?.name || companyName || 'Empresa associada';
+    // Corrigido para acessar corretamente o nome da empresa do objeto returnado pelo Supabase
+    const finalCompanyName = typeof supabaseClient.companies === 'object' && supabaseClient.companies ? 
+      supabaseClient.companies.name : 
+      companyName || 'Empresa associada';
     
     console.log('Cliente salvo com sucesso:', {
       ...supabaseClient,
@@ -293,11 +297,15 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           
         if (currentClient && currentClient.company_id) {
           companyId = currentClient.company_id;
-          // Fix: TypeScript não entende que companies é um objeto e não um array
-          // Precisamos verificar o formato e acessar o nome corretamente
-          companyName = currentClient.companies ? 
-            (typeof currentClient.companies === 'object' && !Array.isArray(currentClient.companies) ? 
-              currentClient.companies.name : null) : null;
+          
+          // Corrigida a forma de acessar o nome da empresa
+          // Tratamento seguro para acessar o nome dentro do objeto companies
+          if (currentClient.companies && typeof currentClient.companies === 'object') {
+            companyName = (currentClient.companies as any).name || null;
+          } else {
+            companyName = null;
+          }
+          
           console.log(`Mantendo empresa atual: ${companyId} (${companyName || 'sem nome'})`);
         } else {
           // Fallback para qualquer empresa existente

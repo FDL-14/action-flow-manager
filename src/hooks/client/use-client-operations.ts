@@ -73,6 +73,13 @@ export const useClientOperations = () => {
         throw new Error("Falha ao adicionar cliente no banco de dados");
       }
       
+      // Corrigido o acesso ao nome da empresa
+      const companyName = 
+        clientData.companyName || 
+        (supabaseClient.company_name || 
+        (typeof supabaseClient.companies === 'object' && supabaseClient.companies ? 
+          (supabaseClient.companies as any).name : 'Empresa não encontrada'));
+      
       const newClient: Client = {
         id: supabaseClient.id,
         name: supabaseClient.name,
@@ -81,7 +88,7 @@ export const useClientOperations = () => {
         address: undefined,
         cnpj: undefined,
         companyId: supabaseClient.company_id, 
-        companyName: clientData.companyName || supabaseClient.company_name || 'Empresa não encontrada',
+        companyName: companyName,
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
