@@ -1,4 +1,3 @@
-
 import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,7 +19,10 @@ export const fetchSupabaseClients = async () => {
         let companyName;
         
         if (c.companies) {
-          companyName = c.companies.name;
+          // Check if companies is an object (not an array) and has name property
+          if (typeof c.companies === 'object' && !Array.isArray(c.companies) && c.companies.name) {
+            companyName = c.companies.name;
+          }
         }
         
         console.log(`Cliente carregado: ${c.name}, Empresa: ${companyName || 'não definida'}`);
@@ -139,8 +141,7 @@ export const addSupabaseClient = async (clientData: any) => {
       throw new Error("ID da empresa é obrigatório");
     }
     
-    // Verificamos se o ID da empresa é um UUID válido
-    // Se não for, precisamos obter o UUID correto da empresa pelo nome ou criar uma nova
+    // Tratamento similar ao addSupabaseClient para garantir UUID válido
     let companyId = clientData.companyId;
     let companyName = clientData.companyName;
     
@@ -232,7 +233,7 @@ export const addSupabaseClient = async (clientData: any) => {
     let finalCompanyName = companyName || 'Empresa associada';
     
     // Verificar se temos acesso ao nome da empresa através do join
-    if (supabaseClient.companies && typeof supabaseClient.companies === 'object') {
+    if (supabaseClient.companies && typeof supabaseClient.companies === 'object' && !Array.isArray(supabaseClient.companies)) {
       finalCompanyName = supabaseClient.companies.name || finalCompanyName;
     }
     
@@ -306,7 +307,7 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           companyId = currentClient.company_id;
           
           // Extrair corretamente o nome da empresa
-          if (currentClient.companies && typeof currentClient.companies === 'object') {
+          if (currentClient.companies && typeof currentClient.companies === 'object' && !Array.isArray(currentClient.companies)) {
             companyName = currentClient.companies.name || null;
           } else {
             companyName = null;
