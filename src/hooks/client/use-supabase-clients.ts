@@ -1,4 +1,3 @@
-
 import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -294,8 +293,11 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           
         if (currentClient && currentClient.company_id) {
           companyId = currentClient.company_id;
-          // Fix: Correcting how we access the company name from companies object
-          companyName = currentClient.companies ? currentClient.companies.name : null;
+          // Fix: TypeScript não entende que companies é um objeto e não um array
+          // Precisamos verificar o formato e acessar o nome corretamente
+          companyName = currentClient.companies ? 
+            (typeof currentClient.companies === 'object' && !Array.isArray(currentClient.companies) ? 
+              currentClient.companies.name : null) : null;
           console.log(`Mantendo empresa atual: ${companyId} (${companyName || 'sem nome'})`);
         } else {
           // Fallback para qualquer empresa existente
