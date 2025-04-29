@@ -1,3 +1,4 @@
+
 import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -307,8 +308,16 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           companyId = currentClient.company_id;
           
           // Extrair corretamente o nome da empresa
-          if (currentClient.companies && typeof currentClient.companies === 'object' && !Array.isArray(currentClient.companies)) {
-            companyName = currentClient.companies.name || null;
+          // Verificar se companies existe e é um objeto (não um array)
+          if (currentClient.companies) {
+            // Tratamento específico para evitar o erro TS2339
+            const companiesObj = currentClient.companies;
+            if (typeof companiesObj === 'object' && !Array.isArray(companiesObj)) {
+              // Verificação adicional de segurança para acessar a propriedade 'name'
+              companyName = 'name' in companiesObj ? companiesObj.name : null;
+            } else {
+              companyName = null;
+            }
           } else {
             companyName = null;
           }
