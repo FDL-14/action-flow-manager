@@ -294,7 +294,8 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           
         if (currentClient && currentClient.company_id) {
           companyId = currentClient.company_id;
-          companyName = currentClient.companies?.name;
+          // Fix: Correcting how we access the company name from companies object
+          companyName = currentClient.companies ? currentClient.companies.name : null;
           console.log(`Mantendo empresa atual: ${companyId} (${companyName || 'sem nome'})`);
         } else {
           // Fallback para qualquer empresa existente
