@@ -1,4 +1,3 @@
-
 import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -308,13 +307,20 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           companyId = currentClient.company_id;
           
           // Extrair corretamente o nome da empresa
-          // Verificar se companies existe e é um objeto (não um array)
+          // Verificar se companies existe
           if (currentClient.companies) {
             // Tratamento específico para evitar o erro TS2339
             const companiesObj = currentClient.companies;
+            
+            // Verificar se é um objeto e não um array
             if (typeof companiesObj === 'object' && !Array.isArray(companiesObj)) {
-              // Verificação adicional de segurança para acessar a propriedade 'name'
-              companyName = 'name' in companiesObj ? companiesObj.name : null;
+              // Usar uma asserção de tipo para garantir que podemos acessar a propriedade 'name'
+              // Primeiro verificamos se a propriedade existe usando o operador 'in'
+              if ('name' in companiesObj) {
+                companyName = (companiesObj as { name: string }).name;
+              } else {
+                companyName = null;
+              }
             } else {
               companyName = null;
             }
