@@ -73,12 +73,18 @@ export const useClientOperations = () => {
         throw new Error("Falha ao adicionar cliente no banco de dados");
       }
       
-      // Corrigido o acesso ao nome da empresa
-      const companyName = 
-        clientData.companyName || 
-        (supabaseClient.company_name || 
-        (typeof supabaseClient.companies === 'object' && supabaseClient.companies ? 
-          (supabaseClient.companies as any).name : 'Empresa não encontrada'));
+      // Extrair corretamente o nome da empresa
+      let companyName = clientData.companyName;
+      
+      if (supabaseClient.company_name) {
+        companyName = supabaseClient.company_name;
+      } else if (supabaseClient.companies && typeof supabaseClient.companies === 'object') {
+        companyName = supabaseClient.companies.name;
+      }
+      
+      if (!companyName) {
+        companyName = 'Empresa não encontrada';
+      }
       
       const newClient: Client = {
         id: supabaseClient.id,
@@ -137,9 +143,11 @@ export const useClientOperations = () => {
       
       await updateSupabaseClient(updatedClient.id, updatedClient);
       
+      // Garantir que o nome da empresa é mantido na atualização
       const updatedClients = clients.map(c => 
         c.id === updatedClient.id ? { 
           ...updatedClient, 
+          companyName: updatedClient.companyName,
           updatedAt: new Date() 
         } : c
       );

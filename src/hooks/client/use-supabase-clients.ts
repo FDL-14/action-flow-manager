@@ -17,7 +17,12 @@ export const fetchSupabaseClients = async () => {
     if (data && data.length > 0) {
       return data.map(c => {
         // Extrair o nome da empresa do join, se disponível
-        const companyName = c.companies?.name || undefined;
+        let companyName;
+        
+        if (c.companies) {
+          companyName = c.companies.name;
+        }
+        
         console.log(`Cliente carregado: ${c.name}, Empresa: ${companyName || 'não definida'}`);
         
         return {
@@ -28,7 +33,7 @@ export const fetchSupabaseClients = async () => {
           address: undefined,
           cnpj: undefined,
           companyId: c.company_id || '',
-          companyName: companyName, // Usar o nome da empresa do join
+          companyName: companyName, 
           createdAt: new Date(c.created_at || new Date()),
           updatedAt: new Date(c.updated_at || new Date())
         };
@@ -223,11 +228,13 @@ export const addSupabaseClient = async (clientData: any) => {
       throw error;
     }
     
-    // Garantir que temos o nome da empresa
-    // Corrigido para acessar corretamente o nome da empresa do objeto returnado pelo Supabase
-    const finalCompanyName = typeof supabaseClient.companies === 'object' && supabaseClient.companies ? 
-      supabaseClient.companies.name : 
-      companyName || 'Empresa associada';
+    // Extrair corretamente o nome da empresa da resposta
+    let finalCompanyName = companyName || 'Empresa associada';
+    
+    // Verificar se temos acesso ao nome da empresa através do join
+    if (supabaseClient.companies && typeof supabaseClient.companies === 'object') {
+      finalCompanyName = supabaseClient.companies.name || finalCompanyName;
+    }
     
     console.log('Cliente salvo com sucesso:', {
       ...supabaseClient,
@@ -298,10 +305,9 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
         if (currentClient && currentClient.company_id) {
           companyId = currentClient.company_id;
           
-          // Corrigida a forma de acessar o nome da empresa
-          // Tratamento seguro para acessar o nome dentro do objeto companies
+          // Extrair corretamente o nome da empresa
           if (currentClient.companies && typeof currentClient.companies === 'object') {
-            companyName = (currentClient.companies as any).name || null;
+            companyName = currentClient.companies.name || null;
           } else {
             companyName = null;
           }

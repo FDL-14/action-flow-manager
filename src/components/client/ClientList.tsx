@@ -70,14 +70,20 @@ export const ClientList = ({
             {clients.map((client) => {
               const clientActions = getActionsByClient(client.id);
               
-              // Modificação: Dá prioridade ao companyName do cliente, se existir
+              // Primeiro tenta usar o companyName já definido no cliente
               let companyName = client.companyName;
               
-              // Se não tiver companyName, procura pelo ID da empresa
+              // Se não tiver, busca pelo ID
               if (!companyName && client.companyId) {
                 companyName = getCompanyNameById(client.companyId);
-                console.log(`Empresa para cliente ${client.name}: ID=${client.companyId}, Nome=${companyName}`);
               }
+              
+              // Se ainda não tem nome, mostra mensagem padrão
+              if (!companyName) {
+                companyName = 'Empresa não encontrada';
+              }
+              
+              console.log(`Exibindo cliente ${client.name} com empresa: ${companyName}`);
               
               return (
                 <TableRow key={client.id}>
@@ -87,7 +93,7 @@ export const ClientList = ({
                       {client.name}
                     </div>
                   </TableCell>
-                  <TableCell>{companyName || 'Empresa não associada'}</TableCell>
+                  <TableCell>{companyName}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       {client.email && (
