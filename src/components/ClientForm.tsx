@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { CompanySelector } from '@/components/client/CompanySelector';
 
 // Define form schema with validation
 const clientFormSchema = z.object({
@@ -19,6 +19,7 @@ const clientFormSchema = z.object({
   phone: z.string().optional(),
   companyId: z.string({ required_error: "Selecione uma empresa" })
     .min(1, { message: 'Selecione uma empresa' }),
+  companyName: z.string().optional(),
 });
 
 export interface ClientFormProps {
@@ -51,6 +52,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
       email: clientData?.email || '',
       phone: clientData?.phone || '',
       companyId: clientData?.companyId || '',
+      companyName: clientData?.companyName || '',
     },
   });
 
@@ -63,18 +65,21 @@ const ClientForm: React.FC<ClientFormProps> = ({
           email: clientData.email || '',
           phone: clientData.phone || '',
           companyId: clientData.companyId || '',
+          companyName: clientData.companyName || '',
         });
         
         setSelectedCompanyId(clientData.companyId || '');
       } else {
         // Para novos clientes, inicializar com a primeira empresa disponível
         const defaultCompanyId = companies.length > 0 ? companies[0].id : '';
+        const defaultCompanyName = companies.length > 0 ? companies[0].name : '';
         
         form.reset({
           name: '',
           email: '',
           phone: '',
           companyId: defaultCompanyId,
+          companyName: defaultCompanyName,
         });
         
         setSelectedCompanyId(defaultCompanyId);
@@ -97,6 +102,9 @@ const ClientForm: React.FC<ClientFormProps> = ({
         return;
       }
       
+      // Ensure companyName is set
+      const companyName = companyInfo?.name || data.companyName || 'Empresa não encontrada';
+      
       if (isNew) {
         await addClient({
           name: data.name,
@@ -105,7 +113,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyId: data.companyId,
           address: '',
           cnpj: '',
-          companyName: companyInfo?.name // Adicionar nome da empresa para fallback
+          companyName: companyName
         });
         toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
       } else if (clientData) {
@@ -115,7 +123,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           email: data.email,
           phone: data.phone,
           companyId: data.companyId,
-          companyName: companyInfo?.name // Adicionar nome da empresa para fallback
+          companyName: companyName
         });
         toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
       }
@@ -177,37 +185,12 @@ const ClientForm: React.FC<ClientFormProps> = ({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="companyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Empresa</FormLabel>
-                  <Select 
-                    onValueChange={(value) => {
-                      console.log("Empresa selecionada:", value);
-                      field.onChange(value);
-                      setSelectedCompanyId(value);
-                    }} 
-                    defaultValue={field.value}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma empresa" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+            {/* Use the CompanySelector component */}
+            <CompanySelector 
+              form={form}
+              companies={companies}
+              selectedCompanyId={selectedCompanyId}
+              setSelectedCompanyId={setSelectedCompanyId}
             />
 
             <DialogFooter className="pt-4">

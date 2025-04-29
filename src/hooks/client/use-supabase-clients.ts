@@ -6,7 +6,7 @@ export const fetchSupabaseClients = async () => {
   try {
     const { data, error } = await supabase
       .from('clients')
-      .select('*');
+      .select('*, companies(name)');
       
     if (error) {
       console.error("Erro ao buscar clientes do Supabase:", error);
@@ -22,6 +22,7 @@ export const fetchSupabaseClients = async () => {
         address: undefined,
         cnpj: undefined,
         companyId: c.company_id || '',
+        companyName: c.companies?.name || undefined, // Use company name from join if available
         createdAt: new Date(c.created_at || new Date()),
         updatedAt: new Date(c.updated_at || new Date())
       }));
@@ -161,7 +162,7 @@ export const addSupabaseClient = async (clientData: any) => {
           }
           
           companyId = newCompany.id;
-          console.log(`Nova empresa criada com ID: ${companyId}`);
+          console.log(`Nova empresa criada com ID: ${companyId} e nome: ${clientData.companyName}`);
         }
       } else {
         // Fallback para empresas existentes
@@ -188,7 +189,7 @@ export const addSupabaseClient = async (clientData: any) => {
         contact_name: clientData.name,
         company_id: companyId // Agora temos certeza que é um UUID válido
       })
-      .select('*')
+      .select('*, companies(name)')
       .single();
       
     if (error) {
@@ -196,7 +197,11 @@ export const addSupabaseClient = async (clientData: any) => {
       throw error;
     }
     
-    return supabaseClient;
+    console.log('Cliente salvo com sucesso:', supabaseClient);
+    return {
+      ...supabaseClient,
+      company_name: supabaseClient.companies?.name // Adicionar nome da empresa ao resultado
+    };
   } catch (error) {
     console.error('Erro ao adicionar cliente:', error);
     throw error;
@@ -224,6 +229,7 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           
         if (existingCompanies && existingCompanies.length > 0) {
           companyId = existingCompanies[0].id;
+          console.log(`Empresa encontrada pelo nome "${clientData.companyName}": ${companyId}`);
         } else {
           // Criar uma nova empresa se necessário
           const { data: newCompany, error } = await supabase
@@ -239,6 +245,7 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
           }
           
           companyId = newCompany.id;
+          console.log(`Nova empresa criada com ID: ${companyId} e nome: ${clientData.companyName}`);
         }
       } else {
         // Obter o ID atual da empresa para preservar a relação
@@ -283,6 +290,7 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
       throw error;
     }
     
+    console.log('Cliente atualizado com sucesso. ID:', clientId);
     return true;
   } catch (error) {
     console.error('Erro ao atualizar cliente:', error);

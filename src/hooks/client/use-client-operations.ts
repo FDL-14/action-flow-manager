@@ -59,10 +59,11 @@ export const useClientOperations = () => {
         companyExists = await checkSupabaseCompanyExists(clientData.companyId);
       }
       
-      if (!companyExists) {
+      if (!companyExists && !clientData.companyName) {
         toast.warning("ID de empresa inválido", {
-          description: "O ID da empresa selecionada não é válido. Tentando usar o nome da empresa."
+          description: "O ID da empresa selecionada não é válido e nenhum nome de empresa foi fornecido."
         });
+        return null;
       }
       
       const supabaseClient = await addSupabaseClient({ ...clientData });
@@ -116,10 +117,11 @@ export const useClientOperations = () => {
         companyExists = await checkSupabaseCompanyExists(updatedClient.companyId);
       }
       
-      if (!companyExists) {
+      if (!companyExists && !updatedClient.companyName) {
         toast.warning("ID de empresa inválido", {
-          description: "O ID da empresa selecionada não é válido. Tentando usar o nome da empresa."
+          description: "O ID da empresa selecionada não é válido e nenhum nome de empresa foi fornecido."
         });
+        return false;
       }
       
       await updateSupabaseClient(updatedClient.id, updatedClient);
