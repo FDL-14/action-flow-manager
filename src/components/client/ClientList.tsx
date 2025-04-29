@@ -47,18 +47,6 @@ export const ClientList = ({
     );
   }
 
-  // Função auxiliar para depuração
-  const debugCompanyInfo = (companyId: string) => {
-    console.log(`Buscando empresa com ID: ${companyId}`);
-    console.log(`Total de empresas disponíveis: ${companies.length}`);
-    companies.forEach(c => {
-      console.log(`Empresa disponível: ID=${c.id}, Nome=${c.name}`);
-    });
-    
-    const foundCompany = companies.find(c => c.id === companyId);
-    console.log(`Empresa encontrada: ${foundCompany ? foundCompany.name : 'Não encontrada'}`);
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -81,11 +69,12 @@ export const ClientList = ({
           <TableBody>
             {clients.map((client) => {
               const clientActions = getActionsByClient(client.id);
-              const companyName = getCompanyNameById(client.companyId);
               
-              // Log para depuração
-              if (!companyName || companyName === 'Empresa não encontrada') {
-                debugCompanyInfo(client.companyId);
+              // Tenta usar companyName do cliente se disponível, senão busca pelo ID
+              let companyName = client.companyName;
+              if (!companyName) {
+                companyName = getCompanyNameById(client.companyId);
+                console.log(`Empresa para cliente ${client.name}: ID=${client.companyId}, Nome=${companyName}`);
               }
               
               return (

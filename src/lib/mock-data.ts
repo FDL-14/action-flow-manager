@@ -4,7 +4,7 @@ import { User, Company, Responsible, Client, Action, ActionNote } from './types'
 export const defaultMasterUser: User = {
   id: "1",
   name: "Administrador",
-  cpf: "80243088191", // CPF limpo sem formatação
+  cpf: "80243088191", // CPF limpo sem formatação para garantir consistência
   email: "admin@totaldata.com.br",
   role: "master" as const,
   companyIds: ["1"],

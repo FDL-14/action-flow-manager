@@ -39,7 +39,7 @@ export const useClientOperations = () => {
     initClients();
   }, [setClients]);
 
-  const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> & { companyName?: string }) => {
+  const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (!clientData.companyId) {
         toast.error("Erro ao salvar cliente", {
@@ -79,6 +79,7 @@ export const useClientOperations = () => {
         address: undefined,
         cnpj: undefined,
         companyId: supabaseClient.company_id, // Use o ID retornado do Supabase
+        companyName: clientData.companyName, // Guarda o nome da empresa
         createdAt: new Date(supabaseClient.created_at),
         updatedAt: new Date(supabaseClient.updated_at)
       };
@@ -95,7 +96,7 @@ export const useClientOperations = () => {
     }
   };
 
-  const updateClient = async (updatedClient: Client & { companyName?: string }) => {
+  const updateClient = async (updatedClient: Client) => {
     try {
       if (!updatedClient.companyId) {
         toast.error("Erro ao atualizar cliente", {
@@ -103,6 +104,8 @@ export const useClientOperations = () => {
         });
         return false;
       }
+      
+      console.log("Atualizando cliente:", updatedClient);
       
       // Se estamos lidando com uma string de ID numérico (não-UUID), não verificamos existência
       const isNumericId = /^\d+$/.test(updatedClient.companyId);

@@ -33,8 +33,8 @@ const LoginPage = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      cpf: '',
-      password: '',
+      cpf: '802.430.881-91', // Pre-fill with master user CPF
+      password: '@54321', // Pre-fill with default password for easier testing
     },
   });
 
@@ -70,22 +70,13 @@ const LoginPage = () => {
     }
   }, []);
 
-  // Pré-preencher CPF do usuário master para facilitar teste
-  useEffect(() => {
-    // Preencher para testes em desenvolvimento, substituir por dados reais em produção
-    if (import.meta.env.DEV) {
-      form.setValue('cpf', '802.430.881-91');
-      console.log("CPF pré-preenchido para testes: 802.430.881-91");
-    }
-  }, [form]);
-
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     
     try {
       // Limpar o CPF de qualquer formatação (pontos, traços)
       const cleanedCpf = data.cpf.replace(/\D/g, '');
-      console.log(`Tentando login com CPF: ${cleanedCpf}, senha: ${data.password.substring(0, 1)}${'*'.repeat(data.password.length - 1)}`);
+      console.log(`Tentando login com CPF limpo: ${cleanedCpf}, senha: ${data.password.substring(0, 1)}${'*'.repeat(data.password.length - 1)}`);
       
       const success = await login(cleanedCpf, data.password);
       

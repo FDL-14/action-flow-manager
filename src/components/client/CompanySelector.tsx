@@ -22,14 +22,29 @@ export const CompanySelector = ({
   useEffect(() => {
     if (selectedCompanyId && (!form.getValues("companyId") || form.getValues("companyId") !== selectedCompanyId)) {
       form.setValue("companyId", selectedCompanyId);
+
+      // Também definir o nome da empresa
+      const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+      if (selectedCompany) {
+        console.log("Definindo companyName para:", selectedCompany.name);
+        form.setValue("companyName", selectedCompany.name);
+      }
     }
-  }, [selectedCompanyId, form]);
+  }, [selectedCompanyId, form, companies]);
 
   // Garantir que o formulário tenha um valor de empresa válido quando as empresas forem carregadas
   useEffect(() => {
     if (companies.length > 0 && !form.getValues("companyId")) {
       const defaultCompanyId = companies[0].id;
       form.setValue("companyId", defaultCompanyId);
+      
+      // Também definir o nome da empresa padrão
+      const defaultCompany = companies.find(c => c.id === defaultCompanyId);
+      if (defaultCompany) {
+        console.log("Definindo companyName padrão para:", defaultCompany.name);
+        form.setValue("companyName", defaultCompany.name);
+      }
+      
       setSelectedCompanyId(defaultCompanyId);
     }
   }, [companies, form, setSelectedCompanyId]);
@@ -44,11 +59,14 @@ export const CompanySelector = ({
           <Select
             onValueChange={(value) => {
               console.log("Empresa selecionada:", value);
-              // Also set company name in form if available
+              
+              // Set company name in form when a company is selected
               const selectedCompany = companies.find(c => c.id === value);
               if (selectedCompany) {
+                console.log("Atualizando companyName para:", selectedCompany.name);
                 form.setValue("companyName", selectedCompany.name);
               }
+              
               setSelectedCompanyId(value);
               field.onChange(value);
               form.trigger("companyId");

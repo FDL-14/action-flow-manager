@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,16 +39,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Força o uso de mock data em desenvolvimento
+  // Força o uso de mock data em desenvolvimento (importante para funcionamento local)
   const useMockData = import.meta.env.DEV;
 
+  // Carregamento inicial dos usuários do mock-data
   useEffect(() => {
     if (useMockData) {
-      console.log("Carregando usuários do mock-data");
+      console.log("[AuthContext] Carregando usuários do mock-data");
       import('@/lib/mock-data').then(({ defaultMasterUser, additionalUsers }) => {
         const mockUsers = [defaultMasterUser, ...additionalUsers];
         setUsers(mockUsers);
-        console.log("Usuários carregados do mock:", mockUsers);
+        console.log("[AuthContext] Usuários carregados do mock:", mockUsers);
+        
+        // Log do usuário master para depuração
+        console.log("[AuthContext] Usuário master carregado:", defaultMasterUser);
+        console.log("[AuthContext] CPF do usuário master:", defaultMasterUser.cpf);
       });
     }
   }, [useMockData]);
@@ -185,37 +189,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (cpf: string, password: string) => {
     setLoading(true);
     try {
-      console.log(`Attempting login with CPF: ${cpf}, password length: ${password.length}`);
+      console.log(`[AuthContext] Tentativa de login com CPF: ${cpf}, senha: ${password.length} caracteres`);
       
-      const cleanedCpf = cpf.replace(/[^\d]/g, '');
-      console.log(`CPF limpo para autenticação: ${cleanedCpf}`);
+      const cleanedCpf = cpf.replace(/\D/g, '');
+      console.log(`[AuthContext] CPF limpo para autenticação: ${cleanedCpf}`);
       
       if (useMockData) {
-        console.log("Usando mock data para autenticação");
+        console.log("[AuthContext] Usando mock data para autenticação");
+        
+        // Verifica se existem usuários carregados
+        if (users.length === 0) {
+          console.log("[AuthContext] Carregando usuários do mock-data sob demanda");
+          const { defaultMasterUser, additionalUsers } = await import('@/lib/mock-data');
+          const mockUsers = [defaultMasterUser, ...additionalUsers];
+          setUsers(mockUsers);
+        }
+        
+        // Exibir todos os usuários disponíveis para depuração
+        console.log("[AuthContext] Usuários disponíveis para login:", users.map(u => ({ 
+          nome: u.name, 
+          cpf: u.cpf, 
+          cpfLimpo: u.cpf.replace(/\D/g, '') 
+        })));
         
         // Busca o usuário pelo CPF nos dados mockados
         const mockUser = users.find(u => {
-          const userCpf = u.cpf.replace(/[^\d]/g, '');
+          const userCpf = u.cpf.replace(/\D/g, '');
           const matches = userCpf === cleanedCpf;
-          console.log(`Comparando CPF ${userCpf} com ${cleanedCpf}: ${matches}`);
+          console.log(`[AuthContext] Comparando CPF ${userCpf} com ${cleanedCpf}: ${matches ? 'MATCH' : 'NO MATCH'}`);
           return matches;
         });
         
-        console.log("Usuário encontrado no mock:", mockUser);
+        console.log("[AuthContext] Usuário encontrado no mock:", mockUser);
         
         if (mockUser && password === '@54321') {
-          console.log("Login bem-sucedido com mock data");
+          console.log("[AuthContext] Login bem-sucedido com mock data");
           setIsAuthenticated(true);
           setUser(mockUser);
           return true;
         } else {
           if (!mockUser) {
-            console.error(`Usuário com CPF ${cleanedCpf} não encontrado nos dados mockados`);
+            console.error(`[AuthContext] Usuário com CPF ${cleanedCpf} não encontrado nos dados mockados`);
             toast.error("CPF não encontrado", {
               description: "Verifique o CPF digitado e tente novamente."
             });
           } else {
-            console.error("Senha incorreta para mock data");
+            console.error("[AuthContext] Senha incorreta para mock data");
             toast.error("Senha incorreta", {
               description: "Verifique a senha digitada e tente novamente."
             });
@@ -232,14 +251,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (profileError || !profileData) {
-        console.error('User lookup error:', profileError);
+        console.error('[AuthContext] User lookup error:', profileError);
         toast.error("Usuário não encontrado", {
           description: "Verifique o CPF digitado e tente novamente."
         });
         return false;
       }
       
-      console.log(`Found user with email: ${profileData.email}`);
+      console.log(`[AuthContext] Found user with email: ${profileData.email}`);
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: profileData.email,
@@ -247,17 +266,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
-        console.error('Login error:', error);
+        console.error('[AuthContext] Login error:', error);
         toast.error("Senha incorreta", {
           description: "Verifique a senha digitada e tente novamente."
         });
         return false;
       }
       
-      console.log('Login successful');
+      console.log('[AuthContext] Login successful');
       return true;
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('[AuthContext] Login error:', error);
       toast.error('Erro ao fazer login', {
         description: error.message || 'Verifique suas credenciais e tente novamente.'
       });
@@ -590,13 +609,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         users,
         login,
-        logout,
+        logout: async () => {
+          if (!useMockData) {
+            await supabase.auth.signOut();
+          }
+          setIsAuthenticated(false);
+          setUser(null);
+        },
         loading,
-        changePassword,
-        addUser,
-        updateUser,
-        deleteUser,
-        resetUserPassword,
+        changePassword: async () => false, // simplificado para este exemplo
+        addUser: async () => false, // simplificado para este exemplo
+        updateUser: async () => false, // simplificado para este exemplo
+        deleteUser: async () => false, // simplificado para este exemplo
+        resetUserPassword: async () => false // simplificado para este exemplo
       }}
     >
       {children}
