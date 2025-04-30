@@ -50,6 +50,16 @@ export const ensureSupabaseCompanyExists = async (companyData: any) => {
   }
   
   try {
+    // Se não for um UUID válido e tivermos um nome, tentamos criar ou encontrar pelo nome
+    if (!isValidUUID(companyData.id) && companyData.name) {
+      logDebug(`ID não é um UUID válido. Tentando criar ou encontrar empresa pelo nome: ${companyData.name}`);
+      const company = await findOrCreateCompanyByName(companyData.name);
+      if (company) {
+        logDebug(`Empresa encontrada/criada pelo nome. ID: ${company.id}`);
+        return company.id;
+      }
+    }
+
     // Verifica se a empresa já existe
     const exists = await checkSupabaseCompanyExists(companyData.id);
     
@@ -60,7 +70,7 @@ export const ensureSupabaseCompanyExists = async (companyData: any) => {
       const { data, error } = await supabase
         .from('companies')
         .insert({
-          id: companyData.id,
+          id: isValidUUID(companyData.id) ? companyData.id : undefined, // Só usa o ID se for um UUID válido
           name: companyData.name || 'Empresa',
           address: companyData.address || null,
           phone: companyData.phone || null,
@@ -154,6 +164,8 @@ export const findOrCreateCompanyByName = async (companyName: string | undefined)
 export const getCompanyNameById = async (companyId: string): Promise<string | null> => {
   try {
     if (!isValidUUID(companyId)) {
+      // Se não for um UUID válido, pode ser um ID local
+      // Vamos retornar null e deixar a camada superior lidar com isso
       return null;
     }
     
@@ -168,4 +180,33 @@ export const getCompanyNameById = async (companyId: string): Promise<string | nu
     logDebug('Erro ao buscar nome da empresa:', error);
     return null;
   }
+};
+
+/**
+ * Sync all local companies to Supabase
+ */
+export const syncLocalCompaniesToSupabase = async (companies: any[]) => {
+  if (!companies || companies.length === 0) {
+    logDebug("Nenhuma empresa para sincronizar");
+    return [];
+  }
+  
+  const syncedCompanies = [];
+  
+  for (const company of companies) {
+    try {
+      // Garantir que a empresa existe no Supabase
+      const companyId = await ensureSupabaseCompanyExists(company);
+      if (companyId) {
+        syncedCompanies.push({
+          ...company,
+          id: companyId
+        });
+      }
+    } catch (error) {
+      logDebug(`Erro ao sincronizar empresa ${company.name}:`, error);
+    }
+  }
+  
+  return syncedCompanies;
 };

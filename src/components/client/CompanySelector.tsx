@@ -3,7 +3,8 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Company } from "@/lib/types"
 import { UseFormReturn } from "react-hook-form"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { ensureSupabaseCompanyExists } from "@/hooks/client/supabase/company-operations"
 
 interface CompanySelectorProps {
   form: UseFormReturn<any>
@@ -18,16 +19,35 @@ export const CompanySelector = ({
   selectedCompanyId, 
   setSelectedCompanyId 
 }: CompanySelectorProps) => {
+  const [syncing, setSyncing] = useState(false);
+  
   // Garantir que o valor do formulário seja consistente com o selectedCompanyId
   useEffect(() => {
     if (selectedCompanyId && (!form.getValues("companyId") || form.getValues("companyId") !== selectedCompanyId)) {
       form.setValue("companyId", selectedCompanyId);
 
-      // Também definir o nome da empresa
+      // Encontrar e definir o nome da empresa
       const selectedCompany = companies.find(c => c.id === selectedCompanyId);
       if (selectedCompany) {
         console.log("Definindo companyName para:", selectedCompany.name);
         form.setValue("companyName", selectedCompany.name);
+        
+        // Sincronizar empresa com Supabase quando selecionada
+        const syncCompany = async () => {
+          try {
+            setSyncing(true);
+            await ensureSupabaseCompanyExists({
+              id: selectedCompany.id,
+              name: selectedCompany.name
+            });
+            setSyncing(false);
+          } catch (error) {
+            console.error("Erro ao sincronizar empresa com Supabase:", error);
+            setSyncing(false);
+          }
+        };
+        
+        syncCompany();
       }
     }
   }, [selectedCompanyId, form, companies]);
@@ -35,14 +55,32 @@ export const CompanySelector = ({
   // Garantir que o formulário tenha um valor de empresa válido quando as empresas forem carregadas
   useEffect(() => {
     if (companies.length > 0 && !form.getValues("companyId")) {
+      // Se não temos uma empresa selecionada, usar a primeira da lista
       const defaultCompanyId = companies[0].id;
       form.setValue("companyId", defaultCompanyId);
       
-      // Também definir o nome da empresa padrão
+      // Definir o nome da empresa padrão
       const defaultCompany = companies.find(c => c.id === defaultCompanyId);
       if (defaultCompany) {
         console.log("Definindo companyName padrão para:", defaultCompany.name);
         form.setValue("companyName", defaultCompany.name);
+        
+        // Sincronizar empresa padrão com Supabase
+        const syncCompany = async () => {
+          try {
+            setSyncing(true);
+            await ensureSupabaseCompanyExists({
+              id: defaultCompany.id,
+              name: defaultCompany.name
+            });
+            setSyncing(false);
+          } catch (error) {
+            console.error("Erro ao sincronizar empresa padrão com Supabase:", error);
+            setSyncing(false);
+          }
+        };
+        
+        syncCompany();
       }
       
       setSelectedCompanyId(defaultCompanyId);
@@ -57,26 +95,42 @@ export const CompanySelector = ({
         <FormItem>
           <FormLabel>Empresa</FormLabel>
           <Select
-            onValueChange={(value) => {
+            onValueChange={async (value) => {
               console.log("Empresa selecionada:", value);
               
-              // Set company name in form when a company is selected
+              // Atualizar formulário com o ID da empresa
+              field.onChange(value);
+              setSelectedCompanyId(value);
+              
+              // Encontrar e definir o nome da empresa
               const selectedCompany = companies.find(c => c.id === value);
               if (selectedCompany) {
                 console.log("Atualizando companyName para:", selectedCompany.name);
                 form.setValue("companyName", selectedCompany.name);
+                
+                // Sincronizar empresa com Supabase quando selecionada
+                try {
+                  setSyncing(true);
+                  await ensureSupabaseCompanyExists({
+                    id: selectedCompany.id,
+                    name: selectedCompany.name
+                  });
+                  setSyncing(false);
+                } catch (error) {
+                  console.error("Erro ao sincronizar empresa com Supabase:", error);
+                  setSyncing(false);
+                }
               }
               
-              setSelectedCompanyId(value);
-              field.onChange(value);
               form.trigger("companyId");
             }}
             defaultValue={field.value || selectedCompanyId}
             value={field.value || selectedCompanyId}
+            disabled={syncing}
           >
             <FormControl>
               <SelectTrigger className="bg-white">
-                <SelectValue placeholder="Selecione uma empresa" />
+                <SelectValue placeholder={syncing ? "Sincronizando..." : "Selecione uma empresa"} />
               </SelectTrigger>
             </FormControl>
             <SelectContent className="bg-white min-w-[240px] max-h-[300px] overflow-y-auto z-50">

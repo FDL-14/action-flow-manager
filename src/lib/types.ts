@@ -102,7 +102,7 @@ export interface Client {
   address?: string;
   cnpj?: string;
   companyId: string;
-  companyName?: string; // Added companyName property to store the name of the company
+  companyName?: string; // Explicit property to store the name of the company
   createdAt: Date;
   updatedAt: Date;
 }

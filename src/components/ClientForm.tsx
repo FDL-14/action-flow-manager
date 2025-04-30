@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { CompanySelector } from '@/components/client/CompanySelector';
+import { ensureSupabaseCompanyExists } from '@/hooks/client/supabase/company-operations';
 
 // Define form schema with validation
 const clientFormSchema = z.object({
@@ -39,6 +40,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
 }) => {
   const { addClient, updateClient, companies } = useCompany();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
   
   // Use editClient or initialData for backwards compatibility
   const clientData = editClient || initialData;
@@ -98,6 +100,9 @@ const ClientForm: React.FC<ClientFormProps> = ({
 
   // Handle form submission
   const onSubmit = async (data: z.infer<typeof clientFormSchema>) => {
+    if (submitting) return;
+    setSubmitting(true);
+    
     try {
       console.log("Form data:", data);
       
@@ -108,11 +113,26 @@ const ClientForm: React.FC<ClientFormProps> = ({
         toast.error("Selecione uma empresa", { 
           description: "É necessário selecionar uma empresa para o cliente."
         });
+        setSubmitting(false);
         return;
       }
       
       // Ensure companyName is set
       const companyName = companyInfo?.name || data.companyName || 'Empresa não encontrada';
+      
+      // Ensure the company exists in Supabase before proceeding
+      const companyId = await ensureSupabaseCompanyExists({
+        id: data.companyId,
+        name: companyName
+      });
+      
+      if (!companyId) {
+        toast.error("Erro ao processar empresa", {
+          description: "Não foi possível garantir que a empresa existe no banco de dados."
+        });
+        setSubmitting(false);
+        return;
+      }
       
       if (isNew) {
         // Create new client with company name
@@ -120,7 +140,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           name: data.name,
           email: data.email,
           phone: data.phone,
-          companyId: data.companyId,
+          companyId: companyId,
           address: '',
           cnpj: '',
           companyName: companyName
@@ -135,7 +155,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           name: data.name,
           email: data.email,
           phone: data.phone,
-          companyId: data.companyId,
+          companyId: companyId,
           companyName: companyName
         });
         
@@ -145,6 +165,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
       toast.error('Erro ao salvar', { description: 'Não foi possível salvar os dados do cliente.' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -211,10 +233,16 @@ const ClientForm: React.FC<ClientFormProps> = ({
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
+                disabled={submitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit">Salvar</Button>
+              <Button 
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? 'Salvando...' : 'Salvar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

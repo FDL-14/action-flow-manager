@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Client } from '@/lib/types';
 import { isValidUUID, logDebug } from './utils';
-import { findOrCreateCompanyByName, getCompanyNameById, checkSupabaseCompanyExists } from './company-operations';
+import { findOrCreateCompanyByName, getCompanyNameById, checkSupabaseCompanyExists, ensureSupabaseCompanyExists } from './company-operations';
 
 /**
  * Fetches all clients from Supabase with their associated companies
@@ -64,25 +64,25 @@ export const addSupabaseClient = async (clientData: any) => {
       throw new Error("ID da empresa é obrigatório");
     }
     
-    // Tratamento similar ao addSupabaseClient para garantir UUID válido
     let companyId = clientData.companyId;
     let companyName = clientData.companyName;
     
     logDebug("Adicionando cliente para empresa:", { id: companyId, nome: companyName });
     
-    // Se não for um UUID válido, tratamos como um ID temporário e procuramos a empresa pelo nome
-    if (!isValidUUID(companyId)) {
-      logDebug("ID da empresa não é um UUID válido, buscando empresa por nome ou criando uma nova");
-      
-      const company = await findOrCreateCompanyByName(companyName);
-      if (company) {
-        companyId = company.id;
-        companyName = company.name;
-      } else {
-        throw new Error("Não foi possível encontrar ou criar uma empresa válida");
-      }
-    } else if (!companyName) {
-      // Se temos um UUID válido, vamos buscar o nome da empresa para garantir que temos essa informação
+    // Garantir que a empresa exista no Supabase antes de continuar
+    const companyResult = await ensureSupabaseCompanyExists({
+      id: companyId,
+      name: companyName || 'Empresa sem nome'
+    });
+    
+    if (!companyResult) {
+      throw new Error("Falha ao garantir que a empresa exista no Supabase");
+    }
+    
+    companyId = companyResult;
+    
+    // Verificar se temos o nome da empresa
+    if (!companyName) {
       companyName = await getCompanyNameById(companyId);
     }
     
@@ -93,7 +93,7 @@ export const addSupabaseClient = async (clientData: any) => {
         contact_email: clientData.email || null,
         contact_phone: clientData.phone || null,
         contact_name: clientData.name,
-        company_id: companyId // Agora temos certeza que é um UUID válido
+        company_id: companyId
       })
       .select('*, companies(name)')
       .single();
@@ -135,71 +135,25 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
       throw new Error("ID da empresa é obrigatório");
     }
     
-    // Tratamento similar ao addSupabaseClient para garantir UUID válido
     let companyId = clientData.companyId;
     let companyName = clientData.companyName;
     
     logDebug("Atualizando cliente com dados de empresa:", { id: companyId, nome: companyName });
     
-    if (!isValidUUID(companyId)) {
-      logDebug("ID da empresa na atualização não é um UUID válido, buscando empresa existente");
-      
-      const company = await findOrCreateCompanyByName(companyName);
-      if (company) {
-        companyId = company.id;
-        companyName = company.name;
-      } else {
-        // Obter o ID atual da empresa para preservar a relação
-        const { data: currentClient } = await supabase
-          .from('clients')
-          .select('company_id, companies(name)')
-          .eq('id', clientId)
-          .single();
-          
-        if (currentClient && currentClient.company_id) {
-          companyId = currentClient.company_id;
-          
-          // Extrair corretamente o nome da empresa
-          // Verificar se companies existe
-          if (currentClient.companies) {
-            // Tratamento específico para evitar o erro TS2339
-            const companiesObj = currentClient.companies;
-            
-            // Verificar se é um objeto e não um array
-            if (typeof companiesObj === 'object' && !Array.isArray(companiesObj)) {
-              // Usar uma asserção de tipo para garantir que podemos acessar a propriedade 'name'
-              // Primeiro verificamos se a propriedade existe usando o operador 'in'
-              if ('name' in companiesObj) {
-                companyName = (companiesObj as { name: string }).name;
-              } else {
-                companyName = null;
-              }
-            } else {
-              companyName = null;
-            }
-          } else {
-            companyName = null;
-          }
-          
-          logDebug(`Mantendo empresa atual: ${companyId} (${companyName || 'sem nome'})`);
-        } else {
-          // Fallback para qualquer empresa existente
-          const { data: fallbackCompany } = await supabase
-            .from('companies')
-            .select('id, name')
-            .limit(1);
-            
-          if (fallbackCompany && fallbackCompany.length > 0) {
-            companyId = fallbackCompany[0].id;
-            companyName = fallbackCompany[0].name;
-            logDebug(`Usando empresa de fallback: ${companyId} (${companyName})`);
-          } else {
-            throw new Error("Não foi possível encontrar uma empresa válida");
-          }
-        }
-      }
-    } else if (!companyName) {
-      // Se temos um UUID válido, vamos buscar o nome da empresa
+    // Garantir que a empresa exista no Supabase antes de continuar
+    const companyResult = await ensureSupabaseCompanyExists({
+      id: companyId,
+      name: companyName || 'Empresa sem nome'
+    });
+    
+    if (!companyResult) {
+      throw new Error("Falha ao garantir que a empresa exista no Supabase");
+    }
+    
+    companyId = companyResult;
+    
+    // Verificar se temos o nome da empresa
+    if (!companyName) {
       companyName = await getCompanyNameById(companyId);
     }
     

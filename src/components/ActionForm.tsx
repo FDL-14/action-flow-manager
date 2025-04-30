@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -33,7 +33,8 @@ import {
 } from '@/components/ui/select';
 import { Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase, convertToUUID } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
+import { syncLocalCompaniesToSupabase } from '@/hooks/client/supabase/company-operations';
 
 interface ActionFormProps {
   open: boolean;
@@ -65,6 +66,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   >([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
   const [submitting, setSubmitting] = useState(false);
+  const [syncingCompanies, setSyncingCompanies] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -81,49 +83,23 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     },
   });
 
-  const validateCompanyExists = async (companyId: string): Promise<boolean> => {
-    try {
-      if (!companyId || companyId.trim() === '') {
-        console.error('CompanyID vazio fornecido para validação');
-        return false;
-      }
+  // Sincronizar empresas com o Supabase quando o formulário é aberto
+  useEffect(() => {
+    if (open && companies.length > 0) {
+      const syncCompanies = async () => {
+        try {
+          setSyncingCompanies(true);
+          await syncLocalCompaniesToSupabase(companies);
+          setSyncingCompanies(false);
+        } catch (error) {
+          console.error('Erro ao sincronizar empresas:', error);
+          setSyncingCompanies(false);
+        }
+      };
       
-      const existsLocally = companies.some(company => company.id === companyId);
-      
-      if (existsLocally) {
-        console.log(`Empresa ${companyId} encontrada localmente.`);
-        return true;
-      }
-      
-      const supabaseId = convertToUUID(companyId);
-      
-      if (!supabaseId) {
-        console.error('Não foi possível converter o ID da empresa para UUID');
-        return false;
-      }
-      
-      console.log(`Verificando empresa com ID convertido: ${supabaseId}`);
-      
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('id', supabaseId)
-        .limit(1);
-        
-      if (error) {
-        console.error('Erro ao verificar empresa:', error);
-        return false;
-      }
-      
-      const exists = data && data.length > 0;
-      console.log(`Empresa existe no Supabase: ${exists}`, data);
-      
-      return exists;
-    } catch (error) {
-      console.error('Erro ao validar empresa:', error);
-      return false;
+      syncCompanies();
     }
-  };
+  }, [open, companies]);
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -189,7 +165,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (submitting) return;
+    if (submitting || syncingCompanies) return;
     setSubmitting(true);
     
     try {
@@ -215,20 +191,53 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
       }
       
       const empresa = companies.find(c => c.id === values.companyId);
-      console.log('Empresa encontrada localmente:', empresa);
+      console.log('Empresa selecionada:', empresa);
       
-      const empresaExiste = await validateCompanyExists(values.companyId);
-      if (!empresaExiste) {
-        toast({
-          title: "Erro",
-          description: `A empresa selecionada não existe no banco de dados`,
-          variant: "destructive",
-        });
-        setSubmitting(false);
-        return;
+      // Aqui garantimos que a empresa seja sincronizada com o Supabase
+      const companyData = {
+        id: empresa?.id || values.companyId,
+        name: empresa?.name || 'Empresa sem nome'
+      };
+      
+      // Sincronizar empresa selecionada com o Supabase
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL || 'https://tsjdsbxgottssqqlzfxl.supabase.co',
+        import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzamRzYnhnb3R0c3NxcWx6ZnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1ODM3NDgsImV4cCI6MjA2MDE1OTc0OH0.3WVd3cIBxyUlJGBjCzwLs5YY14xC6ZNtMbb5zuxF0EY'
+      );
+      
+      // Verificar se a empresa já existe
+      const { data: existingCompany } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('name', companyData.name)
+        .limit(1);
+        
+      if (!existingCompany || existingCompany.length === 0) {
+        // Criar a empresa
+        const { data, error } = await supabase
+          .from('companies')
+          .insert({
+            name: companyData.name
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Erro ao criar empresa:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível criar a empresa no banco de dados",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+        
+        values.companyId = data.id;
+      } else {
+        values.companyId = existingCompany[0].id;
       }
-      
-      console.log('Empresa confirmada no banco:', values.companyId);
       
       const uploadedAttachments: string[] = [];
       
@@ -346,16 +355,17 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       console.log('Clientes disponíveis para esta empresa:', clientesDisponiveis);
                     }} 
                     defaultValue={field.value}
+                    disabled={syncingCompanies}
                   >
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma empresa" />
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder={syncingCompanies ? "Sincronizando empresas..." : "Selecione uma empresa"} />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {companies.map((company) => (
                         <SelectItem key={company.id} value={company.id}>
-                          {company.name} (ID: {company.id})
+                          {company.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -379,7 +389,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white">
                         <SelectValue placeholder={
                           filteredClients.length > 0 
                             ? "Selecione um cliente" 
@@ -387,9 +397,9 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                         } />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {filteredClients.length === 0 ? (
-                        <SelectItem value="no_clients_available">
+                        <SelectItem value="no_clients_available" disabled>
                           Nenhum cliente disponível
                         </SelectItem>
                       ) : (
@@ -569,11 +579,11 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting || syncingCompanies}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? 'Salvando...' : 'Salvar Ação'}
+              <Button type="submit" disabled={submitting || syncingCompanies}>
+                {submitting ? 'Salvando...' : (syncingCompanies ? 'Sincronizando...' : 'Salvar Ação')}
               </Button>
             </DialogFooter>
           </form>
