@@ -83,8 +83,9 @@ const LoginPage = () => {
       const cleanedCpf = data.cpf.replace(/\D/g, '');
       console.log(`Tentando login com CPF limpo: ${cleanedCpf}, senha: ${data.password.substring(0, 1)}${'*'.repeat(data.password.length - 1)}`);
       
-      // Check for hardcoded master user
+      // Check for hardcoded master user directly here first
       if (cleanedCpf === '80243088191' && data.password === '@54321') {
+        console.log("Login direto com usuário master");
         // Força login do usuário master
         localStorage.setItem('userAuthenticated', 'true');
         localStorage.setItem('userRole', 'master');

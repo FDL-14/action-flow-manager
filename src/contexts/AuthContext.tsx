@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '@/lib/types';
 import { mockUsers } from '@/lib/mock-data';
@@ -81,11 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Outros campos necessários
           }));
           
-          // Mescla os usuários mock com os do Supabase
-          // const mergedUsers = [...formattedUsers, ...mockUsersCopy];
-          // setUsers(mergedUsers);
-          // localStorage.setItem('appUsers', JSON.stringify(mergedUsers));
-          
           // Por enquanto vamos usar apenas os mock para evitar problemas
           setUsers(mockUsersCopy);
           localStorage.setItem('appUsers', JSON.stringify(mockUsersCopy));
@@ -152,21 +146,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(masterUser);
           setIsAuthenticated(true);
         } else if (storedCpf) {
-          fetchUsers().then(() => {
-            const foundUser = users.find(u => u.cpf === storedCpf);
-            
-            if (foundUser) {
-              setUser(foundUser);
-              setIsAuthenticated(true);
-            } else {
-              // Usuário não encontrado, limpar localStorage
-              localStorage.removeItem('userAuthenticated');
-              localStorage.removeItem('userCPF');
-              localStorage.removeItem('userRole');
-              localStorage.removeItem('userName');
-              setIsAuthenticated(false);
-            }
+          // Buscar usuário por CPF no array de usuários
+          const foundUser = users.find(u => {
+            // Limpar CPF para comparação (remover pontos e traços)
+            const userCpf = u.cpf.replace(/\D/g, '');
+            return userCpf === storedCpf;
           });
+          
+          if (foundUser) {
+            setUser(foundUser);
+            setIsAuthenticated(true);
+          } else {
+            // Usuário não encontrado, limpar localStorage
+            localStorage.removeItem('userAuthenticated');
+            localStorage.removeItem('userCPF');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('userName');
+            setIsAuthenticated(false);
+          }
         } else {
           setIsAuthenticated(false);
         }
@@ -179,14 +176,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Carrega os usuários e depois verifica autenticação
     fetchUsers().then(checkAuthState);
-  }, []);
+  }, [users.length]);
 
   const login = async (cpf: string, password: string): Promise<boolean> => {
     try {
       console.log("Attempting login with CPF:", cpf, "password length:", password.length);
       
-      // Verificar se é o usuário master hardcoded
+      // Verificar se é o usuário master hardcoded - MASTER USER DIRECT CHECK
       if (cpf === '80243088191' && password === '@54321') {
+        console.log("Autenticando como usuário master");
+        
         const masterUser: User = {
           id: 'master-user',
           name: 'Administrador Master',
@@ -231,14 +230,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       
-      // Limpar o CPF para busca (remover formatação)
-      const cleanedCpf = cpf.replace(/\D/g, '');
-      console.log("CPF limpo para autenticação:", cleanedCpf);
-      
       // Verificar nos usuários mockados/localStorage
-      const foundUser = users.find(u => u.cpf === cleanedCpf);
+      const foundUser = users.find(u => {
+        // Limpar CPF para comparação (remover pontos e traços)
+        const userCpf = u.cpf.replace(/\D/g, '');
+        return userCpf === cpf;
+      });
+      
+      console.log("Found user:", foundUser);
       
       if (foundUser && foundUser.password === password) {
+        console.log("Usuário encontrado e senha correta");
+        
         setUser(foundUser);
         setIsAuthenticated(true);
         
@@ -251,14 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       
-      // Verificar no Supabase se não encontrou nos mocks
-      try {
-        // Implementação para buscar do Supabase
-        // Para implementar depois
-      } catch (e) {
-        console.error("Erro ao verificar usuário no Supabase:", e);
-      }
-      
+      console.log("Login falhou após verificar todos os usuários");
       return false; // Login inválido
     } catch (error) {
       console.error("Erro durante o processo de login:", error);
