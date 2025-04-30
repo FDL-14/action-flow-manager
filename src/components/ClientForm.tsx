@@ -116,7 +116,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
       
       if (isNew) {
         // Create new client with company name
-        const clientResult = await addClient({
+        await addClient({
           name: data.name,
           email: data.email,
           phone: data.phone,
@@ -126,13 +126,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        if (clientResult) {
-          toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
-          onOpenChange(false);
-        }
+        toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
+        onOpenChange(false);
       } else if (clientData) {
         // Update existing client with company name
-        const success = await updateClient({
+        await updateClient({
           ...clientData,
           name: data.name,
           email: data.email,
@@ -141,10 +139,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        if (success) {
-          toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
-          onOpenChange(false);
-        }
+        toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
+        onOpenChange(false);
       }
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);

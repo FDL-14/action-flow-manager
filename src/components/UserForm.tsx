@@ -776,7 +776,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteUser(editUser.id)} disabled={isDeleting}>
+                      <AlertDialogAction onClick={handleDeleteUser} disabled={isDeleting}>
                         Excluir
                       </AlertDialogAction>
                     </AlertDialogFooter>
