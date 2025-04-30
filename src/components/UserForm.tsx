@@ -162,7 +162,8 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       let success;
       
       if (editUser) {
-        success = await updateUser(editUser.id, {
+        success = await updateUser({
+          ...editUser,
           name: data.name,
           cpf: data.cpf,
           email: data.email,
@@ -307,7 +308,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Email do usuário" {...field} />
+                      <Input placeholder="Email do usu��rio" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
