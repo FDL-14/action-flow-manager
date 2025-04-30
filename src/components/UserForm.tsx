@@ -80,7 +80,7 @@ const formSchema = z.object({
   canEditCompany: z.boolean().default(false),
   canDeleteCompany: z.boolean().default(false),
   viewOnlyAssignedActions: z.boolean().default(false),
-})
+});
 
 type FormData = z.infer<typeof formSchema>
 
@@ -776,7 +776,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteUser} disabled={isDeleting}>
+                      <AlertDialogAction onClick={() => deleteUser(editUser.id)} disabled={isDeleting}>
                         Excluir
                       </AlertDialogAction>
                     </AlertDialogFooter>

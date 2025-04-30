@@ -347,6 +347,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const email = userData.email;
       const password = userData.password || '@54321';
       
+      if (useMockData) {
+        // In dev mode, just simulate adding a user to the mock data
+        const newUser: User = {
+          id: Math.random().toString(36).substring(2, 15),
+          name: userData.name || '',
+          cpf: userData.cpf || '',
+          email: userData.email || '',
+          role: userData.role || 'user',
+          companyIds: userData.companyIds || [],
+          clientIds: userData.clientIds || [],
+          department: userData.department || '',
+          phone: userData.phone || '',
+          permissions: userData.permissions ? userData.permissions.map(p => ({
+            ...p,
+            canEditCompany: p.canEditCompany !== undefined ? p.canEditCompany : false,
+            canDeleteCompany: p.canDeleteCompany !== undefined ? p.canDeleteCompany : false,
+          })) : []
+        };
+        
+        setUsers(prevUsers => [...prevUsers, newUser]);
+        toast.success('Usuário adicionado com sucesso');
+        return true;
+      }
+      
       const { data, error } = await supabase.auth.admin.createUser({
         email: email!,
         password,
@@ -416,22 +440,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       toast.success('Usuário criado com sucesso');
       
-      setUsers((prevUsers) => {
-        const newUser: User = {
-          id: userId,
-          name: userData.name || '',
-          cpf: userData.cpf || '',
-          email: userData.email || '',
-          role: userData.role || 'user',
-          companyIds: userData.companyIds || [],
-          clientIds: userData.clientIds || [],
-          department: userData.department || '',
-          phone: userData.phone || '',
-          permissions: userData.permissions || []
-        };
-        
-        return [...prevUsers, newUser];
-      });
+      const newUser: User = {
+        id: userId,
+        name: userData.name || '',
+        cpf: userData.cpf || '',
+        email: userData.email || '',
+        role: userData.role || 'user',
+        companyIds: userData.companyIds || [],
+        clientIds: userData.clientIds || [],
+        department: userData.department || '',
+        phone: userData.phone || '',
+        permissions: userData.permissions ? userData.permissions.map(p => ({
+          ...p,
+          canEditCompany: p.canEditCompany !== undefined ? p.canEditCompany : false,
+          canDeleteCompany: p.canDeleteCompany !== undefined ? p.canDeleteCompany : false,
+        })) : []
+      };
+      
+      setUsers(prevUsers => [...prevUsers, newUser]);
       
       return true;
     } catch (error) {
@@ -609,19 +635,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         users,
         login,
-        logout: async () => {
-          if (!useMockData) {
-            await supabase.auth.signOut();
-          }
-          setIsAuthenticated(false);
-          setUser(null);
-        },
+        logout,
         loading,
-        changePassword: async () => false, // simplificado para este exemplo
-        addUser: async () => false, // simplificado para este exemplo
-        updateUser: async () => false, // simplificado para este exemplo
-        deleteUser: async () => false, // simplificado para este exemplo
-        resetUserPassword: async () => false // simplificado para este exemplo
+        changePassword: async (userId, currentPassword, newPassword) => false, // Simplified for this example
+        addUser,
+        updateUser: async () => false, // Simplified for this example
+        deleteUser: async () => false, // Simplified for this example
+        resetUserPassword: async () => false // Simplified for this example
       }}
     >
       {children}
