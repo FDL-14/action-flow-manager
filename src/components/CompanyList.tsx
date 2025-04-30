@@ -121,23 +121,7 @@ const CompanyList = () => {
     setShowBatchDeleteDialog(true);
   };
 
-  // Delete companies with name "Total Data"
-  useEffect(() => {
-    const totalDataCompanies = companies.filter(company => 
-      company.name === "Total Data"
-    );
-    
-    if (totalDataCompanies.length > 0) {
-      totalDataCompanies.forEach(company => {
-        deleteCompany(company.id);
-      });
-      
-      toast({
-        title: "Limpeza automática",
-        description: `${totalDataCompanies.length} empresas "Total Data" foram excluídas do sistema.`,
-      });
-    }
-  }, [companies, deleteCompany, toast]);
+  // Removed the automatic deletion of "Total Data" companies
 
   return (
     <div>
