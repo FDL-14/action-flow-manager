@@ -2,10 +2,11 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, User } from 'lucide-react';
 import { Responsible } from '@/lib/types';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 interface ResponsibleListProps {
   responsibles: Responsible[];
@@ -42,13 +43,14 @@ const ResponsibleList = ({ responsibles, onEdit }: ResponsibleListProps) => {
             <TableHead>Departamento</TableHead>
             <TableHead>Função</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Usuário do Sistema</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {responsibles.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+              <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                 Nenhum responsável/solicitante encontrado.
               </TableCell>
             </TableRow>
@@ -61,6 +63,18 @@ const ResponsibleList = ({ responsibles, onEdit }: ResponsibleListProps) => {
                 <TableCell>{responsible.department || '-'}</TableCell>
                 <TableCell>{responsible.role || '-'}</TableCell>
                 <TableCell>{getTypeLabel(responsible)}</TableCell>
+                <TableCell>
+                  {responsible.isSystemUser || responsible.userId ? (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      Sim
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                      Não
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" onClick={() => onEdit(responsible)}>
@@ -71,6 +85,8 @@ const ResponsibleList = ({ responsibles, onEdit }: ResponsibleListProps) => {
                       size="icon" 
                       onClick={() => handleDelete(responsible.id)}
                       className="text-destructive hover:text-destructive/90"
+                      disabled={!!responsible.isSystemUser}
+                      title={responsible.isSystemUser ? "Não é possível excluir um usuário do sistema" : "Excluir"}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

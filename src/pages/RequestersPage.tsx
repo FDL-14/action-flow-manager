@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, User } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import RequesterForm from '@/components/RequesterForm';
 import { Badge } from '@/components/ui/badge';
 import { Responsible } from '@/lib/types';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Custom type for display requesters
 type DisplayRequester = Responsible & { isSystemUser?: boolean };
@@ -15,41 +16,49 @@ const RequestersPage = () => {
   const { company, responsibles } = useCompany();
   const { users } = useAuth();
   const [showRequesterForm, setShowRequesterForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'system' | 'manual'>('all');
+  const [displayRequesters, setDisplayRequesters] = useState<DisplayRequester[]>([]);
 
-  // Filter responsibles that are of type 'requester' or have role 'Solicitante'
-  const requesters = responsibles.filter(resp => 
-    resp.type === 'requester' || resp.role === 'Solicitante'
-  );
+  useEffect(() => {
+    // Filter responsibles that are of type 'requester' or have role 'Solicitante'
+    const requesters = responsibles.filter(resp => 
+      resp.type === 'requester' || resp.role === 'Solicitante'
+    );
 
-  // Add all system users that aren't already in the requesters list
-  const displayRequesters: DisplayRequester[] = [...requesters];
+    // Use filtered requesters to display
+    const allRequesters: DisplayRequester[] = [...requesters];
 
-  // Check if all users are already included as requesters
-  const userIds = users.map(user => user.id);
-  const requesterUserIds = requesters
-    .filter(req => req.userId)
-    .map(req => req.userId);
-  
-  // Add missing users as requesters
-  users.forEach(user => {
-    if (!requesterUserIds.includes(user.id)) {
-      displayRequesters.push({
-        id: `user-${user.id}`,
-        name: user.name,
-        email: user.email,
-        phone: user.phone || '',
-        department: user.department || 'Usuários',
-        role: 'Usuário do Sistema',
-        userId: user.id,
-        type: 'requester',
-        companyName: company?.name || '',
-        companyId: company?.id || '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isSystemUser: true // Flag to identify users automatically added
-      });
+    // Filter based on active tab
+    let filteredRequesters: DisplayRequester[];
+    
+    switch(activeTab) {
+      case 'system':
+        filteredRequesters = allRequesters.filter(req => req.isSystemUser || req.userId);
+        break;
+      case 'manual':
+        filteredRequesters = allRequesters.filter(req => !req.isSystemUser && !req.userId);
+        break;
+      case 'all':
+      default:
+        filteredRequesters = allRequesters;
+        break;
     }
-  });
+
+    setDisplayRequesters(filteredRequesters);
+  }, [responsibles, activeTab, users]);
+
+  // Count stats for tabs
+  const systemRequestersCount = responsibles.filter(
+    resp => (resp.type === 'requester' && (resp.isSystemUser || resp.userId))
+  ).length;
+  
+  const manualRequestersCount = responsibles.filter(
+    resp => (resp.type === 'requester' && !resp.isSystemUser && !resp.userId)
+  ).length;
+  
+  const totalRequestersCount = responsibles.filter(
+    resp => resp.type === 'requester'
+  ).length;
 
   return (
     <div className="container mx-auto py-6">
@@ -60,6 +69,29 @@ const RequestersPage = () => {
           Novo Solicitante
         </Button>
       </div>
+
+      <Tabs 
+        defaultValue="all" 
+        value={activeTab} 
+        onValueChange={(value) => setActiveTab(value as 'all' | 'system' | 'manual')}
+        className="mb-6"
+      >
+        <TabsList>
+          <TabsTrigger value="all" className="flex items-center gap-1">
+            <span>Todos</span>
+            <Badge variant="secondary" className="ml-1">{totalRequestersCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-1">
+            <User className="h-4 w-4" />
+            <span>Usuários do Sistema</span>
+            <Badge variant="secondary" className="ml-1">{systemRequestersCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex items-center gap-1">
+            <span>Externos</span>
+            <Badge variant="secondary" className="ml-1">{manualRequestersCount}</Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="mt-6">
         <div className="rounded-md border">
@@ -89,8 +121,11 @@ const RequestersPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="text-sm font-medium text-gray-900">{requester.name}</div>
-                      {requester.isSystemUser && (
-                        <Badge className="ml-2 bg-blue-500">Auto</Badge>
+                      {(requester.isSystemUser || requester.userId) && (
+                        <Badge className="ml-2 bg-blue-500 flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          <span>Usuário</span>
+                        </Badge>
                       )}
                     </div>
                   </td>
