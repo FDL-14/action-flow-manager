@@ -10,7 +10,7 @@ import { useClientFilter } from './operations/client-filter';
  */
 export const useClientOperations = () => {
   const { clients, setClients } = useClientState();
-  const { initClients, addClient, updateClient, deleteClient } = useClientCrud();
+  const { addClient, updateClient, deleteClient, initClients } = useClientCrud();
   const { getClientsByCompanyId } = useClientFilter(clients);
 
   // Initialize clients on component mount
