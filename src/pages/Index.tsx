@@ -37,14 +37,14 @@ const Index = () => {
     checkSupabaseConnection();
   }, []);
 
-  // Function to initialize default user data only (not companies)
+  // Function to initialize only user data (not companies)
   useEffect(() => {
-    // Force re-initializing data
-    localStorage.removeItem('data_initialized');
+    // Remove forced re-initialization 
+    // localStorage.removeItem('data_initialized');
     
     const initializeDefaultData = async () => {
       try {
-        console.log("Inicializando dados padrão...");
+        console.log("Inicializando dados padrão de usuários...");
         
         // Check and add default master user if it doesn't exist
         if (users) {
@@ -109,8 +109,10 @@ const Index = () => {
       }
     };
 
-    // Execute data initialization
-    initializeDefaultData();
+    // Execute data initialization only if not already done
+    if (!localStorage.getItem('data_initialized')) {
+      initializeDefaultData();
+    }
   }, [users, addUser]);
 
   useEffect(() => {

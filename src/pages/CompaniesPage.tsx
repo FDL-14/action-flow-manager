@@ -1,20 +1,17 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import CompanyForm from '@/components/CompanyForm';
 import { Company } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
 import CompanyList from '@/components/CompanyList';
 
 const CompaniesPage = () => {
-  const { company } = useCompany();
   const { user } = useAuth();
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  const { toast } = useToast();
 
   const handleAddCompany = () => {
     setEditingCompany(null);
