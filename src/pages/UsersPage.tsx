@@ -54,7 +54,7 @@ const UsersPage = () => {
   const canEditUsers = user?.permissions[0]?.canEditUser || user?.role === 'master';
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 h-full overflow-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
         {canEditUsers && (
@@ -66,9 +66,9 @@ const UsersPage = () => {
       </div>
 
       <div className="mt-6">
-        <div className="rounded-md border overflow-x-auto">
+        <div className="rounded-md border overflow-auto max-h-[calc(100vh-240px)]">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Nome

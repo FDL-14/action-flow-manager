@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Company } from '@/lib/types';
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import CompanyForm from './CompanyForm';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface CompanyListProps {
   // No props needed for now
@@ -65,9 +67,9 @@ const CompanyList = () => {
           Nenhuma empresa cadastrada.
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <ScrollArea className="h-[calc(100vh-240px)]">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Nome
@@ -111,7 +113,7 @@ const CompanyList = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollArea>
       )}
       
       {/* Company edit form */}

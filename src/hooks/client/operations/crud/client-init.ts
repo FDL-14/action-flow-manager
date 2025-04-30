@@ -20,6 +20,9 @@ export const useClientInit = () => {
           const parsedClients = JSON.parse(storedClients);
           console.log("Clientes carregados do localStorage:", parsedClients);
           setClients(parsedClients);
+        } else {
+          // Initialize with empty array instead of defaulting to mock data
+          setClients([]);
         }
         return;
       }

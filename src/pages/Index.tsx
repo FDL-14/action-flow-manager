@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { additionalCompanies, additionalUsers, defaultMasterUser } from '@/lib/mock-data';
+import { additionalUsers, defaultMasterUser } from '@/lib/mock-data';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated, users, addUser } = useAuth();
-  const { companies, addCompany } = useCompany();
+  const { companies } = useCompany();
 
   // Check if Supabase is connected
   useEffect(() => {
@@ -37,7 +37,7 @@ const Index = () => {
     checkSupabaseConnection();
   }, []);
 
-  // Function to initialize default data
+  // Function to initialize default user data only (not companies)
   useEffect(() => {
     // Force re-initializing data
     localStorage.removeItem('data_initialized');
@@ -46,29 +46,6 @@ const Index = () => {
       try {
         console.log("Inicializando dados padrão...");
         
-        // Check and add additional companies
-        if (companies) {
-          console.log(`Total de empresas existentes: ${companies.length}`);
-          
-          // Check each additional company
-          for (const company of additionalCompanies) {
-            // Check if company with this ID already exists
-            if (!companies.some(c => c.id === company.id)) {
-              console.log(`Adicionando empresa ${company.name} (ID: ${company.id}) ao localStorage`);
-              addCompany({
-                name: company.name,
-                address: company.address,
-                cnpj: company.cnpj,
-                phone: company.phone,
-                createdAt: company.createdAt,
-                updatedAt: company.updatedAt
-              });
-            } else {
-              console.log(`Empresa ${company.name} já existe no localStorage`);
-            }
-          }
-        }
-
         // Check and add default master user if it doesn't exist
         if (users) {
           console.log(`Total de usuários existentes: ${users.length}`);
@@ -134,7 +111,7 @@ const Index = () => {
 
     // Execute data initialization
     initializeDefaultData();
-  }, [companies, users, addCompany, addUser]);
+  }, [users, addUser]);
 
   useEffect(() => {
     const handleRedirection = () => {
