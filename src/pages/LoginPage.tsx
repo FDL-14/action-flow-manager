@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -29,6 +31,7 @@ type FormData = z.infer<typeof formSchema>;
 const LoginPage = () => {
   const { isAuthenticated, login, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -60,6 +63,7 @@ const LoginPage = () => {
   const handleCPFChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCPF(e.target.value);
     form.setValue('cpf', formatted);
+    setLoginError(null); // Clear any error when user changes input
   }, [form, formatCPF]);
 
   // Foco automático no campo CPF ao carregar a página
@@ -72,6 +76,7 @@ const LoginPage = () => {
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
+    setLoginError(null);
     
     try {
       // Limpar o CPF de qualquer formatação (pontos, traços)
@@ -82,6 +87,7 @@ const LoginPage = () => {
       
       if (!success) {
         console.error("Falha no login");
+        setLoginError("CPF ou senha incorretos. Por favor, verifique suas credenciais.");
         toast.error("Erro no login", {
           description: "CPF ou senha incorretos"
         });
@@ -91,8 +97,9 @@ const LoginPage = () => {
           description: "Você foi autenticado com sucesso"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no login:', error);
+      setLoginError(error.message || "Ocorreu um erro durante o login. Tente novamente.");
       toast.error("Erro no login", {
         description: "Ocorreu um erro durante o login. Tente novamente."
       });
@@ -125,6 +132,13 @@ const LoginPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {loginError && (
+              <Alert variant="destructive" className="mb-4">
+                <ExclamationTriangleIcon className="h-4 w-4" />
+                <AlertDescription>{loginError}</AlertDescription>
+              </Alert>
+            )}
+            
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
