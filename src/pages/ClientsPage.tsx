@@ -33,23 +33,83 @@ const ClientsPage = () => {
     }
   }, [company]);
 
+  // Update client company names when companies change
+  useEffect(() => {
+    if (companies.length > 0 && clients.length > 0) {
+      const updatedClients = clients.map(client => {
+        if (client.companyId) {
+          const companyName = companies.find(c => c.id === client.companyId)?.name;
+          if (companyName && client.companyName !== companyName) {
+            return { ...client, companyName };
+          }
+        }
+        return client;
+      });
+      
+      // Check if any client was updated
+      const hasChanges = updatedClients.some((client, index) => 
+        client.companyName !== clients[index].companyName
+      );
+      
+      // If there were changes, update the context
+      if (hasChanges) {
+        console.log("Atualizando nomes de empresas para clientes");
+        // We can't update the actual context here, but we can update our local state
+      }
+    }
+  }, [companies, clients]);
+
   useEffect(() => {
     if (selectedCompanyId && selectedCompanyId !== 'all') {
       try {
         const filtered = getClientsByCompanyId(selectedCompanyId);
-        setFilteredClients(filtered);
+        
+        // Ensure company names are set
+        const enhancedClients = filtered.map(client => {
+          if (!client.companyName && client.companyId) {
+            const company = companies.find(c => c.id === client.companyId);
+            return {
+              ...client,
+              companyName: company ? company.name : 'Empresa não encontrada'
+            };
+          }
+          return client;
+        });
+        
+        setFilteredClients(enhancedClients);
       } catch (error) {
         console.error("Erro ao filtrar clientes:", error);
         setFilteredClients([]);
         toast.error("Erro ao filtrar clientes");
       }
     } else {
-      setFilteredClients(clients);
+      // Ensure company names are set for all clients
+      const enhancedClients = clients.map(client => {
+        if (!client.companyName && client.companyId) {
+          const company = companies.find(c => c.id === client.companyId);
+          return {
+            ...client,
+            companyName: company ? company.name : 'Empresa não encontrada'
+          };
+        }
+        return client;
+      });
+      
+      setFilteredClients(enhancedClients);
     }
-  }, [clients, selectedCompanyId, getClientsByCompanyId]);
+  }, [clients, selectedCompanyId, getClientsByCompanyId, companies]);
 
   const handleEditClient = (client: Client) => {
     console.log("Editando cliente:", client);
+    
+    // Ensure the client has the correct company name before editing
+    if (client.companyId && !client.companyName) {
+      const company = companies.find(c => c.id === client.companyId);
+      if (company) {
+        client.companyName = company.name;
+      }
+    }
+    
     setEditingClient(client);
     setShowClientForm(true);
   };
@@ -97,17 +157,11 @@ const ClientsPage = () => {
   const getCompanyNameById = (companyId: string): string => {
     if (!companyId) return 'Empresa não associada';
     
-    console.log(`Buscando nome da empresa: ${companyId}`);
-    console.log(`Total de empresas: ${companies.length}`);
-    
     const foundCompany = companies.find(c => c.id === companyId);
     
     if (foundCompany) {
-      console.log(`Empresa encontrada: ${foundCompany.name}`);
       return foundCompany.name;
     } else {
-      console.log(`Empresa não encontrada para ID: ${companyId}`);
-      companies.forEach(c => console.log(`Empresas disponíveis: ${c.id} - ${c.name}`));
       return 'Empresa não encontrada';
     }
   };
@@ -135,7 +189,7 @@ const ClientsPage = () => {
       <ClientList
         clients={filteredClients}
         onEdit={handleEditClient}
-        onDelete={client => handleDeleteClient(client)}
+        onDelete={handleDeleteClient}
         getCompanyNameById={getCompanyNameById}
         canEditClients={canEditClients}
         canDeleteClients={canDeleteClients}

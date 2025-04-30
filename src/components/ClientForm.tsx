@@ -60,12 +60,21 @@ const ClientForm: React.FC<ClientFormProps> = ({
   useEffect(() => {
     if (open) {
       if (clientData) {
+        // Ensure company name is set
+        let companyName = clientData.companyName;
+        if (!companyName && clientData.companyId) {
+          const company = companies.find(c => c.id === clientData.companyId);
+          if (company) {
+            companyName = company.name;
+          }
+        }
+        
         form.reset({
           name: clientData.name,
           email: clientData.email || '',
           phone: clientData.phone || '',
           companyId: clientData.companyId || '',
-          companyName: clientData.companyName || '',
+          companyName: companyName || '',
         });
         
         setSelectedCompanyId(clientData.companyId || '');
@@ -106,7 +115,8 @@ const ClientForm: React.FC<ClientFormProps> = ({
       const companyName = companyInfo?.name || data.companyName || 'Empresa não encontrada';
       
       if (isNew) {
-        await addClient({
+        // Create new client with company name
+        const clientResult = await addClient({
           name: data.name,
           email: data.email,
           phone: data.phone,
@@ -115,9 +125,14 @@ const ClientForm: React.FC<ClientFormProps> = ({
           cnpj: '',
           companyName: companyName
         });
-        toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
+        
+        if (clientResult) {
+          toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
+          onOpenChange(false);
+        }
       } else if (clientData) {
-        await updateClient({
+        // Update existing client with company name
+        const success = await updateClient({
           ...clientData,
           name: data.name,
           email: data.email,
@@ -125,10 +140,12 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyId: data.companyId,
           companyName: companyName
         });
-        toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
+        
+        if (success) {
+          toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
+          onOpenChange(false);
+        }
       }
-
-      onOpenChange(false);
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
       toast.error('Erro ao salvar', { description: 'Não foi possível salvar os dados do cliente.' });

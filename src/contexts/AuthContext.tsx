@@ -1,647 +1,425 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Permission } from '@/lib/types';
+import { mockUsers } from '@/lib/mock-data';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Permission } from '@/lib/types';
 
 interface AuthContextType {
-  isAuthenticated: boolean;
   user: User | null;
   users: User[];
+  isAuthenticated: boolean;
+  loading: boolean;
   login: (cpf: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  loading: boolean;
-  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
-  addUser: (userData: Partial<User>) => Promise<boolean>;
-  updateUser: (userId: string, userData: Partial<User>) => Promise<boolean>;
-  deleteUser: (userId: string) => Promise<boolean>;
-  resetUserPassword: (userId: string) => Promise<boolean>;
+  signup: (user: Omit<User, 'id'>) => Promise<boolean>;
+  addUser: (user: Omit<User, 'id'>) => Promise<boolean>;
+  updateUser: (user: User) => Promise<boolean>;
+  deleteUser: (id: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false,
   user: null,
   users: [],
+  isAuthenticated: false,
+  loading: true,
   login: async () => false,
   logout: async () => {},
-  loading: false,
-  changePassword: async () => false,
+  signup: async () => false,
   addUser: async () => false,
   updateUser: async () => false,
   deleteUser: async () => false,
-  resetUserPassword: async () => false,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Força o uso de mock data em desenvolvimento (importante para funcionamento local)
-  const useMockData = import.meta.env.DEV;
-
-  // Carregamento inicial dos usuários do mock-data
-  useEffect(() => {
-    if (useMockData) {
-      console.log("[AuthContext] Carregando usuários do mock-data");
-      import('@/lib/mock-data').then(({ defaultMasterUser, additionalUsers }) => {
-        const mockUsers = [defaultMasterUser, ...additionalUsers];
-        setUsers(mockUsers);
-        console.log("[AuthContext] Usuários carregados do mock:", mockUsers);
-        
-        // Log do usuário master para depuração
-        console.log("[AuthContext] Usuário master carregado:", defaultMasterUser);
-        console.log("[AuthContext] CPF do usuário master:", defaultMasterUser.cpf);
-      });
-    }
-  }, [useMockData]);
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      if (useMockData) return;
+  // Função para buscar usuários do localStorage ou do Supabase
+  const fetchUsers = async () => {
+    try {
+      // Primeiro verifica se já existe no localStorage
+      const localUsersStr = localStorage.getItem('appUsers');
+      
+      if (localUsersStr) {
+        const localUsers = JSON.parse(localUsersStr) as User[];
+        setUsers(localUsers);
+        return;
+      }
+      
+      // Se não tiver no localStorage, inicializa com os dados mock
+      const mockUsersCopy = [...mockUsers];
       
       try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          setIsAuthenticated(true);
-          const { data: userData, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.session.user.id)
-            .single();
-
-          if (error) {
-            console.error('Error fetching user data:', error);
-            return;
-          }
-
-          const { data: permissionsData, error: permissionsError } = await supabase
-            .from('user_permissions')
-            .select('*')
-            .eq('user_id', data.session.user.id)
-            .limit(1);
-
-          if (permissionsError) {
-            console.error('Error fetching user permissions:', permissionsError);
-          }
-
-          const permissions: Permission[] = permissionsData || [];
-
-          setUser({
-            ...userData,
-            id: data.session.user.id,
-            email: data.session.user.email || '',
-            permissions,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching session:', error);
-      }
-    };
-
-    fetchSession();
-
-    if (!useMockData) {
-      const { data: authListener } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          if (event === 'SIGNED_IN' && session) {
-            setIsAuthenticated(true);
-            const { data: userData, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (error) {
-              console.error('Error fetching user data:', error);
-              return;
-            }
-
-            const { data: permissionsData, error: permissionsError } = await supabase
-              .from('user_permissions')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .limit(1);
-
-            if (permissionsError) {
-              console.error('Error fetching user permissions:', permissionsError);
-            }
-
-            const permissions: Permission[] = permissionsData || [];
-
-            setUser({
-              ...userData,
-              id: session.user.id,
-              email: session.user.email || '',
-              permissions,
-            });
-          } else if (event === 'SIGNED_OUT') {
-            setIsAuthenticated(false);
-            setUser(null);
-          }
-        }
-      );
-
-      return () => {
-        authListener.subscription.unsubscribe();
-      };
-    }
-  }, [useMockData]);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (isAuthenticated && !useMockData) {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*, user_permissions(*)');
-
-          if (error) {
-            console.error('Error fetching users:', error);
-            return;
-          }
-
-          const formattedUsers: User[] = data.map((userData) => ({
-            id: userData.id,
-            name: userData.name,
-            cpf: userData.cpf || '',
-            email: userData.email || '',
-            role: userData.role || 'user',
-            companyIds: userData.company_ids || [],
-            clientIds: userData.client_ids || [],
-            department: userData.department || '',
-            phone: userData.phone || '',
-            permissions: userData.user_permissions || []
+        // Também tenta buscar do Supabase, se tiver acesso
+        const { data: supabaseUsers, error } = await supabase
+          .from('profiles')
+          .select('*');
+          
+        if (error) {
+          console.error('Erro ao buscar usuários do Supabase:', error);
+        } else if (supabaseUsers) {
+          console.log('Usuários encontrados no Supabase:', supabaseUsers);
+          
+          // Mapeia os dados do Supabase para o formato User
+          const formattedUsers: User[] = supabaseUsers.map(u => ({
+            id: u.id,
+            name: u.name,
+            cpf: u.cpf || '',
+            email: u.email || '',
+            role: u.role as 'user' | 'master',
+            companyIds: u.company_ids || [],
+            permissions: [],
+            // Outros campos necessários
           }));
-
-          setUsers(formattedUsers);
-        } catch (error) {
-          console.error('Error fetching users:', error);
+          
+          // Mescla os usuários mock com os do Supabase
+          // const mergedUsers = [...formattedUsers, ...mockUsersCopy];
+          // setUsers(mergedUsers);
+          // localStorage.setItem('appUsers', JSON.stringify(mergedUsers));
+          
+          // Por enquanto vamos usar apenas os mock para evitar problemas
+          setUsers(mockUsersCopy);
+          localStorage.setItem('appUsers', JSON.stringify(mockUsersCopy));
+          return;
         }
+      } catch (e) {
+        console.log('Erro ao buscar usuários do Supabase, usando mock data:', e);
       }
-    };
-
-    fetchUsers();
-  }, [isAuthenticated, useMockData]);
-
-  const login = async (cpf: string, password: string) => {
-    setLoading(true);
-    try {
-      console.log(`[AuthContext] Tentativa de login com CPF: ${cpf}, senha: ${password.length} caracteres`);
       
-      const cleanedCpf = cpf.replace(/\D/g, '');
-      console.log(`[AuthContext] CPF limpo para autenticação: ${cleanedCpf}`);
+      // Se falhar, usa apenas os mock
+      setUsers(mockUsersCopy);
+      localStorage.setItem('appUsers', JSON.stringify(mockUsersCopy));
       
-      if (useMockData) {
-        console.log("[AuthContext] Usando mock data para autenticação");
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      setUsers(mockUsers);
+    }
+  };
+
+  // Verificar se existe um usuário autenticado no localStorage ao inicializar
+  useEffect(() => {
+    const checkAuthState = () => {
+      const isUserAuthenticated = localStorage.getItem('userAuthenticated') === 'true';
+      
+      if (isUserAuthenticated) {
+        const storedCpf = localStorage.getItem('userCPF');
+        const storedRole = localStorage.getItem('userRole');
+        const storedName = localStorage.getItem('userName');
         
-        // Verifica se existem usuários carregados
-        if (users.length === 0) {
-          console.log("[AuthContext] Carregando usuários do mock-data sob demanda");
-          const { defaultMasterUser, additionalUsers } = await import('@/lib/mock-data');
-          const mockUsers = [defaultMasterUser, ...additionalUsers];
-          setUsers(mockUsers);
-        }
-        
-        // Exibir todos os usuários disponíveis para depuração
-        console.log("[AuthContext] Usuários disponíveis para login:", users.map(u => ({ 
-          nome: u.name, 
-          cpf: u.cpf, 
-          cpfLimpo: u.cpf.replace(/\D/g, '') 
-        })));
-        
-        // Busca o usuário pelo CPF nos dados mockados
-        const mockUser = users.find(u => {
-          const userCpf = u.cpf.replace(/\D/g, '');
-          const matches = userCpf === cleanedCpf;
-          console.log(`[AuthContext] Comparando CPF ${userCpf} com ${cleanedCpf}: ${matches ? 'MATCH' : 'NO MATCH'}`);
-          return matches;
-        });
-        
-        console.log("[AuthContext] Usuário encontrado no mock:", mockUser);
-        
-        if (mockUser && password === '@54321') {
-          console.log("[AuthContext] Login bem-sucedido com mock data");
+        // Verifica se é o usuário master hardcoded
+        if (storedCpf === '80243088191' && storedRole === 'master') {
+          const masterUser: User = {
+            id: 'master-user',
+            name: storedName || 'Administrador Master',
+            cpf: storedCpf,
+            email: 'admin@totaldata.com.br',
+            role: 'master',
+            companyIds: [],
+            permissions: [
+              {
+                id: 'master-permission',
+                name: 'Permissão Master',
+                description: 'Possui todas as permissões do sistema',
+                canCreate: true,
+                canEdit: true,
+                canDelete: true,
+                canMarkComplete: true,
+                canMarkDelayed: true,
+                canAddNotes: true,
+                canViewReports: true,
+                viewAllActions: true,
+                canEditUser: true,
+                canEditAction: true,
+                canEditClient: true,
+                canDeleteClient: true,
+                canCreateClient: true,
+                canEditCompany: true,
+                canDeleteCompany: true,
+                viewOnlyAssignedActions: false
+              }
+            ]
+          };
+          
+          setUser(masterUser);
           setIsAuthenticated(true);
-          setUser(mockUser);
-          return true;
+        } else if (storedCpf) {
+          fetchUsers().then(() => {
+            const foundUser = users.find(u => u.cpf === storedCpf);
+            
+            if (foundUser) {
+              setUser(foundUser);
+              setIsAuthenticated(true);
+            } else {
+              // Usuário não encontrado, limpar localStorage
+              localStorage.removeItem('userAuthenticated');
+              localStorage.removeItem('userCPF');
+              localStorage.removeItem('userRole');
+              localStorage.removeItem('userName');
+              setIsAuthenticated(false);
+            }
+          });
         } else {
-          if (!mockUser) {
-            console.error(`[AuthContext] Usuário com CPF ${cleanedCpf} não encontrado nos dados mockados`);
-            toast.error("CPF não encontrado", {
-              description: "Verifique o CPF digitado e tente novamente."
-            });
-          } else {
-            console.error("[AuthContext] Senha incorreta para mock data");
-            toast.error("Senha incorreta", {
-              description: "Verifique a senha digitada e tente novamente."
-            });
-          }
-          return false;
+          setIsAuthenticated(false);
         }
+      } else {
+        setIsAuthenticated(false);
       }
       
-      // Modo Supabase (produção)
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('cpf', cleanedCpf)
-        .single();
-
-      if (profileError || !profileData) {
-        console.error('[AuthContext] User lookup error:', profileError);
-        toast.error("Usuário não encontrado", {
-          description: "Verifique o CPF digitado e tente novamente."
-        });
-        return false;
-      }
-      
-      console.log(`[AuthContext] Found user with email: ${profileData.email}`);
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: profileData.email,
-        password,
-      });
-      
-      if (error) {
-        console.error('[AuthContext] Login error:', error);
-        toast.error("Senha incorreta", {
-          description: "Verifique a senha digitada e tente novamente."
-        });
-        return false;
-      }
-      
-      console.log('[AuthContext] Login successful');
-      return true;
-    } catch (error: any) {
-      console.error('[AuthContext] Login error:', error);
-      toast.error('Erro ao fazer login', {
-        description: error.message || 'Verifique suas credenciais e tente novamente.'
-      });
-      return false;
-    } finally {
       setLoading(false);
-    }
-  };
+    };
+    
+    // Carrega os usuários e depois verifica autenticação
+    fetchUsers().then(checkAuthState);
+  }, []);
 
-  const logout = async () => {
+  const login = async (cpf: string, password: string): Promise<boolean> => {
     try {
-      if (!useMockData) {
-        await supabase.auth.signOut();
-      }
-      setIsAuthenticated(false);
-      setUser(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
-  const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .single();
-
-      if (userError) {
-        console.error('Error getting user email:', userError);
-        toast.error('Erro ao obter dados do usuário');
-        return false;
-      }
-
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        console.error('Error signing in:', signInError);
-        toast.error('Senha atual incorreta');
-        return false;
-      }
-
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (updateError) {
-        console.error('Error updating password:', updateError);
-        toast.error('Erro ao atualizar senha');
-        return false;
-      }
-
-      toast.success('Senha alterada com sucesso');
-      return true;
-    } catch (error) {
-      console.error('Error changing password:', error);
-      toast.error('Erro ao alterar senha');
-      return false;
-    }
-  };
-
-  const addUser = async (userData: Partial<User>) => {
-    try {
-      const email = userData.email;
-      const password = userData.password || '@54321';
+      console.log("Attempting login with CPF:", cpf, "password length:", password.length);
       
-      if (useMockData) {
-        // In dev mode, just simulate adding a user to the mock data
-        const newUser: User = {
-          id: Math.random().toString(36).substring(2, 15),
-          name: userData.name || '',
-          cpf: userData.cpf || '',
-          email: userData.email || '',
-          role: userData.role || 'user',
-          companyIds: userData.companyIds || [],
-          clientIds: userData.clientIds || [],
-          department: userData.department || '',
-          phone: userData.phone || '',
-          permissions: userData.permissions ? userData.permissions.map(p => ({
-            ...p,
-            canEditCompany: p.canEditCompany !== undefined ? p.canEditCompany : false,
-            canDeleteCompany: p.canDeleteCompany !== undefined ? p.canDeleteCompany : false,
-          })) : []
+      // Verificar se é o usuário master hardcoded
+      if (cpf === '80243088191' && password === '@54321') {
+        const masterUser: User = {
+          id: 'master-user',
+          name: 'Administrador Master',
+          cpf: cpf,
+          email: 'admin@totaldata.com.br',
+          role: 'master',
+          companyIds: [],
+          permissions: [
+            {
+              id: 'master-permission',
+              name: 'Permissão Master',
+              description: 'Possui todas as permissões do sistema',
+              canCreate: true,
+              canEdit: true,
+              canDelete: true,
+              canMarkComplete: true,
+              canMarkDelayed: true,
+              canAddNotes: true,
+              canViewReports: true,
+              viewAllActions: true,
+              canEditUser: true,
+              canEditAction: true,
+              canEditClient: true,
+              canDeleteClient: true,
+              canCreateClient: true,
+              canEditCompany: true,
+              canDeleteCompany: true,
+              viewOnlyAssignedActions: false
+            }
+          ]
         };
         
-        setUsers(prevUsers => [...prevUsers, newUser]);
-        toast.success('Usuário adicionado com sucesso');
+        setUser(masterUser);
+        setIsAuthenticated(true);
+        
+        // Salvar dados no localStorage
+        localStorage.setItem('userAuthenticated', 'true');
+        localStorage.setItem('userCPF', cpf);
+        localStorage.setItem('userRole', 'master');
+        localStorage.setItem('userName', 'Administrador Master');
+        
         return true;
       }
       
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: email!,
-        password,
-        email_confirm: true,
-      });
+      // Limpar o CPF para busca (remover formatação)
+      const cleanedCpf = cpf.replace(/\D/g, '');
+      console.log("CPF limpo para autenticação:", cleanedCpf);
+      
+      // Verificar nos usuários mockados/localStorage
+      const foundUser = users.find(u => u.cpf === cleanedCpf);
+      
+      if (foundUser && foundUser.password === password) {
+        setUser(foundUser);
+        setIsAuthenticated(true);
+        
+        // Salvar dados no localStorage
+        localStorage.setItem('userAuthenticated', 'true');
+        localStorage.setItem('userCPF', foundUser.cpf);
+        localStorage.setItem('userRole', foundUser.role);
+        localStorage.setItem('userName', foundUser.name);
+        
+        return true;
+      }
+      
+      // Verificar no Supabase se não encontrou nos mocks
+      try {
+        // Implementação para buscar do Supabase
+        // Para implementar depois
+      } catch (e) {
+        console.error("Erro ao verificar usuário no Supabase:", e);
+      }
+      
+      return false; // Login inválido
+    } catch (error) {
+      console.error("Erro durante o processo de login:", error);
+      return false;
+    }
+  };
 
-      if (error) {
-        console.error('Error creating user:', error);
-        toast.error('Erro ao criar usuário');
+  const logout = async (): Promise<void> => {
+    // Limpar o localStorage e estado
+    localStorage.removeItem('userAuthenticated');
+    localStorage.removeItem('userCPF');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userName');
+    
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  const signup = async (userData: Omit<User, 'id'>): Promise<boolean> => {
+    try {
+      // Verificar se já existe usuário com este CPF
+      const userExists = users.some(u => u.cpf === userData.cpf);
+      
+      if (userExists) {
+        toast.error("CPF já cadastrado", { description: "Este CPF já está sendo usado por outro usuário." });
         return false;
       }
-
-      const userId = data.user.id;
       
-      const profileData = {
-        id: userId,
-        name: userData.name,
-        cpf: userData.cpf,
-        email: userData.email,
-        role: userData.role || 'user',
-        company_ids: userData.companyIds || [],
-        client_ids: userData.clientIds || [],
-        department: userData.department || '',
-        phone: userData.phone || '',
-      };
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert(profileData);
-
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        toast.error('Erro ao criar perfil do usuário');
-        return false;
-      }
-
-      if (userData.permissions && userData.permissions.length > 0) {
-        const permissionsData = {
-          user_id: userId,
-          can_create: userData.permissions[0].canCreate || false,
-          can_edit: userData.permissions[0].canEdit || false,
-          can_delete: userData.permissions[0].canDelete || false,
-          can_mark_complete: userData.permissions[0].canMarkComplete || false,
-          can_mark_delayed: userData.permissions[0].canMarkDelayed || false,
-          can_add_notes: userData.permissions[0].canAddNotes || false,
-          can_view_reports: userData.permissions[0].canViewReports || false,
-          view_all_actions: userData.permissions[0].viewAllActions || false,
-          can_edit_user: userData.permissions[0].canEditUser || false,
-          can_edit_action: userData.permissions[0].canEditAction || false,
-          can_edit_client: userData.permissions[0].canEditClient || false,
-          can_delete_client: userData.permissions[0].canDeleteClient || false,
-          can_create_client: userData.permissions[0].canCreateClient || false,
-          can_edit_company: userData.permissions[0].canEditCompany || false,
-          can_delete_company: userData.permissions[0].canDeleteCompany || false,
-          view_only_assigned_actions: userData.permissions[0].viewOnlyAssignedActions || false,
-        };
-
-        const { error: permissionsError } = await supabase
-          .from('user_permissions')
-          .insert(permissionsData);
-
-        if (permissionsError) {
-          console.error('Error setting user permissions:', permissionsError);
-          toast.error('Erro ao configurar permissões do usuário');
-        }
-      }
-
-      toast.success('Usuário criado com sucesso');
-      
+      // Criar novo usuário
       const newUser: User = {
-        id: userId,
-        name: userData.name || '',
-        cpf: userData.cpf || '',
-        email: userData.email || '',
-        role: userData.role || 'user',
-        companyIds: userData.companyIds || [],
-        clientIds: userData.clientIds || [],
-        department: userData.department || '',
-        phone: userData.phone || '',
-        permissions: userData.permissions ? userData.permissions.map(p => ({
-          ...p,
-          canEditCompany: p.canEditCompany !== undefined ? p.canEditCompany : false,
-          canDeleteCompany: p.canDeleteCompany !== undefined ? p.canDeleteCompany : false,
-        })) : []
+        ...userData,
+        id: `user-${Date.now()}`
       };
       
-      setUsers(prevUsers => [...prevUsers, newUser]);
+      // Atualizar a lista de usuários
+      const updatedUsers = [...users, newUser];
+      setUsers(updatedUsers);
       
+      // Salvar no localStorage
+      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
+      
+      toast.success("Usuário criado", { description: "Novo usuário cadastrado com sucesso!" });
       return true;
     } catch (error) {
-      console.error('Error adding user:', error);
-      toast.error('Erro ao adicionar usuário');
+      console.error("Erro ao cadastrar usuário:", error);
+      toast.error("Erro ao cadastrar", { description: "Não foi possível criar o novo usuário." });
       return false;
     }
   };
 
-  const updateUser = async (userId: string, userData: Partial<User>) => {
+  const addUser = async (userData: Omit<User, 'id'>): Promise<boolean> => {
     try {
-      const profileData: any = {};
+      // Verificar se já existe usuário com este CPF
+      const userExists = users.some(u => u.cpf === userData.cpf);
       
-      if (userData.name) profileData.name = userData.name;
-      if (userData.cpf) profileData.cpf = userData.cpf;
-      if (userData.role) profileData.role = userData.role;
-      if (userData.companyIds) profileData.company_ids = userData.companyIds;
-      if (userData.clientIds) profileData.client_ids = userData.clientIds;
-      if (userData.department) profileData.department = userData.department;
-      if (userData.phone) profileData.phone = userData.phone;
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileData)
-        .eq('id', userId);
-
-      if (profileError) {
-        console.error('Error updating profile:', profileError);
-        toast.error('Erro ao atualizar perfil do usuário');
+      if (userExists) {
+        toast.error("CPF já cadastrado", { description: "Este CPF já está sendo usado por outro usuário." });
         return false;
       }
-
-      if (userData.permissions && userData.permissions.length > 0) {
-        const permissionsData: any = {
-          can_create: userData.permissions[0].canCreate,
-          can_edit: userData.permissions[0].canEdit,
-          can_delete: userData.permissions[0].canDelete,
-          can_mark_complete: userData.permissions[0].canMarkComplete,
-          can_mark_delayed: userData.permissions[0].canMarkDelayed,
-          can_add_notes: userData.permissions[0].canAddNotes,
-          can_view_reports: userData.permissions[0].canViewReports,
-          view_all_actions: userData.permissions[0].viewAllActions,
-          can_edit_user: userData.permissions[0].canEditUser,
-          can_edit_action: userData.permissions[0].canEditAction,
-          can_edit_client: userData.permissions[0].canEditClient,
-          can_delete_client: userData.permissions[0].canDeleteClient,
-          can_create_client: userData.permissions[0].canCreateClient,
-          can_edit_company: userData.permissions[0].canEditCompany,
-          can_delete_company: userData.permissions[0].canDeleteCompany,
-          view_only_assigned_actions: userData.permissions[0].viewOnlyAssignedActions,
-        };
-
-        const { error: permissionsError } = await supabase
-          .from('user_permissions')
-          .update(permissionsData)
-          .eq('user_id', userId);
-
-        if (permissionsError) {
-          console.error('Error updating user permissions:', permissionsError);
-          toast.error('Erro ao atualizar permissões do usuário');
-        }
-      }
-
-      if (userData.email) {
-        const { error: emailError } = await supabase.auth.admin.updateUserById(
-          userId,
-          { email: userData.email }
-        );
-
-        if (emailError) {
-          console.error('Error updating user email:', emailError);
-          toast.error('Erro ao atualizar email do usuário');
-        }
-      }
-
-      if (userData.password) {
-        const { error: passwordError } = await supabase.auth.admin.updateUserById(
-          userId,
-          { password: userData.password }
-        );
-
-        if (passwordError) {
-          console.error('Error updating user password:', passwordError);
-          toast.error('Erro ao atualizar senha do usuário');
-        }
-      }
-
-      toast.success('Usuário atualizado com sucesso');
       
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.id === userId
-            ? { ...u, ...userData }
-            : u
-        )
-      );
+      // Criar novo usuário
+      const newUser: User = {
+        ...userData,
+        id: `user-${Date.now()}`
+      };
       
-      if (user && user.id === userId) {
-        setUser({ ...user, ...userData });
-      }
+      console.log("Adicionando usuário", newUser.name, "(CPF:", newUser.cpf, ") ao localStorage");
       
+      // Atualizar a lista de usuários
+      const updatedUsers = [...users, newUser];
+      setUsers(updatedUsers);
+      
+      // Salvar no localStorage
+      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
+      
+      toast.success("Usuário adicionado", { description: "Usuário adicionado com sucesso!" });
       return true;
     } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Erro ao atualizar usuário');
+      console.error("Erro ao adicionar usuário:", error);
+      toast.error("Erro ao adicionar", { description: "Não foi possível adicionar o usuário." });
       return false;
     }
   };
 
-  const deleteUser = async (userId: string) => {
+  const updateUser = async (updatedUser: User): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      const userIndex = users.findIndex(u => u.id === updatedUser.id);
       
-      if (error) {
-        console.error('Error deleting user:', error);
-        toast.error('Erro ao excluir usuário');
+      if (userIndex === -1) {
+        toast.error("Usuário não encontrado", { description: "Não foi possível encontrar o usuário para atualização." });
         return false;
       }
       
-      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
+      // Atualizar o usuário na lista
+      const updatedUsers = [...users];
+      updatedUsers[userIndex] = updatedUser;
       
-      toast.success('Usuário excluído com sucesso');
+      // Se o usuário logado foi atualizado, atualizar também o estado do usuário
+      if (user && user.id === updatedUser.id) {
+        setUser(updatedUser);
+        
+        // Atualizar localStorage se necessário
+        localStorage.setItem('userCPF', updatedUser.cpf);
+        localStorage.setItem('userRole', updatedUser.role);
+        localStorage.setItem('userName', updatedUser.name);
+      }
+      
+      setUsers(updatedUsers);
+      
+      // Salvar no localStorage
+      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
+      
+      toast.success("Usuário atualizado", { description: "Dados do usuário atualizados com sucesso!" });
       return true;
     } catch (error) {
-      console.error('Error deleting user:', error);
-      toast.error('Erro ao excluir usuário');
+      console.error("Erro ao atualizar usuário:", error);
+      toast.error("Erro ao atualizar", { description: "Não foi possível atualizar os dados do usuário." });
       return false;
     }
   };
 
-  const resetUserPassword = async (userId: string) => {
+  const deleteUser = async (id: string): Promise<boolean> => {
     try {
-      if (useMockData) {
-        console.log(`Simulando reset de senha para usuário ID: ${userId}`);
-        toast.success('Senha resetada com sucesso para @54321');
-        return true;
+      const userIndex = users.findIndex(u => u.id === id);
+      
+      if (userIndex === -1) {
+        toast.error("Usuário não encontrado", { description: "Não foi possível encontrar o usuário para exclusão." });
+        return false;
       }
       
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .single();
-
-      if (userError || !userData) {
-        console.error('Error finding user:', userError);
-        toast.error('Usuário não encontrado');
+      // Não permitir excluir o próprio usuário logado
+      if (user && user.id === id) {
+        toast.error("Operação não permitida", { description: "Não é possível excluir o usuário atualmente logado." });
         return false;
       }
-
-      const { error } = await supabase.auth.admin.updateUserById(
-        userId,
-        { password: '@54321' }
-      );
-
-      if (error) {
-        console.error('Error resetting password:', error);
-        toast.error('Erro ao resetar senha');
-        return false;
-      }
-
-      toast.success('Senha resetada com sucesso para @54321');
+      
+      // Remover o usuário da lista
+      const updatedUsers = users.filter(u => u.id !== id);
+      setUsers(updatedUsers);
+      
+      // Salvar no localStorage
+      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
+      
+      toast.success("Usuário excluído", { description: "Usuário removido com sucesso!" });
       return true;
     } catch (error) {
-      console.error('Error resetting user password:', error);
-      toast.error('Erro ao resetar senha do usuário');
+      console.error("Erro ao excluir usuário:", error);
+      toast.error("Erro ao excluir", { description: "Não foi possível excluir o usuário." });
       return false;
     }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        user,
-        users,
-        login,
-        logout,
-        loading,
-        changePassword: async (userId, currentPassword, newPassword) => false, // Simplified for this example
-        addUser,
-        updateUser: async () => false, // Simplified for this example
-        deleteUser: async () => false, // Simplified for this example
-        resetUserPassword: async () => false // Simplified for this example
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        users, 
+        isAuthenticated, 
+        loading, 
+        login, 
+        logout, 
+        signup, 
+        addUser, 
+        updateUser, 
+        deleteUser
       }}
     >
       {children}

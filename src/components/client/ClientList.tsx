@@ -73,17 +73,18 @@ export const ClientList = ({
               // Primeiro tenta usar o companyName já definido no cliente
               let companyName = client.companyName;
               
-              // Se não tiver, busca pelo ID
+              // Se não tiver, busca pelo ID usando a função getCompanyNameById
               if (!companyName && client.companyId) {
                 companyName = getCompanyNameById(client.companyId);
+                
+                // Atualiza o cliente com o nome da empresa encontrado
+                client.companyName = companyName;
               }
               
               // Se ainda não tem nome, mostra mensagem padrão
               if (!companyName) {
                 companyName = 'Empresa não encontrada';
               }
-              
-              console.log(`Exibindo cliente ${client.name} com empresa: ${companyName}`);
               
               return (
                 <TableRow key={client.id}>
