@@ -83,10 +83,10 @@ const LoginPage = () => {
       const cleanedCpf = data.cpf.replace(/\D/g, '');
       console.log(`Tentando login com CPF limpo: ${cleanedCpf}, senha: ${data.password.substring(0, 1)}${'*'.repeat(data.password.length - 1)}`);
       
-      // Check for hardcoded master user directly here first
+      // Master user login - direct check
       if (cleanedCpf === '80243088191' && data.password === '@54321') {
         console.log("Login direto com usuário master");
-        // Força login do usuário master
+        // Force login for master user
         localStorage.setItem('userAuthenticated', 'true');
         localStorage.setItem('userRole', 'master');
         localStorage.setItem('userCPF', cleanedCpf);
@@ -96,10 +96,12 @@ const LoginPage = () => {
           description: "Você foi autenticado com sucesso como Administrador Master"
         });
         
-        window.location.href = '/dashboard'; // Usar reload para garantir que tudo seja recarregado
+        // Use direct redirect for master user to ensure it works
+        window.location.href = '/dashboard';
         return;
       }
       
+      // Regular user login flow
       const success = await login(cleanedCpf, data.password);
       
       if (!success) {

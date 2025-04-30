@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '@/lib/types';
 import { mockUsers } from '@/lib/mock-data';
@@ -182,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log("Attempting login with CPF:", cpf, "password length:", password.length);
       
-      // Verificar se é o usuário master hardcoded - MASTER USER DIRECT CHECK
+      // Verificar se é o usuário master hardcoded - Verificação direta
       if (cpf === '80243088191' && password === '@54321') {
         console.log("Autenticando como usuário master");
         
