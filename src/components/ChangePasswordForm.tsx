@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 interface ChangePasswordFormProps {
   open: boolean;
@@ -63,9 +64,21 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({ open, onOpenCha
       );
       
       if (success) {
+        toast.success("Senha alterada", { 
+          description: "Sua senha foi alterada com sucesso." 
+        });
         form.reset();
         onOpenChange(false);
+      } else {
+        toast.error("Erro ao alterar senha", { 
+          description: "Verifique se sua senha atual está correta." 
+        });
       }
+    } catch (error) {
+      console.error("Erro ao alterar senha:", error);
+      toast.error("Erro inesperado", {
+        description: "Ocorreu um erro ao processar sua solicitação."
+      });
     } finally {
       setLoading(false);
     }

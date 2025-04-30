@@ -63,7 +63,6 @@ const Index = () => {
           if (!existingMasterUser) {
             console.log(`Adicionando usuário master ${defaultMasterUser.name} (CPF: ${defaultMasterUser.cpf}) ao localStorage`);
             await addUser({
-              id: defaultMasterUser.id,
               name: defaultMasterUser.name,
               cpf: defaultMasterUser.cpf,
               email: defaultMasterUser.email,
@@ -84,7 +83,6 @@ const Index = () => {
             if (!normalizedCPFs.includes(normalizedCpf)) {
               console.log(`Adicionando usuário ${userToAdd.name} (CPF: ${userToAdd.cpf}) ao localStorage`);
               await addUser({
-                id: userToAdd.id,
                 name: userToAdd.name,
                 cpf: userToAdd.cpf,
                 email: userToAdd.email,

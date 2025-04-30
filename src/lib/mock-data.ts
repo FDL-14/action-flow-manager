@@ -1,4 +1,3 @@
-
 import { User, Company, Responsible, Client, Action, ActionNote } from './types';
 
 export const defaultMasterUser: User = {
@@ -163,6 +162,9 @@ export const additionalUsers: User[] = [
     ]
   }
 ];
+
+// Export the combined users array for AuthContext to use
+export const mockUsers = [defaultMasterUser, ...additionalUsers];
 
 export const defaultCompany: Company = {
   id: '1',

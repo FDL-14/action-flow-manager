@@ -91,7 +91,11 @@ const LoginPage = () => {
         localStorage.setItem('userCPF', cleanedCpf);
         localStorage.setItem('userName', 'Administrador Master');
         
-        window.location.href = '/'; // Usar reload para garantir que tudo seja recarregado
+        toast.success("Login bem-sucedido", {
+          description: "Você foi autenticado com sucesso como Administrador Master"
+        });
+        
+        window.location.href = '/dashboard'; // Usar reload para garantir que tudo seja recarregado
         return;
       }
       

@@ -16,6 +16,8 @@ interface AuthContextType {
   addUser: (user: Omit<User, 'id'>) => Promise<boolean>;
   updateUser: (user: User) => Promise<boolean>;
   deleteUser: (id: string) => Promise<boolean>;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
+  resetUserPassword: (userId: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,6 +31,8 @@ const AuthContext = createContext<AuthContextType>({
   addUser: async () => false,
   updateUser: async () => false,
   deleteUser: async () => false,
+  changePassword: async () => false,
+  resetUserPassword: async () => false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -407,6 +411,92 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Implementação da função de alteração de senha
+  const changePassword = async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      // Verificar se o usuário existe
+      const userIndex = users.findIndex(u => u.id === userId);
+      
+      if (userIndex === -1) {
+        toast.error("Usuário não encontrado", { description: "Não foi possível encontrar o usuário para alteração de senha." });
+        return false;
+      }
+
+      const targetUser = users[userIndex];
+      
+      // Para o usuário master hardcoded
+      if (targetUser.cpf === '80243088191') {
+        if (currentPassword !== '@54321') {
+          toast.error("Senha atual incorreta", { description: "A senha atual informada está incorreta." });
+          return false;
+        }
+        
+        // Para o usuário master, atualizamos apenas no localStorage para este exemplo
+        localStorage.setItem('userPassword', newPassword);
+        toast.success("Senha alterada", { description: "Senha do usuário master alterada com sucesso!" });
+        return true;
+      }
+      
+      // Para outros usuários
+      if (targetUser.password !== currentPassword) {
+        toast.error("Senha atual incorreta", { description: "A senha atual informada está incorreta." });
+        return false;
+      }
+      
+      // Atualizar a senha
+      const updatedUser = { ...targetUser, password: newPassword };
+      const updatedUsers = [...users];
+      updatedUsers[userIndex] = updatedUser;
+      
+      setUsers(updatedUsers);
+      
+      // Se for o usuário logado, atualizar também o estado do usuário
+      if (user && user.id === userId) {
+        setUser(updatedUser);
+      }
+      
+      // Salvar no localStorage
+      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
+      
+      toast.success("Senha alterada", { description: "Senha alterada com sucesso!" });
+      return true;
+    } catch (error) {
+      console.error("Erro ao alterar senha:", error);
+      toast.error("Erro ao alterar senha", { description: "Não foi possível alterar a senha. Tente novamente." });
+      return false;
+    }
+  };
+
+  // Implementação da função de resetar senha
+  const resetUserPassword = async (userId: string): Promise<boolean> => {
+    try {
+      // Verificar se o usuário existe
+      const userIndex = users.findIndex(u => u.id === userId);
+      
+      if (userIndex === -1) {
+        toast.error("Usuário não encontrado", { description: "Não foi possível encontrar o usuário para resetar a senha." });
+        return false;
+      }
+      
+      // Resetar para a senha padrão
+      const updatedUser = { ...users[userIndex], password: '@54321' };
+      const updatedUsers = [...users];
+      updatedUsers[userIndex] = updatedUser;
+      
+      setUsers(updatedUsers);
+      
+      // Salvar no localStorage
+      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
+      
+      toast.success("Senha resetada", { description: "A senha do usuário foi resetada para o padrão (@54321)." });
+      return true;
+    } catch (error) {
+      console.error("Erro ao resetar senha:", error);
+      toast.error("Erro ao resetar senha", { description: "Não foi possível resetar a senha do usuário." });
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider 
       value={{ 
@@ -419,7 +509,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signup, 
         addUser, 
         updateUser, 
-        deleteUser
+        deleteUser,
+        changePassword,
+        resetUserPassword
       }}
     >
       {children}

@@ -7,10 +7,11 @@ import { useCompany } from '@/contexts/CompanyContext';
 import UserForm from '@/components/UserForm';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import { User } from '@/lib/types';
+import { toast } from 'sonner';
 
 const UsersPage = () => {
   const { companies } = useCompany();
-  const { users, resetUserPassword, user } = useAuth(); // Now resetUserPassword is properly defined
+  const { users, user, resetUserPassword } = useAuth();
   const [showUserForm, setShowUserForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
@@ -34,6 +35,23 @@ const UsersPage = () => {
   const handleClosePasswordForm = () => {
     setShowPasswordForm(false);
     setSelectedUserId('');
+  };
+
+  const handleResetPassword = (userId: string) => {
+    resetUserPassword(userId)
+      .then(success => {
+        if (success) {
+          toast.success("Senha resetada", {
+            description: "A senha do usuário foi resetada para o padrão (@54321)."
+          });
+        }
+      })
+      .catch(error => {
+        console.error("Erro ao resetar senha:", error);
+        toast.error("Erro ao resetar senha", {
+          description: "Não foi possível resetar a senha do usuário."
+        });
+      });
   };
 
   // Fixed function to properly display company names without repetition
@@ -135,7 +153,7 @@ const UsersPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => resetUserPassword(userItem.id)}
+                        onClick={() => handleResetPassword(userItem.id)}
                       >
                         <RefreshCw className="h-4 w-4 mr-1" />
                         Resetar Senha
