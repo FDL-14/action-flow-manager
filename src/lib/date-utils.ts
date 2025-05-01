@@ -14,7 +14,8 @@ export function formatDateToLocalString(date: Date, locale: string): string {
   }
   
   try {
-    // Use format from date-fns with proper locale
+    // Use format from date-fns with ptBR locale regardless of what's passed
+    // This ensures consistency in the Portuguese formatting
     return format(date, 'dd/MM/yyyy', { locale: ptBR });
   } catch (error) {
     console.error('Error formatting date:', error);
