@@ -60,8 +60,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
     } catch (error) {
       console.error("Erro ao atualizar status da ação:", error);
       toast("Erro ao atualizar", {
-        description: "Não foi possível atualizar o status desta ação. Tente novamente.",
-        variant: "destructive"
+        description: "Não foi possível atualizar o status desta ação. Tente novamente."
       });
     }
   };
@@ -80,7 +79,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         return "Data inválida";
       }
       
-      return formatDateToLocalString(dateObj);
+      // Pass the locale as second argument to fix the TypeScript error
+      return formatDateToLocalString(dateObj, 'pt-BR');
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Erro ao formatar data";
