@@ -23,17 +23,18 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Test connection and log the result
-supabase.from('actions').select('count').limit(1)
-  .then(({ data, error }) => {
+(async () => {
+  try {
+    const { data, error } = await supabase.from('actions').select('count').limit(1);
     if (error) {
       console.error('Erro ao conectar ao Supabase:', error);
     } else {
       console.log('Conexão com Supabase estabelecida com sucesso');
     }
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error('Falha ao testar conexão com Supabase:', err);
-  });
+  }
+})();
 
 // Improved UUID conversion function
 export const convertToUUID = (id: string): string => {
