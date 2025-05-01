@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip } from 'lucide-react';
+import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip, Mail, MessageSquare, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Action } from '@/lib/types';
@@ -11,6 +11,8 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
 import { Badge } from './ui/badge';
+import { useMessaging } from '@/services/messaging';
+import { toast } from 'sonner';
 
 interface ActionViewProps {
   action: Action;
@@ -22,7 +24,12 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
   const { responsibles, clients, companies } = useCompany();
   const { user } = useAuth();
   const { getAttachmentUrl } = useActions();
+  const { sendActionNotification } = useMessaging();
   const [attachmentUrls, setAttachmentUrls] = useState<{ path: string; url: string }[]>([]);
+
+  // Find the responsible and requester
+  const responsible = responsibles.find(r => r.id === action.responsibleId);
+  const requester = action.requesterId ? responsibles.find(r => r.id === action.requesterId) : undefined;
 
   useEffect(() => {
     const loadAttachments = async () => {
@@ -73,6 +80,27 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
     return requester ? requester.name : 'Solicitante não encontrado';
   };
 
+  const handleSendNotification = async (type: 'email' | 'whatsapp' | 'sms') => {
+    if (!responsible) {
+      toast.error("Não foi possível enviar notificação", {
+        description: "Nenhum responsável encontrado para esta ação."
+      });
+      return;
+    }
+    
+    const success = await sendActionNotification(
+      responsible,
+      requester,
+      `Lembrete: Ação "${action.subject}"`,
+      `Esta é uma notificação sobre a ação "${action.subject}" que foi atribuída a você.\n\nDescrição: ${action.description}\n\nData de término: ${format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}`,
+      type
+    );
+    
+    if (success) {
+      toast.success(`${type === 'email' ? 'Email' : type === 'whatsapp' ? 'WhatsApp' : 'SMS'} enviado com sucesso!`);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pendente':
@@ -94,6 +122,13 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
           <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
             <AlertTriangle className="h-3 w-3 mr-1" />
             Atrasado
+          </Badge>
+        );
+      case 'aguardando_aprovacao':
+        return (
+          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+            <Clock className="h-3 w-3 mr-1" />
+            Aguardando Aprovação
           </Badge>
         );
       default:
@@ -156,8 +191,42 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
               <h2 className="text-xl font-bold">{action.subject}</h2>
               <div className="mt-2">{getStatusBadge(action.status)}</div>
             </div>
-            <div className="print:hidden">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+            <div className="flex gap-2 print:hidden">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSendNotification('email')}
+                className="flex items-center gap-1"
+              >
+                <Mail className="h-4 w-4" />
+                Email
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSendNotification('whatsapp')}
+                className="flex items-center gap-1"
+              >
+                <MessageSquare className="h-4 w-4" />
+                WhatsApp
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSendNotification('sms')}
+                className="flex items-center gap-1"
+              >
+                <Phone className="h-4 w-4" />
+                SMS
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handlePrint}
+              >
                 <FileText className="h-4 w-4 mr-2" />
                 Imprimir
               </Button>
@@ -186,6 +255,14 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
                 <div>
                   <h4 className="text-sm font-semibold">Solicitante</h4>
                   <p>{getRequesterName(action.requesterId)}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold">Criado por</h4>
+                  <p>{action.createdByName || user?.name || "Sistema"}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold">Data de Criação</h4>
+                  <p>{format(new Date(action.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold">Data de Início</h4>
@@ -217,7 +294,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
 
               <div>
                 <h4 className="text-sm font-semibold">Descrição</h4>
-                <p className="whitespace-pre-line">{action.description}</p>
+                <p className="whitespace-pre-line">{action.description || "Sem descrição disponível."}</p>
               </div>
             </CardContent>
           </Card>
@@ -291,6 +368,11 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
                           </span>
                           {note.createdBy === user?.id && (
                             <Badge variant="outline">Sua anotação</Badge>
+                          )}
+                          {note.createdByName && (
+                            <span className="text-xs text-gray-500">
+                              Por: {note.createdByName}
+                            </span>
                           )}
                         </div>
                         <p className="whitespace-pre-line">{note.content}</p>

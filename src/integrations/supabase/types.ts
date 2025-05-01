@@ -232,6 +232,80 @@ export type Database = {
         }
         Relationships: []
       }
+      document_section_locks: {
+        Row: {
+          created_at: string | null
+          document_id: string | null
+          id: string
+          lock_when_signed: boolean | null
+          section_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          lock_when_signed?: boolean | null
+          section_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          lock_when_signed?: boolean | null
+          section_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_section_locks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          data: Json
+          description: string | null
+          id: string
+          is_deleted: boolean | null
+          is_template: boolean | null
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          data: Json
+          description?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_template?: boolean | null
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          data?: Json
+          description?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_template?: boolean | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           client_ids: string[] | null

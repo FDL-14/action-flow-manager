@@ -88,8 +88,8 @@ const LoginPage = () => {
       if (cleanedCpf === '80243088191' && data.password === '@54321') {
         console.log("Login direto com usuário master");
         
-        // Try to login to Supabase first with admin email
         try {
+          // Try to login to Supabase first with admin email
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: 'admin@totaldata.com.br',
             password: data.password,
@@ -113,34 +113,40 @@ const LoginPage = () => {
             
             if (signUpError && signUpError.message !== "User already registered") {
               console.error("Erro ao criar usuário master no Supabase:", signUpError);
+              throw new Error(`Erro de autenticação: ${signUpError.message}`);
             } else {
               console.log("Usuário master criado/já existe no Supabase");
+              
+              // Try login again after signup
+              const { data: retrySignInData, error: retrySignInError } = await supabase.auth.signInWithPassword({
+                email: 'admin@totaldata.com.br',
+                password: data.password,
+              });
+              
+              if (retrySignInError) {
+                throw new Error(`Erro de login após criação: ${retrySignInError.message}`);
+              }
             }
-            
-            // Try login again
-            await supabase.auth.signInWithPassword({
-              email: 'admin@totaldata.com.br',
-              password: data.password,
-            });
           }
-        } catch (e) {
-          console.log("Erro ao interagir com Supabase:", e);
-          // Continue with local auth even if Supabase fails
+          
+          // Force login for master user in localStorage
+          localStorage.setItem('userAuthenticated', 'true');
+          localStorage.setItem('userRole', 'master');
+          localStorage.setItem('userCPF', cleanedCpf);
+          localStorage.setItem('userName', 'Administrador Master');
+          
+          toast.success("Login bem-sucedido", {
+            description: "Você foi autenticado com sucesso como Administrador Master"
+          });
+          
+          // Force reload to ensure authentication state is properly updated
+          window.location.href = '/dashboard';
+          return;
+        } catch (e: any) {
+          console.error("Erro ao interagir com Supabase:", e);
+          setLoginError(`Erro de autenticação: ${e.message}`);
+          // Don't return here, try the regular login as fallback
         }
-        
-        // Force login for master user in localStorage
-        localStorage.setItem('userAuthenticated', 'true');
-        localStorage.setItem('userRole', 'master');
-        localStorage.setItem('userCPF', cleanedCpf);
-        localStorage.setItem('userName', 'Administrador Master');
-        
-        toast.success("Login bem-sucedido", {
-          description: "Você foi autenticado com sucesso como Administrador Master"
-        });
-        
-        // Redirect for master user to ensure it works
-        window.location.href = '/dashboard';
-        return;
       }
       
       // Regular user login flow
@@ -157,21 +163,25 @@ const LoginPage = () => {
         toast.success("Login bem-sucedido", {
           description: "Você foi autenticado com sucesso"
         });
+        
+        // Force reload to ensure we have a fresh authentication state
+        window.location.href = '/dashboard';
       }
     } catch (error: any) {
       console.error('Erro no login:', error);
       setLoginError(error.message || "Ocorreu um erro durante o login. Tente novamente.");
       toast.error("Erro no login", {
-        description: "Ocorreu um erro durante o login. Tente novamente."
+        description: error.message || "Ocorreu um erro durante o login. Tente novamente."
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // If user is already authenticated, redirect to dashboard
   if (isAuthenticated) {
     console.log("Usuário autenticado, redirecionando para a home");
-    return <Navigate to="/" />;
+    return <Navigate to="/dashboard" />;
   }
 
   return (

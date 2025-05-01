@@ -1,162 +1,109 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useCompany } from '@/contexts/CompanyContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useActions } from '@/contexts/ActionContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { 
+  Clock, 
+  Check, 
+  MoreVertical, 
+  AlertTriangle, 
+  Trash2, 
+  Edit, 
+  Eye, 
+  Mail,
+  MessageSquare,
+  Phone
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
-  MoreHorizontal, UserRound, Building2, Calendar, Check, Clock, 
-  AlertTriangle, Edit, Trash, FileText, Eye, ThumbsUp, ThumbsDown
-} from 'lucide-react';
-import { calculateDaysRemaining } from '@/lib/date-utils';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import DeleteActionDialog from './DeleteActionDialog';
 import EditActionForm from './EditActionForm';
-import ActionNotes from './ActionNotes';
 import CompleteActionDialog from './CompleteActionDialog';
+import { useActions } from '@/contexts/ActionContext';
+import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Action } from '@/lib/types';
+import { useMessaging } from '@/services/messaging';
 import { toast } from 'sonner';
 
 interface ActionCardProps {
-  action: any;
+  action: Action;
   onDelete: () => void;
-  onMenuClick?: () => void;
-  isProcessing?: boolean;
-  onView?: () => void;
+  onMenuClick: () => void;
+  isProcessing: boolean;
+  onView: () => void;
 }
 
-const ActionCard = ({
+const ActionCard: React.FC<ActionCardProps> = ({
   action,
   onDelete,
   onMenuClick,
-  isProcessing = false,
+  isProcessing,
   onView
-}: ActionCardProps) => {
-  const { responsibles, clients, companies } = useCompany();
-  const { user } = useAuth();
-  const { updateActionStatus, updateAction } = useActions();
-  
+}) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
-  
-  const daysRemaining = calculateDaysRemaining(action.endDate);
-  const isOverdue = action.status === 'atrasado';
-  const isCompleted = action.status === 'concluido';
-  const isAwaitingApproval = action.status === 'aguardando_aprovacao';
+  const { updateActionStatus } = useActions();
+  const { responsibles, clients } = useCompany();
+  const { user } = useAuth();
+  const { sendActionNotification } = useMessaging();
 
-  // Get responsible name
   const responsible = responsibles.find(r => r.id === action.responsibleId);
-  const responsibleName = responsible ? responsible.name : 'Não atribuído';
-  
-  // Get client name if available
   const client = action.clientId ? clients.find(c => c.id === action.clientId) : null;
-  const clientName = client ? client.name : 'Não especificado';
+  const requester = action.requesterId ? responsibles.find(r => r.id === action.requesterId) : null;
   
-  // Get company name
-  const company = companies.find(c => c.id === action.companyId);
-  const companyName = company ? company.name : 'Não especificada';
+  const createdAt = new Date(action.createdAt);
+  const endDate = new Date(action.endDate);
+  const isOverdue = !action.completedAt && endDate < new Date();
   
-  // Check if current user is the requester
-  const isRequester = action.requesterId && user && (
-    action.requesterId === user.id || 
-    (user.requesterIds && user.requesterIds.includes(action.requesterId))
-  );
-  
-  // Permission checks
-  const canDelete = user?.permissions?.some(p => p.canDelete) || user?.role === 'master';
-  const canEdit = user?.permissions?.some(p => p.canEdit) || user?.role === 'master';
-  const canAddNotes = user?.permissions?.some(p => p.canAddNotes) || user?.role === 'master';
-  const canMarkComplete = user?.permissions?.some(p => p.canMarkComplete) || user?.role === 'master';
-  
-  const handleMarkComplete = async () => {
-    if (!canMarkComplete) return;
-    
-    // Check if there are notes already, if not, open notes dialog
-    if (!action.notes || action.notes.filter(n => !n.isDeleted).length === 0) {
-      setShowNotes(true);
-      return;
+  // Update action to overdue if needed
+  React.useEffect(() => {
+    if (isOverdue && action.status === 'pendente') {
+      updateActionStatus(action.id, 'atrasado');
     }
+  }, [isOverdue, action.status, action.id, updateActionStatus]);
+
+  const handleStatusChange = (status: 'pendente' | 'concluido' | 'atrasado' | 'aguardando_aprovacao') => {
+    updateActionStatus(action.id, status);
     
-    // Show completion dialog with justification requirement
-    setShowCompleteDialog(true);
-  };
-  
-  const handleMarkDelayed = async () => {
-    try {
-      await updateActionStatus(action.id, 'atrasado');
-    } catch (error) {
-      console.error('Erro ao marcar ação como atrasada:', error);
+    if (status === 'concluido' && responsible) {
+      sendActionNotification(
+        responsible,
+        requester,
+        `Ação "${action.subject}" foi concluída`,
+        `A ação "${action.subject}" foi marcada como concluída.\n\nDescrição: ${action.description}\n\nData de término: ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`
+      );
     }
   };
-  
-  const handleApprove = async () => {
-    if (!isRequester && user?.role !== 'master') {
-      toast.error("Permissão negada", {
-        description: "Apenas o solicitante pode aprovar esta ação."
+
+  const handleSendNotification = (type: 'email' | 'whatsapp' | 'sms') => {
+    if (!responsible) {
+      toast.error("Não foi possível enviar notificação", {
+        description: "Nenhum responsável encontrado para esta ação."
       });
       return;
     }
     
-    try {
-      await updateAction(action.id, {
-        status: 'concluido',
-        approved: true,
-        approvedAt: new Date(),
-        approvedBy: user?.id,
-        completedAt: new Date()
-      });
-      
-      toast.success("Ação aprovada", {
-        description: "A ação foi marcada como concluída com sucesso."
-      });
-    } catch (error) {
-      console.error('Erro ao aprovar ação:', error);
-      toast.error("Erro ao aprovar", {
-        description: "Não foi possível aprovar esta ação. Tente novamente."
-      });
-    }
-  };
-  
-  const handleReject = async () => {
-    if (!isRequester && user?.role !== 'master') {
-      toast.error("Permissão negada", {
-        description: "Apenas o solicitante pode rejeitar esta ação."
-      });
-      return;
-    }
-    
-    try {
-      await updateAction(action.id, {
-        status: 'pendente',
-        approved: false,
-      });
-      
-      toast.info("Ação rejeitada", {
-        description: "A ação foi rejeitada e voltou para status pendente."
-      });
-    } catch (error) {
-      console.error('Erro ao rejeitar ação:', error);
-      toast.error("Erro ao rejeitar", {
-        description: "Não foi possível rejeitar esta ação. Tente novamente."
-      });
-    }
+    sendActionNotification(
+      responsible,
+      requester,
+      `Lembrete: Ação "${action.subject}"`,
+      `Esta é uma notificação sobre a ação "${action.subject}" que foi atribuída a você.\n\nDescrição: ${action.description}\n\nData de término: ${format(endDate, 'dd/MM/yyyy', { locale: ptBR })}`,
+      type
+    );
   };
 
   const getStatusBadge = () => {
     switch (action.status) {
-      case 'pendente':
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-            <Clock className="h-3 w-3 mr-1" />
-            Pendente
-          </Badge>
-        );
       case 'concluido':
         return (
           <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
@@ -174,186 +121,204 @@ const ActionCard = ({
       case 'aguardando_aprovacao':
         return (
           <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-            <ThumbsUp className="h-3 w-3 mr-1" />
-            Aguardando aprovação
+            <Clock className="h-3 w-3 mr-1" />
+            Aguardando Aprovação
           </Badge>
         );
       default:
-        return <Badge variant="outline">{action.status}</Badge>;
+        return (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+            <Clock className="h-3 w-3 mr-1" />
+            Pendente
+          </Badge>
+        );
     }
+  };
+  
+  const getPriorityClass = () => {
+    if (isOverdue) return 'border-l-4 border-red-500';
+    if (action.status === 'concluido') return 'border-l-4 border-green-500';
+    if (action.status === 'aguardando_aprovacao') return 'border-l-4 border-blue-500';
+    
+    // Check if within 3 days of deadline
+    const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+    const timeToDeadline = endDate.getTime() - new Date().getTime();
+    if (timeToDeadline < threeDaysInMs && timeToDeadline > 0) {
+      return 'border-l-4 border-orange-500';
+    }
+    
+    return 'border-l-4 border-gray-300';
   };
 
   return (
     <>
-      <Card className={`overflow-hidden transition-all ${isProcessing ? 'shadow-md' : 'shadow-sm'}`}>
-        <CardContent className="p-0">
-          <div className="p-4">
-            <div className="flex justify-between items-start">
+      <Card className={`mb-4 ${getPriorityClass()} transition-all ${isProcessing ? 'opacity-50' : ''}`}>
+        <CardHeader className="pb-2">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-lg font-semibold line-clamp-1">{action.subject}</CardTitle>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {getStatusBadge()}
+                {client && (
+                  <Badge variant="outline" className="bg-gray-100">
+                    Cliente: {client.name}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={onMenuClick}>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuItem onClick={() => setShowEditForm(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Editar</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onView}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>Visualizar</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => handleSendNotification('email')}>
+                  <Mail className="mr-2 h-4 w-4" />
+                  <span>Enviar por E-mail</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => handleSendNotification('whatsapp')}>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  <span>Enviar por WhatsApp</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => handleSendNotification('sms')}>
+                  <Phone className="mr-2 h-4 w-4" />
+                  <span>Enviar por SMS</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {action.status !== 'concluido' && (
+                  <DropdownMenuItem onClick={() => setShowCompleteDialog(true)}>
+                    <Check className="mr-2 h-4 w-4" />
+                    <span>Marcar como concluído</span>
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Excluir</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <div className="text-gray-500 text-sm mb-2 line-clamp-2">
+            {action.description || "Sem descrição"}
+          </div>
+          
+          <div className="text-xs text-gray-500 mt-3 space-y-1">
+            <div>
+              <span className="font-medium">Responsável:</span> {responsible?.name || "Não atribuído"}
+            </div>
+            {requester && (
               <div>
-                <h3 className="text-lg font-semibold line-clamp-1">{action.subject}</h3>
-                <div className="flex flex-wrap gap-2 mt-1.5 items-center">
-                  {getStatusBadge()}
-                  {!isCompleted && !isAwaitingApproval && daysRemaining !== null && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isOverdue 
-                        ? 'bg-red-100 text-red-800' 
-                        : daysRemaining <= 1 
-                          ? 'bg-amber-100 text-amber-800' 
-                          : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {isOverdue 
-                        ? 'Vencido' 
-                        : daysRemaining === 0 
-                          ? 'Vence hoje' 
-                          : daysRemaining === 1 
-                            ? 'Vence amanhã' 
-                            : `${daysRemaining} dias restantes`
-                      }
-                    </span>
-                  )}
-                  
-                  {isAwaitingApproval && isRequester && (
-                    <div className="flex gap-1">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="h-6 text-xs bg-green-100 text-green-700 hover:bg-green-200 border-green-300"
-                        onClick={handleApprove}
-                      >
-                        <ThumbsUp className="h-3 w-3 mr-1" />
-                        Aprovar
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="h-6 text-xs bg-red-100 text-red-700 hover:bg-red-200 border-red-300"
-                        onClick={handleReject}
-                      >
-                        <ThumbsDown className="h-3 w-3 mr-1" />
-                        Rejeitar
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <span className="font-medium">Solicitante:</span> {requester.name}
               </div>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={onMenuClick}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {onView && (
-                    <DropdownMenuItem onClick={onView} className="gap-2">
-                      <Eye className="h-4 w-4" />
-                      <span>Visualizar</span>
-                    </DropdownMenuItem>
-                  )}
-                  
-                  {canAddNotes && (
-                    <DropdownMenuItem onClick={() => setShowNotes(true)} className="gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span>Anotações</span>
-                    </DropdownMenuItem>
-                  )}
-                  
-                  {canEdit && (
-                    <DropdownMenuItem onClick={() => setShowEditForm(true)} className="gap-2">
-                      <Edit className="h-4 w-4" />
-                      <span>Editar</span>
-                    </DropdownMenuItem>
-                  )}
-                  
-                  {canDelete && (
-                    <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 gap-2">
-                      <Trash className="h-4 w-4" />
-                      <span>Excluir</span>
-                    </DropdownMenuItem>
-                  )}
-                  
-                  {!isCompleted && !isAwaitingApproval && canMarkComplete && (
-                    <DropdownMenuItem onClick={handleMarkComplete} className="text-green-600 gap-2">
-                      <Check className="h-4 w-4" />
-                      <span>Marcar como concluído</span>
-                    </DropdownMenuItem>
-                  )}
-                  
-                  {!isOverdue && !isCompleted && !isAwaitingApproval && (
-                    <DropdownMenuItem onClick={handleMarkDelayed} className="text-amber-600 gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>Marcar como atrasado</span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            )}
+            <div>
+              <span className="font-medium">Criado por:</span> {action.createdByName || user?.name || "Sistema"}
             </div>
-            
-            <div className="mt-3">
-              <p className="text-sm text-gray-600 line-clamp-2">{action.description}</p>
-            </div>
-            
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-              <div className="flex items-center text-xs text-gray-500">
-                <UserRound className="h-3 w-3 mr-1 text-gray-400" />
-                {responsibleName}
+            <div className="flex flex-wrap gap-x-4">
+              <div>
+                <span className="font-medium">Criado em:</span> {format(createdAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
               </div>
-              
-              <div className="flex items-center text-xs text-gray-500">
-                <Building2 className="h-3 w-3 mr-1 text-gray-400" />
-                {clientName} / {companyName}
+              <div>
+                <span className="font-medium">Término:</span> {format(endDate, 'dd/MM/yyyy', { locale: ptBR })}
               </div>
-              
-              <div className="flex items-center text-xs text-gray-500">
-                <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                {format(new Date(action.startDate), "dd/MM/yyyy", { locale: ptBR })} -
-                {format(new Date(action.endDate), "dd/MM/yyyy", { locale: ptBR })}
-              </div>
-              
-              {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 && (
-                <Badge variant="outline" className="text-xs font-normal">
-                  <FileText className="h-3 w-3 mr-1" />
-                  {action.notes.filter(n => !n.isDeleted).length} anotações
-                </Badge>
-              )}
             </div>
           </div>
+          
+          {action.notes && action.notes.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <h4 className="text-xs font-semibold mb-2">Anotações recentes:</h4>
+              {action.notes
+                .filter(note => !note.isDeleted)
+                .slice(0, 2)
+                .map(note => (
+                  <div key={note.id} className="text-xs border-l-2 border-gray-200 pl-2 mb-2">
+                    <div className="text-gray-400 mb-1">
+                      {format(new Date(note.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    </div>
+                    <p className="line-clamp-1">{note.content}</p>
+                  </div>
+                ))}
+              {action.notes.filter(note => !note.isDeleted).length > 2 && (
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="p-0 h-auto text-xs" 
+                  onClick={onView}
+                >
+                  Ver todas as anotações
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
+        <CardFooter className="pt-0 flex justify-between">
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onView}
+              className="text-xs h-8"
+            >
+              <Eye className="h-3 w-3 mr-1" />
+              Detalhes
+            </Button>
+          </div>
+          
+          {action.status !== 'concluido' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCompleteDialog(true)}
+              className="text-xs h-8 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-900 text-green-700"
+            >
+              <Check className="h-3 w-3 mr-1" />
+              Concluir
+            </Button>
+          )}
+        </CardFooter>
       </Card>
-
+      
       <DeleteActionDialog
-        isOpen={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
         actionId={action.id}
-        actionSubject={action.subject}
-        onDeleted={onDelete}
+        subject={action.subject}
+        onDelete={onDelete}
       />
       
-      {showEditForm && (
-        <EditActionForm
-          open={showEditForm}
-          onOpenChange={setShowEditForm}
-          action={action}
-        />
-      )}
-      
-      <Dialog open={showNotes} onOpenChange={setShowNotes}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Anotações da Ação</DialogTitle>
-          </DialogHeader>
-          <ActionNotes 
-            action={action} 
-            onClose={() => setShowNotes(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <EditActionForm
+        open={showEditForm}
+        onOpenChange={setShowEditForm}
+        action={action}
+      />
       
       <CompleteActionDialog
-        isOpen={showCompleteDialog}
-        onClose={() => setShowCompleteDialog(false)}
+        open={showCompleteDialog}
+        onOpenChange={setShowCompleteDialog}
         action={action}
-        onComplete={onDelete} // Refresh the UI
+        onComplete={() => handleStatusChange('concluido')}
       />
     </>
   );
