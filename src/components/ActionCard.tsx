@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Card,
@@ -78,8 +79,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         return "Data inválida";
       }
       
-      // Pass the locale as second argument to fix the TypeScript error
-      return formatDateToLocalString(dateObj, 'pt-BR');
+      // Call formatDateToLocalString with the default locale (pt-BR is already the default)
+      return formatDateToLocalString(dateObj);
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Erro ao formatar data";
