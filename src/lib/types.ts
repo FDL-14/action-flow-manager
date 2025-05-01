@@ -15,6 +15,7 @@ export interface User {
   requesterIds?: string[]; // IDs of requesters associated with this user
   isResponsible?: boolean; // Flag to indicate if user is registered as a responsible
   isRequester?: boolean; // Flag to indicate if user is registered as a requester
+  supabaseAuthId?: string; // ID in the Supabase auth system
 }
 
 export interface Permission {
@@ -33,7 +34,7 @@ export interface Permission {
   canEditAction: boolean;
   canEditClient: boolean;
   canDeleteClient: boolean;
-  canCreateClient: boolean;  // Added new permission for creating clients
+  canCreateClient: true;  // Added new permission for creating clients
   canEditCompany: boolean;
   canDeleteCompany: boolean;
   viewOnlyAssignedActions: boolean;
@@ -48,8 +49,12 @@ export interface Action {
   startDate: Date;
   endDate: Date;
   companyId: string;
+  companyName?: string; // Added to store company name directly
   clientId?: string;
+  clientName?: string; // Added to store client name directly
   requesterId?: string;
+  requesterName?: string; // Added to store requester name directly
+  responsibleName?: string; // Added to store responsible name directly
   completedAt?: Date;
   attachments?: string[];
   notes: ActionNote[];
@@ -68,6 +73,7 @@ export interface ActionNote {
   actionId: string;
   content: string;
   createdBy: string;
+  createdByName?: string; // Added to store creator name directly
   createdAt: Date;
   isDeleted: boolean;
   attachments?: string[]; // Added support for attachments in notes

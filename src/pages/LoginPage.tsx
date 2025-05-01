@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
+import { supabase } from '@/integrations/supabase/client';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -86,7 +87,48 @@ const LoginPage = () => {
       // Master user login - direct check
       if (cleanedCpf === '80243088191' && data.password === '@54321') {
         console.log("Login direto com usuário master");
-        // Force login for master user
+        
+        // Try to login to Supabase first with admin email
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: 'admin@totaldata.com.br',
+            password: data.password,
+          });
+          
+          if (signInError) {
+            console.log("Tentando criar conta de admin no Supabase:", signInError);
+            
+            // If login fails, create the admin user in Supabase
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: 'admin@totaldata.com.br',
+              password: data.password,
+              options: {
+                data: {
+                  cpf: cleanedCpf,
+                  name: 'Administrador Master',
+                  role: 'master',
+                }
+              }
+            });
+            
+            if (signUpError && signUpError.message !== "User already registered") {
+              console.error("Erro ao criar usuário master no Supabase:", signUpError);
+            } else {
+              console.log("Usuário master criado/já existe no Supabase");
+            }
+            
+            // Try login again
+            await supabase.auth.signInWithPassword({
+              email: 'admin@totaldata.com.br',
+              password: data.password,
+            });
+          }
+        } catch (e) {
+          console.log("Erro ao interagir com Supabase:", e);
+          // Continue with local auth even if Supabase fails
+        }
+        
+        // Force login for master user in localStorage
         localStorage.setItem('userAuthenticated', 'true');
         localStorage.setItem('userRole', 'master');
         localStorage.setItem('userCPF', cleanedCpf);
@@ -96,7 +138,7 @@ const LoginPage = () => {
           description: "Você foi autenticado com sucesso como Administrador Master"
         });
         
-        // Use direct redirect for master user to ensure it works
+        // Redirect for master user to ensure it works
         window.location.href = '/dashboard';
         return;
       }

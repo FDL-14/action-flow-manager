@@ -1,34 +1,44 @@
 
 import { useEffect } from 'react';
 import { useClientState } from '../../use-client-state';
-import { fetchSupabaseClients } from '../../use-supabase-clients';
+import { fetchSupabaseClients, syncClientWithSupabase } from '../../use-supabase-clients';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Hook for initializing clients data
  */
 export const useClientInit = () => {
-  const { setClients } = useClientState();
+  const { setClients, clients } = useClientState();
+  const { syncWithSupabase } = useAuth();
 
   const initClients = async () => {
     try {
-      const supabaseClients = await fetchSupabaseClients();
+      console.log("Inicializando clientes...");
       
-      if (!supabaseClients) {
-        const storedClients = localStorage.getItem('clients');
-        if (storedClients) {
-          const parsedClients = JSON.parse(storedClients);
-          console.log("Clientes carregados do localStorage:", parsedClients);
-          setClients(parsedClients);
-        } else {
-          // Initialize with empty array instead of defaulting to mock data
-          setClients([]);
-        }
-        return;
-      }
+      // First try to sync user data
+      await syncWithSupabase();
       
-      console.log("Clientes carregados do Supabase:", supabaseClients);
-      setClients(supabaseClients);
+      // Add realtime subscription to clients table
+      const clientsSubscription = supabase
+        .channel('public:clients')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'clients' 
+        }, (payload) => {
+          console.log('Alteração na tabela clients detectada:', payload);
+          refreshClients();
+        })
+        .subscribe();
+        
+      // To clean up on unmount
+      window.addEventListener('beforeunload', () => {
+        supabase.removeChannel(clientsSubscription);
+      });
+      
+      await refreshClients();
     } catch (error) {
       console.error("Erro ao inicializar clientes:", error);
       toast.error("Erro ao carregar clientes", {
@@ -36,11 +46,49 @@ export const useClientInit = () => {
       });
     }
   };
+  
+  const refreshClients = async () => {
+    console.log("Buscando clientes do Supabase...");
+    const supabaseClients = await fetchSupabaseClients();
+    
+    if (!supabaseClients) {
+      console.log("Nenhum cliente encontrado no Supabase, verificando localStorage...");
+      const storedClients = localStorage.getItem('clients');
+      if (storedClients) {
+        const parsedClients = JSON.parse(storedClients);
+        console.log("Clientes carregados do localStorage:", parsedClients.length);
+        setClients(parsedClients);
+        
+        // Try to sync localStorage clients to Supabase
+        console.log("Sincronizando clientes do localStorage para o Supabase...");
+        for (const client of parsedClients) {
+          await syncClientWithSupabase(client);
+        }
+        
+        // Tentar buscar novamente do Supabase após sincronização
+        const updatedClients = await fetchSupabaseClients();
+        if (updatedClients) {
+          console.log("Clientes atualizados do Supabase após sincronização:", updatedClients.length);
+          setClients(updatedClients);
+        }
+      } else {
+        // Initialize with empty array instead of defaulting to mock data
+        setClients([]);
+      }
+      return;
+    }
+    
+    console.log("Clientes carregados do Supabase:", supabaseClients.length);
+    setClients(supabaseClients);
+    
+    // Also update localStorage for offline backup
+    localStorage.setItem('clients', JSON.stringify(supabaseClients));
+  };
 
   // Effect to initialize clients
   useEffect(() => {
     initClients();
   }, []);
 
-  return { initClients };
+  return { initClients, refreshClients };
 };

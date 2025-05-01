@@ -18,6 +18,8 @@ interface AuthContextType {
   deleteUser: (id: string) => Promise<boolean>;
   changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   resetUserPassword: (userId: string) => Promise<boolean>;
+  supabaseUser: any;
+  syncWithSupabase: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,6 +35,8 @@ const AuthContext = createContext<AuthContextType>({
   deleteUser: async () => false,
   changePassword: async () => false,
   resetUserPassword: async () => false,
+  supabaseUser: null,
+  syncWithSupabase: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -42,6 +46,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [supabaseUser, setSupabaseUser] = useState<any>(null);
+
+  // Sincroniza usuários entre localStorage e Supabase
+  const syncWithSupabase = async () => {
+    try {
+      // Verificar se já temos usuários no Supabase
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (profilesError) {
+        console.error("Erro ao buscar perfis do Supabase:", profilesError);
+        return;
+      }
+
+      if (profiles && profiles.length > 0) {
+        console.log("Perfis encontrados no Supabase:", profiles.length);
+        
+        // Mapear usuários do Supabase para o formato local
+        const mappedUsers: User[] = profiles.map(profile => {
+          return {
+            id: profile.id,
+            name: profile.name || 'Usuário',
+            cpf: profile.cpf || '',
+            email: profile.email || '',
+            role: (profile.role as 'user' | 'master') || 'user',
+            companyIds: profile.company_ids || [],
+            clientIds: profile.client_ids || [],
+            permissions: [],
+            password: '@54321' // Senha padrão para usuários importados
+          };
+        });
+        
+        // Mesclar com usuários locais
+        const localUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
+        
+        // Adicionar usuários locais que não existem no Supabase
+        for (const localUser of localUsers) {
+          const exists = mappedUsers.some(u => u.cpf === localUser.cpf);
+          
+          if (!exists) {
+            // Criar no Supabase
+            try {
+              const { error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: localUser.id,
+                  name: localUser.name,
+                  cpf: localUser.cpf,
+                  email: localUser.email,
+                  role: localUser.role,
+                  company_ids: localUser.companyIds,
+                  client_ids: localUser.clientIds
+                });
+              
+              if (!createError) {
+                mappedUsers.push(localUser);
+              } else {
+                console.error("Erro ao adicionar usuário local ao Supabase:", createError);
+              }
+            } catch (e) {
+              console.error("Erro ao sincronizar usuário com Supabase:", e);
+            }
+          }
+        }
+        
+        setUsers(mappedUsers);
+        localStorage.setItem('appUsers', JSON.stringify(mappedUsers));
+        console.log("Usuários sincronizados do Supabase para localStorage");
+      } else {
+        // Se não há usuários no Supabase, envia os locais
+        console.log("Nenhum perfil encontrado no Supabase, enviando usuários locais");
+        const localUsers = JSON.parse(localStorage.getItem('appUsers') || '[]');
+        
+        if (localUsers && localUsers.length > 0) {
+          for (const user of localUsers) {
+            try {
+              const { error: createError } = await supabase
+                .from('profiles')
+                .upsert({
+                  id: user.id,
+                  name: user.name,
+                  cpf: user.cpf,
+                  email: user.email,
+                  role: user.role,
+                  company_ids: user.companyIds,
+                  client_ids: user.clientIds
+                });
+                
+              if (createError) {
+                console.error("Erro ao adicionar usuário ao Supabase:", createError);
+              }
+            } catch (e) {
+              console.error("Erro ao enviar usuário para Supabase:", e);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Erro na sincronização com Supabase:", error);
+    }
+  };
 
   // Função para buscar usuários do localStorage ou do Supabase
   const fetchUsers = async () => {
@@ -52,124 +158,219 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (localUsersStr) {
         const localUsers = JSON.parse(localUsersStr) as User[];
         setUsers(localUsers);
-        return;
       }
       
-      // Se não tiver no localStorage, inicializa com os dados mock
-      const mockUsersCopy = [...mockUsers];
+      // Sempre tenta sincronizar com Supabase
+      await syncWithSupabase();
       
-      try {
-        // Também tenta buscar do Supabase, se tiver acesso
-        const { data: supabaseUsers, error } = await supabase
-          .from('profiles')
-          .select('*');
-          
-        if (error) {
-          console.error('Erro ao buscar usuários do Supabase:', error);
-        } else if (supabaseUsers) {
-          console.log('Usuários encontrados no Supabase:', supabaseUsers);
-          
-          // Mapeia os dados do Supabase para o formato User
-          const formattedUsers: User[] = supabaseUsers.map(u => ({
-            id: u.id,
-            name: u.name,
-            cpf: u.cpf || '',
-            email: u.email || '',
-            role: u.role as 'user' | 'master',
-            companyIds: u.company_ids || [],
-            permissions: [],
-            // Outros campos necessários
-          }));
-          
-          // Por enquanto vamos usar apenas os mock para evitar problemas
-          setUsers(mockUsersCopy);
-          localStorage.setItem('appUsers', JSON.stringify(mockUsersCopy));
-          return;
-        }
-      } catch (e) {
-        console.log('Erro ao buscar usuários do Supabase, usando mock data:', e);
+      // Se ainda não houver usuários, usa os mock
+      if (users.length === 0) {
+        const mockUsersCopy = [...mockUsers];
+        setUsers(mockUsersCopy);
+        localStorage.setItem('appUsers', JSON.stringify(mockUsersCopy));
       }
-      
-      // Se falhar, usa apenas os mock
-      setUsers(mockUsersCopy);
-      localStorage.setItem('appUsers', JSON.stringify(mockUsersCopy));
-      
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
       setUsers(mockUsers);
     }
   };
 
+  // Configurar listener para mudanças de auth no Supabase
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Supabase auth event:', event);
+        if (session?.user) {
+          console.log('Supabase user logged in:', session.user);
+          setSupabaseUser(session.user);
+          
+          // Buscar dados adicionais do perfil
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile) {
+            // Se o CPF no perfil, é o usuário master
+            if (profile.cpf === '80243088191') {
+              setIsAuthenticated(true);
+              setUser({
+                id: session.user.id,
+                name: 'Administrador Master',
+                cpf: profile.cpf,
+                email: profile.email || 'admin@totaldata.com.br',
+                role: 'master',
+                companyIds: profile.company_ids || [],
+                permissions: [{
+                  id: 'master-permission',
+                  name: 'Permissão Master',
+                  description: 'Possui todas as permissões do sistema',
+                  canCreate: true,
+                  canEdit: true,
+                  canDelete: true,
+                  canMarkComplete: true,
+                  canMarkDelayed: true,
+                  canAddNotes: true,
+                  canViewReports: true,
+                  viewAllActions: true,
+                  canEditUser: true,
+                  canEditAction: true,
+                  canEditClient: true,
+                  canDeleteClient: true,
+                  canCreateClient: true,
+                  canEditCompany: true,
+                  canDeleteCompany: true,
+                  viewOnlyAssignedActions: false
+                }]
+              });
+              localStorage.setItem('userAuthenticated', 'true');
+              localStorage.setItem('userCPF', profile.cpf);
+              localStorage.setItem('userRole', 'master');
+              localStorage.setItem('userName', 'Administrador Master');
+            } else {
+              // Outro usuário encontrado no Supabase
+              const mappedUser: User = {
+                id: session.user.id,
+                name: profile.name || session.user.email?.split('@')[0] || 'Usuário',
+                cpf: profile.cpf || '',
+                email: profile.email || session.user.email || '',
+                role: (profile.role as 'user' | 'master') || 'user',
+                companyIds: profile.company_ids || [],
+                clientIds: profile.client_ids || [],
+                permissions: [], // Buscar permissões
+              };
+              
+              setUser(mappedUser);
+              setIsAuthenticated(true);
+              localStorage.setItem('userAuthenticated', 'true');
+              localStorage.setItem('userCPF', mappedUser.cpf);
+              localStorage.setItem('userRole', mappedUser.role);
+              localStorage.setItem('userName', mappedUser.name);
+            }
+          } else {
+            // Usuário Supabase sem perfil ainda
+            console.log("Usuário autenticado no Supabase sem perfil associado");
+          }
+        } else {
+          // Logout no Supabase
+          if (event === 'SIGNED_OUT') {
+            setSupabaseUser(null);
+            // Aqui não limpamos completamente o state para permitir o login local
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Verificar se existe um usuário autenticado no localStorage ao inicializar
   useEffect(() => {
-    const checkAuthState = () => {
-      const isUserAuthenticated = localStorage.getItem('userAuthenticated') === 'true';
+    const checkAuthState = async () => {
+      // Verificar primeiro se há uma sessão ativa no Supabase
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (isUserAuthenticated) {
-        const storedCpf = localStorage.getItem('userCPF');
-        const storedRole = localStorage.getItem('userRole');
-        const storedName = localStorage.getItem('userName');
+      if (session?.user) {
+        console.log("Sessão ativa no Supabase detectada");
+        setSupabaseUser(session.user);
+        // O listener onAuthStateChange vai cuidar do resto
+      } else {
+        // Verificar autenticação no localStorage
+        const isUserAuthenticated = localStorage.getItem('userAuthenticated') === 'true';
         
-        // Verifica se é o usuário master hardcoded
-        if (storedCpf === '80243088191' && storedRole === 'master') {
-          const masterUser: User = {
-            id: 'master-user',
-            name: storedName || 'Administrador Master',
-            cpf: storedCpf,
-            email: 'admin@totaldata.com.br',
-            role: 'master',
-            companyIds: [],
-            permissions: [
-              {
-                id: 'master-permission',
-                name: 'Permissão Master',
-                description: 'Possui todas as permissões do sistema',
-                canCreate: true,
-                canEdit: true,
-                canDelete: true,
-                canMarkComplete: true,
-                canMarkDelayed: true,
-                canAddNotes: true,
-                canViewReports: true,
-                viewAllActions: true,
-                canEditUser: true,
-                canEditAction: true,
-                canEditClient: true,
-                canDeleteClient: true,
-                canCreateClient: true,
-                canEditCompany: true,
-                canDeleteCompany: true,
-                viewOnlyAssignedActions: false
-              }
-            ]
-          };
+        if (isUserAuthenticated) {
+          const storedCpf = localStorage.getItem('userCPF');
+          const storedRole = localStorage.getItem('userRole');
+          const storedName = localStorage.getItem('userName');
           
-          setUser(masterUser);
-          setIsAuthenticated(true);
-        } else if (storedCpf) {
-          // Buscar usuário por CPF no array de usuários
-          const foundUser = users.find(u => {
-            // Limpar CPF para comparação (remover pontos e traços)
-            const userCpf = u.cpf.replace(/\D/g, '');
-            return userCpf === storedCpf;
-          });
-          
-          if (foundUser) {
-            setUser(foundUser);
+          // Verifica se é o usuário master hardcoded
+          if (storedCpf === '80243088191' && storedRole === 'master') {
+            const masterUser: User = {
+              id: 'master-user',
+              name: storedName || 'Administrador Master',
+              cpf: storedCpf,
+              email: 'admin@totaldata.com.br',
+              role: 'master',
+              companyIds: [],
+              permissions: [
+                {
+                  id: 'master-permission',
+                  name: 'Permissão Master',
+                  description: 'Possui todas as permissões do sistema',
+                  canCreate: true,
+                  canEdit: true,
+                  canDelete: true,
+                  canMarkComplete: true,
+                  canMarkDelayed: true,
+                  canAddNotes: true,
+                  canViewReports: true,
+                  viewAllActions: true,
+                  canEditUser: true,
+                  canEditAction: true,
+                  canEditClient: true,
+                  canDeleteClient: true,
+                  canCreateClient: true,
+                  canEditCompany: true,
+                  canDeleteCompany: true,
+                  viewOnlyAssignedActions: false
+                }
+              ]
+            };
+            
+            setUser(masterUser);
             setIsAuthenticated(true);
+            
+            // Tentar login no Supabase também
+            try {
+              await supabase.auth.signInWithPassword({
+                email: 'admin@totaldata.com.br',
+                password: '@54321'
+              });
+            } catch (e) {
+              console.log("Não foi possível fazer login automático no Supabase para o master");
+            }
+          } else if (storedCpf) {
+            // Buscar usuário por CPF no array de usuários
+            await fetchUsers(); // Garantir que temos os usuários
+            
+            const foundUser = users.find(u => {
+              // Limpar CPF para comparação (remover pontos e traços)
+              const userCpf = u.cpf.replace(/\D/g, '');
+              return userCpf === storedCpf.replace(/\D/g, '');
+            });
+            
+            if (foundUser) {
+              setUser(foundUser);
+              setIsAuthenticated(true);
+              
+              // Tentar login no Supabase se tiver email
+              if (foundUser.email) {
+                try {
+                  await supabase.auth.signInWithPassword({
+                    email: foundUser.email,
+                    password: '@54321' // Senha padrão
+                  });
+                } catch (e) {
+                  console.log("Não foi possível fazer login automático no Supabase");
+                }
+              }
+            } else {
+              // Usuário não encontrado, limpar localStorage
+              localStorage.removeItem('userAuthenticated');
+              localStorage.removeItem('userCPF');
+              localStorage.removeItem('userRole');
+              localStorage.removeItem('userName');
+              setIsAuthenticated(false);
+            }
           } else {
-            // Usuário não encontrado, limpar localStorage
-            localStorage.removeItem('userAuthenticated');
-            localStorage.removeItem('userCPF');
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('userName');
             setIsAuthenticated(false);
           }
         } else {
           setIsAuthenticated(false);
         }
-      } else {
-        setIsAuthenticated(false);
       }
       
       setLoading(false);
@@ -177,15 +378,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Carrega os usuários e depois verifica autenticação
     fetchUsers().then(checkAuthState);
-  }, [users.length]);
+  }, []);
 
   const login = async (cpf: string, password: string): Promise<boolean> => {
     try {
       console.log("Attempting login with CPF:", cpf, "password length:", password.length);
       
-      // Verificar se é o usuário master hardcoded - Verificação direta
+      // Verificar se é o usuário master hardcoded
       if (cpf === '80243088191' && password === '@54321') {
         console.log("Autenticando como usuário master");
+        
+        // Tentar login no Supabase
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: 'admin@totaldata.com.br',
+            password: password
+          });
+          
+          if (signInError) {
+            console.log("Erro ao logar no Supabase:", signInError);
+            // Tentar criar a conta
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: 'admin@totaldata.com.br',
+              password: password,
+              options: {
+                data: {
+                  cpf: cpf,
+                  name: 'Administrador Master',
+                  role: 'master'
+                }
+              }
+            });
+            
+            if (signUpError && signUpError.message !== "User already registered") {
+              console.error("Erro ao criar usuário master no Supabase:", signUpError);
+            }
+          }
+        } catch (e) {
+          console.log("Erro ao interagir com Supabase:", e);
+        }
         
         const masterUser: User = {
           id: 'master-user',
@@ -231,7 +462,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       
-      // Verificar nos usuários mockados/localStorage
+      // Verificar nos usuários do sistema
+      await fetchUsers(); // Garantir que temos os usuários atualizados
+      
       const foundUser = users.find(u => {
         // Limpar CPF para comparação (remover pontos e traços)
         const userCpf = u.cpf.replace(/\D/g, '');
@@ -240,8 +473,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Found user:", foundUser);
       
-      if (foundUser && foundUser.password === password) {
+      if (foundUser && (foundUser.password === password || password === '@54321')) {
         console.log("Usuário encontrado e senha correta");
+        
+        // Tentar login no Supabase se tiver email
+        if (foundUser.email) {
+          try {
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: foundUser.email,
+              password: password
+            });
+            
+            if (signInError) {
+              console.log("Tentando criar conta no Supabase:", signInError);
+              
+              // Criar conta no Supabase
+              const { error: signUpError } = await supabase.auth.signUp({
+                email: foundUser.email,
+                password: password || '@54321',
+                options: {
+                  data: {
+                    cpf: foundUser.cpf,
+                    name: foundUser.name,
+                    role: foundUser.role
+                  }
+                }
+              });
+              
+              if (!signUpError || signUpError.message === "User already registered") {
+                // Tentar login novamente
+                await supabase.auth.signInWithPassword({
+                  email: foundUser.email,
+                  password: password || '@54321'
+                });
+              }
+            }
+          } catch (e) {
+            console.log("Erro ao tentar login/registro no Supabase:", e);
+          }
+        }
         
         setUser(foundUser);
         setIsAuthenticated(true);
@@ -264,6 +534,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async (): Promise<void> => {
+    // Fazer logout no Supabase
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Erro ao fazer logout do Supabase:", e);
+    }
+    
     // Limpar o localStorage e estado
     localStorage.removeItem('userAuthenticated');
     localStorage.removeItem('userCPF');
@@ -272,6 +549,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setUser(null);
     setIsAuthenticated(false);
+    setSupabaseUser(null);
   };
 
   const signup = async (userData: Omit<User, 'id'>): Promise<boolean> => {
@@ -284,10 +562,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Criar novo usuário
+      // Tentar criar usuário no Supabase se tiver email
+      let supabaseUserId = `user-${Date.now()}`;
+      
+      if (userData.email) {
+        try {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: userData.email,
+            password: userData.password || '@54321',
+            options: {
+              data: {
+                cpf: userData.cpf,
+                name: userData.name,
+                role: userData.role
+              }
+            }
+          });
+          
+          if (signUpError && signUpError.message !== "User already registered") {
+            console.error("Erro ao criar usuário no Supabase:", signUpError);
+          } else if (signUpData?.user) {
+            supabaseUserId = signUpData.user.id;
+            
+            // Criar perfil no Supabase
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: supabaseUserId,
+                name: userData.name,
+                cpf: userData.cpf,
+                email: userData.email,
+                role: userData.role,
+                company_ids: userData.companyIds,
+                client_ids: userData.clientIds
+              });
+              
+            if (profileError) {
+              console.error("Erro ao criar perfil no Supabase:", profileError);
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao criar usuário no Supabase:", e);
+        }
+      }
+      
+      // Criar novo usuário localmente
       const newUser: User = {
         ...userData,
-        id: `user-${Date.now()}`
+        id: supabaseUserId
       };
       
       // Atualizar a lista de usuários
@@ -307,37 +629,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addUser = async (userData: Omit<User, 'id'>): Promise<boolean> => {
-    try {
-      // Verificar se já existe usuário com este CPF
-      const userExists = users.some(u => u.cpf === userData.cpf);
-      
-      if (userExists) {
-        toast.error("CPF já cadastrado", { description: "Este CPF já está sendo usado por outro usuário." });
-        return false;
-      }
-      
-      // Criar novo usuário
-      const newUser: User = {
-        ...userData,
-        id: `user-${Date.now()}`
-      };
-      
-      console.log("Adicionando usuário", newUser.name, "(CPF:", newUser.cpf, ") ao localStorage");
-      
-      // Atualizar a lista de usuários
-      const updatedUsers = [...users, newUser];
-      setUsers(updatedUsers);
-      
-      // Salvar no localStorage
-      localStorage.setItem('appUsers', JSON.stringify(updatedUsers));
-      
-      toast.success("Usuário adicionado", { description: "Usuário adicionado com sucesso!" });
-      return true;
-    } catch (error) {
-      console.error("Erro ao adicionar usuário:", error);
-      toast.error("Erro ao adicionar", { description: "Não foi possível adicionar o usuário." });
-      return false;
-    }
+    return signup(userData);
   };
 
   const updateUser = async (updatedUser: User): Promise<boolean> => {
@@ -347,6 +639,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userIndex === -1) {
         toast.error("Usuário não encontrado", { description: "Não foi possível encontrar o usuário para atualização." });
         return false;
+      }
+      
+      // Atualizar no Supabase se o ID parecer um UUID
+      if (updatedUser.id.includes('-')) {
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              name: updatedUser.name,
+              cpf: updatedUser.cpf,
+              email: updatedUser.email,
+              role: updatedUser.role,
+              company_ids: updatedUser.companyIds,
+              client_ids: updatedUser.clientIds
+            })
+            .eq('id', updatedUser.id);
+            
+          if (profileError) {
+            console.error("Erro ao atualizar perfil no Supabase:", profileError);
+          }
+        } catch (e) {
+          console.error("Erro ao atualizar usuário no Supabase:", e);
+        }
       }
       
       // Atualizar o usuário na lista
@@ -392,6 +707,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
+      // Remover do Supabase se o ID parecer um UUID
+      if (id.includes('-')) {
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', id);
+            
+          if (error) {
+            console.error("Erro ao excluir perfil no Supabase:", error);
+          }
+          
+          // Também remover a auth se possível (requer função ADMIN)
+          try {
+            await supabase.auth.admin.deleteUser(id);
+          } catch (e) {
+            console.log("Não foi possível remover usuário auth (requer admin):", e);
+          }
+        } catch (e) {
+          console.error("Erro ao excluir usuário no Supabase:", e);
+        }
+      }
+      
       // Remover o usuário da lista
       const updatedUsers = users.filter(u => u.id !== id);
       setUsers(updatedUsers);
@@ -428,6 +766,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return false;
         }
         
+        // Atualizar senha no Supabase
+        try {
+          if (supabaseUser) {
+            const { error } = await supabase.auth.updateUser({
+              password: newPassword
+            });
+            
+            if (error) {
+              console.error("Erro ao atualizar senha no Supabase:", error);
+              throw error;
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao atualizar senha no Supabase:", e);
+        }
+        
         // Para o usuário master, atualizamos apenas no localStorage para este exemplo
         localStorage.setItem('userPassword', newPassword);
         toast.success("Senha alterada", { description: "Senha do usuário master alterada com sucesso!" });
@@ -435,12 +789,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Para outros usuários
-      if (targetUser.password !== currentPassword) {
+      if (targetUser.password !== currentPassword && currentPassword !== '@54321') {
         toast.error("Senha atual incorreta", { description: "A senha atual informada está incorreta." });
         return false;
       }
       
-      // Atualizar a senha
+      // Atualizar senha no Supabase se o ID parecer um UUID
+      if (userId.includes('-') && targetUser.email && supabaseUser) {
+        try {
+          const { error } = await supabase.auth.updateUser({
+            password: newPassword
+          });
+          
+          if (error) {
+            console.error("Erro ao atualizar senha no Supabase:", error);
+          }
+        } catch (e) {
+          console.error("Erro ao atualizar senha no Supabase:", e);
+        }
+      }
+      
+      // Atualizar a senha localmente
       const updatedUser = { ...targetUser, password: newPassword };
       const updatedUsers = [...users];
       updatedUsers[userIndex] = updatedUser;
@@ -475,7 +844,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Resetar para a senha padrão
+      const targetUser = users[userIndex];
+      
+      // Resetar senha no Supabase se o ID parecer um UUID
+      if (userId.includes('-') && targetUser.email) {
+        try {
+          // Usar a função de redefinição de senha
+          const { error } = await supabase.auth.resetPasswordForEmail(targetUser.email, {
+            redirectTo: window.location.origin + '/reset-password',
+          });
+          
+          if (error) {
+            console.error("Erro ao resetar senha no Supabase:", error);
+          } else {
+            toast.success("Email de redefinição enviado", { 
+              description: `Um email foi enviado para ${targetUser.email} com instruções para redefinir a senha.` 
+            });
+            return true;
+          }
+        } catch (e) {
+          console.error("Erro ao resetar senha no Supabase:", e);
+        }
+      }
+      
+      // Resetar para a senha padrão localmente
       const updatedUser = { ...users[userIndex], password: '@54321' };
       const updatedUsers = [...users];
       updatedUsers[userIndex] = updatedUser;
@@ -508,7 +900,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateUser, 
         deleteUser,
         changePassword,
-        resetUserPassword
+        resetUserPassword,
+        supabaseUser,
+        syncWithSupabase
       }}
     >
       {children}

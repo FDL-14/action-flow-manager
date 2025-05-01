@@ -11,7 +11,29 @@ console.log('Initializing Supabase client with:', {
   supabaseKeyProvided: supabaseKey ? 'YES' : 'NO' 
 });
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Create the Supabase client with auth configuration for better session handling
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'implicit'
+  }
+});
+
+// Test connection and log the result
+supabase.from('actions').select('count').limit(1)
+  .then(({ data, error }) => {
+    if (error) {
+      console.error('Erro ao conectar ao Supabase:', error);
+    } else {
+      console.log('Conexão com Supabase estabelecida com sucesso');
+    }
+  })
+  .catch(err => {
+    console.error('Falha ao testar conexão com Supabase:', err);
+  });
 
 // Improved UUID conversion function
 export const convertToUUID = (id: string): string => {
@@ -23,7 +45,6 @@ export const convertToUUID = (id: string): string => {
   
   // Check if it's already a valid UUID
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    console.log(`ID is already a UUID: ${id}`);
     return id;
   }
   
@@ -43,11 +64,46 @@ export const convertToUUID = (id: string): string => {
       return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
     });
     
-    console.log(`Converted ID ${id} to UUID ${uuid}`);
     return uuid;
   } catch (error) {
     console.error('Error converting ID to UUID:', error);
     // Return a valid UUID format as fallback
     return "00000000-0000-0000-0000-000000000000";
+  }
+};
+
+// Function to check if current date is within rate limit for calls
+let lastCallTimes: Record<string, number> = {};
+export const checkRateLimit = (key: string, limitMs = 1000): boolean => {
+  const now = Date.now();
+  const lastCall = lastCallTimes[key] || 0;
+  
+  if (now - lastCall < limitMs) {
+    return false; // Rate limited
+  }
+  
+  lastCallTimes[key] = now;
+  return true; // Not rate limited
+};
+
+// Function to retry Supabase operations with exponential backoff
+export const retryOperation = async <T>(
+  operation: () => Promise<T>, 
+  retries = 3, 
+  delay = 500,
+  operationName = 'Supabase operation'
+): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries <= 0) {
+      console.error(`${operationName} failed after all retry attempts:`, error);
+      throw error;
+    }
+    
+    console.log(`${operationName} failed, retrying in ${delay}ms...`, error);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    return retryOperation(operation, retries - 1, delay * 2, operationName);
   }
 };

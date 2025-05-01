@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, convertToUUID, retryOperation } from '@/integrations/supabase/client';
 import { Client } from '@/lib/types';
 import { isValidUUID, logDebug } from './utils';
 import { findOrCreateCompanyByName, getCompanyNameById, checkSupabaseCompanyExists, ensureSupabaseCompanyExists } from './company-operations';
@@ -9,10 +9,18 @@ import { findOrCreateCompanyByName, getCompanyNameById, checkSupabaseCompanyExis
  */
 export const fetchSupabaseClients = async () => {
   try {
-    // Modificado para incluir o join com a tabela companies
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*, companies(name)');
+    logDebug("Iniciando busca de clientes no Supabase...");
+    
+    // Modified to include the join with companies table
+    const { data, error } = await retryOperation(
+      () => supabase
+        .from('clients')
+        .select('*, companies(name)')
+        .order('name', { ascending: true }),
+      3,
+      500,
+      'Fetch clients'
+    );
       
     if (error) {
       logDebug("Erro ao buscar clientes do Supabase:", error);
@@ -20,7 +28,9 @@ export const fetchSupabaseClients = async () => {
     }
     
     if (data && data.length > 0) {
-      return data.map(c => {
+      logDebug(`${data.length} clientes encontrados no Supabase`);
+      
+      const clients = await Promise.all(data.map(async c => {
         // Extrair o nome da empresa do join, se disponível
         let companyName;
         
@@ -31,6 +41,11 @@ export const fetchSupabaseClients = async () => {
           }
         }
         
+        // If company name is still not found, try to fetch it directly
+        if (!companyName && c.company_id) {
+          companyName = await getCompanyNameById(c.company_id);
+        }
+        
         logDebug(`Cliente carregado: ${c.name}, Empresa: ${companyName || 'não definida'}`);
         
         return {
@@ -38,14 +53,16 @@ export const fetchSupabaseClients = async () => {
           name: c.name,
           email: c.contact_email || undefined,
           phone: c.contact_phone || undefined,
-          address: undefined,
-          cnpj: undefined,
+          address: c.address || undefined,
+          cnpj: c.cnpj || undefined,
           companyId: c.company_id || '',
-          companyName: companyName, 
+          companyName: companyName || 'Empresa não especificada', 
           createdAt: new Date(c.created_at || new Date()),
           updatedAt: new Date(c.updated_at || new Date())
         };
-      });
+      }));
+      
+      return clients;
     }
     
     return [];
@@ -60,8 +77,8 @@ export const fetchSupabaseClients = async () => {
  */
 export const addSupabaseClient = async (clientData: any) => {
   try {
-    if (!clientData.companyId) {
-      throw new Error("ID da empresa é obrigatório");
+    if (!clientData.companyId && !clientData.companyName) {
+      throw new Error("É necessário fornecer uma empresa (ID ou nome)");
     }
     
     let companyId = clientData.companyId;
@@ -69,34 +86,59 @@ export const addSupabaseClient = async (clientData: any) => {
     
     logDebug("Adicionando cliente para empresa:", { id: companyId, nome: companyName });
     
-    // Garantir que a empresa exista no Supabase antes de continuar
-    const companyResult = await ensureSupabaseCompanyExists({
-      id: companyId,
-      name: companyName || 'Empresa sem nome'
-    });
-    
-    if (!companyResult) {
-      throw new Error("Falha ao garantir que a empresa exista no Supabase");
+    // If we only have company name but no ID, find or create it
+    if (!companyId && companyName) {
+      logDebug(`Buscando ou criando empresa pelo nome: ${companyName}`);
+      const companyResult = await findOrCreateCompanyByName(companyName);
+      
+      if (companyResult) {
+        companyId = companyResult.id;
+        companyName = companyResult.name;
+        logDebug(`Empresa encontrada/criada: ${companyId} (${companyName})`);
+      } else {
+        throw new Error("Não foi possível encontrar ou criar a empresa especificada");
+      }
+    } else {
+      // Garantir que a empresa exista no Supabase antes de continuar
+      const companyResult = await ensureSupabaseCompanyExists({
+        id: companyId,
+        name: companyName || 'Empresa sem nome'
+      });
+      
+      if (!companyResult) {
+        throw new Error("Falha ao garantir que a empresa exista no Supabase");
+      }
+      
+      companyId = companyResult;
+      
+      // Verificar se temos o nome da empresa
+      if (!companyName) {
+        companyName = await getCompanyNameById(companyId);
+      }
     }
     
-    companyId = companyResult;
+    logDebug(`Salvando cliente com empresa: ${companyId} (${companyName || 'sem nome'})`);
     
-    // Verificar se temos o nome da empresa
-    if (!companyName) {
-      companyName = await getCompanyNameById(companyId);
-    }
-    
-    const { data: supabaseClient, error } = await supabase
-      .from('clients')
-      .insert({
-        name: clientData.name,
-        contact_email: clientData.email || null,
-        contact_phone: clientData.phone || null,
-        contact_name: clientData.name,
-        company_id: companyId
-      })
-      .select('*, companies(name)')
-      .single();
+    const { data: supabaseClient, error } = await retryOperation(
+      () => supabase
+        .from('clients')
+        .insert({
+          name: clientData.name,
+          contact_email: clientData.email || null,
+          contact_phone: clientData.phone || null,
+          contact_name: clientData.name,
+          company_id: companyId,
+          address: clientData.address || null,
+          cnpj: clientData.cnpj || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('*, companies(name)')
+        .single(),
+      3,
+      500,
+      'Add client'
+    );
       
     if (error) {
       logDebug('Erro ao salvar cliente no Supabase:', error);
@@ -131,8 +173,8 @@ export const addSupabaseClient = async (clientData: any) => {
  */
 export const updateSupabaseClient = async (clientId: string, clientData: any) => {
   try {
-    if (!clientData.companyId) {
-      throw new Error("ID da empresa é obrigatório");
+    if (!clientData.companyId && !clientData.companyName) {
+      throw new Error("É necessário fornecer uma empresa (ID ou nome)");
     }
     
     let companyId = clientData.companyId;
@@ -140,36 +182,57 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
     
     logDebug("Atualizando cliente com dados de empresa:", { id: companyId, nome: companyName });
     
-    // Garantir que a empresa exista no Supabase antes de continuar
-    const companyResult = await ensureSupabaseCompanyExists({
-      id: companyId,
-      name: companyName || 'Empresa sem nome'
-    });
-    
-    if (!companyResult) {
-      throw new Error("Falha ao garantir que a empresa exista no Supabase");
-    }
-    
-    companyId = companyResult;
-    
-    // Verificar se temos o nome da empresa
-    if (!companyName) {
-      companyName = await getCompanyNameById(companyId);
+    // If we only have company name but no ID, find or create it
+    if (!companyId && companyName) {
+      logDebug(`Buscando ou criando empresa pelo nome: ${companyName}`);
+      const companyResult = await findOrCreateCompanyByName(companyName);
+      
+      if (companyResult) {
+        companyId = companyResult.id;
+        companyName = companyResult.name;
+        logDebug(`Empresa encontrada/criada: ${companyId} (${companyName})`);
+      } else {
+        throw new Error("Não foi possível encontrar ou criar a empresa especificada");
+      }
+    } else {
+      // Garantir que a empresa exista no Supabase antes de continuar
+      const companyResult = await ensureSupabaseCompanyExists({
+        id: companyId,
+        name: companyName || 'Empresa sem nome'
+      });
+      
+      if (!companyResult) {
+        throw new Error("Falha ao garantir que a empresa exista no Supabase");
+      }
+      
+      companyId = companyResult;
+      
+      // Verificar se temos o nome da empresa
+      if (!companyName) {
+        companyName = await getCompanyNameById(companyId);
+      }
     }
     
     logDebug(`Atualizando cliente ${clientId} com empresa: ${companyId} (${companyName || 'sem nome'})`);
     
-    const { error } = await supabase
-      .from('clients')
-      .update({
-        name: clientData.name,
-        contact_email: clientData.email || null,
-        contact_phone: clientData.phone || null,
-        contact_name: clientData.name,
-        company_id: companyId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', clientId);
+    const { error } = await retryOperation(
+      () => supabase
+        .from('clients')
+        .update({
+          name: clientData.name,
+          contact_email: clientData.email || null,
+          contact_phone: clientData.phone || null,
+          contact_name: clientData.name,
+          company_id: companyId,
+          address: clientData.address || null,
+          cnpj: clientData.cnpj || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', clientId),
+      3,
+      500,
+      'Update client'
+    );
       
     if (error) {
       logDebug('Erro ao atualizar cliente no Supabase:', error);
@@ -177,7 +240,11 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
     }
     
     logDebug('Cliente atualizado com sucesso. ID:', clientId);
-    return true;
+    return {
+      success: true,
+      companyId: companyId,
+      companyName: companyName
+    };
   } catch (error) {
     logDebug('Erro ao atualizar cliente:', error);
     throw error;
@@ -189,10 +256,15 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
  */
 export const deleteSupabaseClient = async (clientId: string) => {
   try {
-    const { error } = await supabase
-      .from('clients')
-      .delete()
-      .eq('id', clientId);
+    const { error } = await retryOperation(
+      () => supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId),
+      3,
+      500,
+      'Delete client'
+    );
       
     if (error) {
       logDebug('Erro ao excluir cliente no Supabase:', error);
@@ -203,5 +275,43 @@ export const deleteSupabaseClient = async (clientId: string) => {
   } catch (error) {
     logDebug('Erro ao excluir cliente:', error);
     throw error;
+  }
+};
+
+/**
+ * Synchronizes the client with Supabase
+ * Used during application initialization to ensure all local clients are in Supabase
+ */
+export const syncClientWithSupabase = async (client: Client) => {
+  try {
+    // First, check if the client exists in Supabase
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', client.id)
+      .maybeSingle();
+      
+    if (error) {
+      logDebug(`Erro ao verificar cliente ${client.id}:`, error);
+      return false;
+    }
+    
+    if (!data) {
+      // Client doesn't exist, create it
+      logDebug(`Cliente ${client.id} não encontrado no Supabase, criando...`);
+      await addSupabaseClient({
+        ...client,
+        id: client.id
+      });
+    } else {
+      // Client exists, update it
+      logDebug(`Cliente ${client.id} encontrado no Supabase, atualizando...`);
+      await updateSupabaseClient(client.id, client);
+    }
+    
+    return true;
+  } catch (error) {
+    logDebug(`Erro ao sincronizar cliente ${client.id}:`, error);
+    return false;
   }
 };

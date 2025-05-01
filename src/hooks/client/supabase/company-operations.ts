@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, retryOperation } from '@/integrations/supabase/client';
 import { isValidUUID, logDebug } from './utils';
 
 /**
@@ -17,11 +17,16 @@ export const checkSupabaseCompanyExists = async (companyId: string): Promise<boo
       return false;
     }
     
-    const { data, error } = await supabase
-      .from('companies')
-      .select('id, name')
-      .eq('id', companyId)
-      .single();
+    const { data, error } = await retryOperation(
+      () => supabase
+        .from('companies')
+        .select('id, name')
+        .eq('id', companyId)
+        .single(),
+      3,
+      500,
+      'Check company exists'
+    );
     
     if (error) {
       if (error.code === 'PGRST116') { // Código para nenhum registro encontrado
@@ -44,8 +49,21 @@ export const checkSupabaseCompanyExists = async (companyId: string): Promise<boo
  * Ensures a company exists in Supabase, creating it if necessary
  */
 export const ensureSupabaseCompanyExists = async (companyData: any) => {
-  if (!companyData || !companyData.id) {
+  if (!companyData) {
     logDebug("Dados de empresa inválidos");
+    return null;
+  }
+  
+  // Se temos apenas o nome e nenhum ID, criar pelo nome
+  if (!companyData.id && companyData.name) {
+    logDebug(`Criando empresa pelo nome: ${companyData.name}`);
+    const company = await findOrCreateCompanyByName(companyData.name);
+    return company?.id || null;
+  }
+  
+  // Se não temos nem ID nem nome, não podemos continuar
+  if (!companyData.id) {
+    logDebug("Dados de empresa não tem ID");
     return null;
   }
   
@@ -67,18 +85,25 @@ export const ensureSupabaseCompanyExists = async (companyData: any) => {
       logDebug("Empresa não existe no Supabase. Criando...", companyData);
       
       // Cria a empresa
-      const { data, error } = await supabase
-        .from('companies')
-        .insert({
-          id: isValidUUID(companyData.id) ? companyData.id : undefined, // Só usa o ID se for um UUID válido
-          name: companyData.name || 'Empresa',
-          address: companyData.address || null,
-          phone: companyData.phone || null,
-          cnpj: companyData.cnpj || null,
-          logo: companyData.logo || null
-        })
-        .select()
-        .single();
+      const { data, error } = await retryOperation(
+        () => supabase
+          .from('companies')
+          .insert({
+            id: isValidUUID(companyData.id) ? companyData.id : undefined, // Só usa o ID se for um UUID válido
+            name: companyData.name || 'Empresa',
+            address: companyData.address || null,
+            phone: companyData.phone || null,
+            cnpj: companyData.cnpj || null,
+            logo: companyData.logo || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single(),
+        3,
+        500,
+        'Create company'
+      );
       
       if (error) {
         logDebug("Erro ao criar empresa no Supabase:", error);
@@ -119,11 +144,16 @@ export const findOrCreateCompanyByName = async (companyName: string | undefined)
     }
     
     // Buscar empresa por nome
-    const { data: existingCompanies } = await supabase
-      .from('companies')
-      .select('id, name')
-      .eq('name', companyName)
-      .limit(1);
+    const { data: existingCompanies } = await retryOperation(
+      () => supabase
+        .from('companies')
+        .select('id, name')
+        .eq('name', companyName)
+        .limit(1),
+      3,
+      500,
+      'Find company by name'
+    );
       
     if (existingCompanies && existingCompanies.length > 0) {
       logDebug(`Empresa encontrada pelo nome "${companyName}": ${existingCompanies[0].id}`);
@@ -134,13 +164,20 @@ export const findOrCreateCompanyByName = async (companyName: string | undefined)
     }
     
     // Criar uma nova empresa
-    const { data: newCompany, error } = await supabase
-      .from('companies')
-      .insert({
-        name: companyName
-      })
-      .select()
-      .single();
+    const { data: newCompany, error } = await retryOperation(
+      () => supabase
+        .from('companies')
+        .insert({
+          name: companyName,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single(),
+      3,
+      500,
+      'Create new company'
+    );
       
     if (error) {
       logDebug('Erro ao criar nova empresa:', error);
@@ -169,11 +206,16 @@ export const getCompanyNameById = async (companyId: string): Promise<string | nu
       return null;
     }
     
-    const { data } = await supabase
-      .from('companies')
-      .select('name')
-      .eq('id', companyId)
-      .single();
+    const { data } = await retryOperation(
+      () => supabase
+        .from('companies')
+        .select('name')
+        .eq('id', companyId)
+        .single(),
+      3,
+      500,
+      'Get company name'
+    );
       
     return data?.name || null;
   } catch (error) {
@@ -209,4 +251,31 @@ export const syncLocalCompaniesToSupabase = async (companies: any[]) => {
   }
   
   return syncedCompanies;
+};
+
+/**
+ * Fetch all companies from Supabase
+ */
+export const fetchAllCompanies = async () => {
+  try {
+    const { data, error } = await retryOperation(
+      () => supabase
+        .from('companies')
+        .select('*')
+        .order('name'),
+      3,
+      500,
+      'Fetch all companies'
+    );
+    
+    if (error) {
+      logDebug('Erro ao buscar todas as empresas:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    logDebug('Erro ao buscar empresas:', error);
+    return null;
+  }
 };
