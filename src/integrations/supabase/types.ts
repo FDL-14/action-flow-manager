@@ -313,7 +313,9 @@ export type Database = {
           cpf: string | null
           created_at: string | null
           email: string | null
+          face_image: string | null
           id: string
+          is_face_registered: boolean | null
           name: string
           role: string | null
           updated_at: string | null
@@ -324,7 +326,9 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           email?: string | null
+          face_image?: string | null
           id: string
+          is_face_registered?: boolean | null
           name: string
           role?: string | null
           updated_at?: string | null
@@ -335,7 +339,9 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           email?: string | null
+          face_image?: string | null
           id?: string
+          is_face_registered?: boolean | null
           name?: string
           role?: string | null
           updated_at?: string | null

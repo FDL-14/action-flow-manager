@@ -79,8 +79,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         return "Data inválida";
       }
       
-      // Call formatDateToLocalString with the default locale (pt-BR is already the default)
-      return formatDateToLocalString(dateObj);
+      // Pass both required arguments - the date and locale
+      return formatDateToLocalString(dateObj, 'pt-BR');
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Erro ao formatar data";

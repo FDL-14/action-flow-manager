@@ -8,7 +8,8 @@ export function isValidDate(date: Date | null | undefined): boolean {
 }
 
 // Format a date to a locale string with proper validation
-export function formatDateToLocalString(date: Date, locale: string = 'pt-BR'): string {
+// Make locale parameter required to match the usage
+export function formatDateToLocalString(date: Date, locale: string): string {
   if (!isValidDate(date)) {
     return 'Data inválida';
   }
