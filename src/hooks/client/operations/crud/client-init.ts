@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useClientState } from '../../use-client-state';
-import { fetchSupabaseClients, syncClientWithSupabase } from '../../use-supabase-clients';
+import { fetchSupabaseClients, syncClientWithSupabase } from '@/hooks/client/use-supabase-clients';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,7 +51,7 @@ export const useClientInit = () => {
     console.log("Buscando clientes do Supabase...");
     const supabaseClients = await fetchSupabaseClients();
     
-    if (!supabaseClients) {
+    if (!supabaseClients || supabaseClients.length === 0) {
       console.log("Nenhum cliente encontrado no Supabase, verificando localStorage...");
       const storedClients = localStorage.getItem('clients');
       if (storedClients) {
@@ -67,7 +67,7 @@ export const useClientInit = () => {
         
         // Tentar buscar novamente do Supabase após sincronização
         const updatedClients = await fetchSupabaseClients();
-        if (updatedClients) {
+        if (updatedClients && updatedClients.length > 0) {
           console.log("Clientes atualizados do Supabase após sincronização:", updatedClients.length);
           setClients(updatedClients);
         }
@@ -79,6 +79,11 @@ export const useClientInit = () => {
     }
     
     console.log("Clientes carregados do Supabase:", supabaseClients.length);
+    // Log each client with its company ID to verify data integrity
+    supabaseClients.forEach(client => {
+      console.log(`Cliente: ${client.name}, Empresa: ${client.companyName || 'N/A'}, CompanyID: ${client.companyId || 'N/A'}`);
+    });
+    
     setClients(supabaseClients);
     
     // Also update localStorage for offline backup

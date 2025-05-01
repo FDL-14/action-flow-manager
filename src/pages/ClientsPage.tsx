@@ -18,7 +18,7 @@ const ClientsPage = () => {
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(company?.id);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('all');
 
   const canEditClients = user?.role === 'master' || 
                         user?.permissions?.some(p => p.canEdit || p.canEditClient || p.canCreateClient);
@@ -27,20 +27,29 @@ const ClientsPage = () => {
   const canDeleteClients = user?.role === 'master' || 
                         user?.permissions?.some(p => p.canDelete || p.canDeleteClient);
 
+  // Set company filter to match current company if it exists
   useEffect(() => {
-    if (company) {
+    if (company && company.id) {
+      console.log("Setting company filter to current company:", company.id, company.name);
       setSelectedCompanyId(company.id);
+    } else {
+      console.log("No current company, showing all clients");
+      setSelectedCompanyId('all');
     }
   }, [company]);
 
   // Update client company names when companies change
   useEffect(() => {
     if (companies.length > 0 && clients.length > 0) {
+      console.log("Atualizando informações de empresas para clientes");
+      console.log(`Total de empresas: ${companies.length}, Total de clientes: ${clients.length}`);
+      
       const updatedClients = clients.map(client => {
         if (client.companyId) {
-          const companyName = companies.find(c => c.id === client.companyId)?.name;
-          if (companyName && client.companyName !== companyName) {
-            return { ...client, companyName };
+          const company = companies.find(c => c.id === client.companyId);
+          if (company && (!client.companyName || client.companyName !== company.name)) {
+            console.log(`Atualizando ${client.name}: empresa ${client.companyName || 'N/A'} -> ${company.name}`);
+            return { ...client, companyName: company.name };
           }
         }
         return client;
@@ -51,53 +60,68 @@ const ClientsPage = () => {
         client.companyName !== clients[index].companyName
       );
       
-      // If there were changes, update the context
+      // If there were changes, update our local state
       if (hasChanges) {
         console.log("Atualizando nomes de empresas para clientes");
-        // We can't update the actual context here, but we can update our local state
+        setFilteredClients(
+          selectedCompanyId === 'all' 
+            ? updatedClients 
+            : updatedClients.filter(c => c.companyId === selectedCompanyId)
+        );
       }
     }
   }, [companies, clients]);
 
+  // Filter clients when selectedCompanyId changes
   useEffect(() => {
-    if (selectedCompanyId && selectedCompanyId !== 'all') {
-      try {
-        const filtered = getClientsByCompanyId(selectedCompanyId);
-        
-        // Ensure company names are set
-        const enhancedClients = filtered.map(client => {
+    console.log("Filtrando clientes por empresa:", selectedCompanyId);
+    console.log("Total de clientes disponíveis:", clients.length);
+    
+    try {
+      if (selectedCompanyId === 'all') {
+        // Get all clients and ensure they have company names
+        const allClients = clients.map(client => {
           if (!client.companyName && client.companyId) {
             const company = companies.find(c => c.id === client.companyId);
-            return {
-              ...client,
-              companyName: company ? company.name : 'Empresa não encontrada'
-            };
+            if (company) {
+              console.log(`Definindo nome da empresa para ${client.name}: ${company.name}`);
+              return { ...client, companyName: company.name };
+            }
+          }
+          return client;
+        });
+        
+        console.log(`Mostrando todos os clientes: ${allClients.length}`);
+        setFilteredClients(allClients);
+      } else {
+        // Log all clients and their company IDs for debugging
+        clients.forEach(client => {
+          console.log(`Cliente ${client.name}: companyId=${client.companyId}, filtroAtual=${selectedCompanyId}, match=${client.companyId === selectedCompanyId}`);
+        });
+        
+        // Get clients for the selected company
+        const companyClients = getClientsByCompanyId(selectedCompanyId);
+        console.log(`Clientes filtrados para empresa ${selectedCompanyId}: ${companyClients.length}`);
+        
+        // Ensure company names are set
+        const enhancedClients = companyClients.map(client => {
+          if (!client.companyName && client.companyId) {
+            const company = companies.find(c => c.id === client.companyId);
+            if (company) {
+              return { ...client, companyName: company.name };
+            }
           }
           return client;
         });
         
         setFilteredClients(enhancedClients);
-      } catch (error) {
-        console.error("Erro ao filtrar clientes:", error);
-        setFilteredClients([]);
-        toast.error("Erro ao filtrar clientes");
       }
-    } else {
-      // Ensure company names are set for all clients
-      const enhancedClients = clients.map(client => {
-        if (!client.companyName && client.companyId) {
-          const company = companies.find(c => c.id === client.companyId);
-          return {
-            ...client,
-            companyName: company ? company.name : 'Empresa não encontrada'
-          };
-        }
-        return client;
-      });
-      
-      setFilteredClients(enhancedClients);
+    } catch (error) {
+      console.error("Erro ao filtrar clientes:", error);
+      setFilteredClients([]);
+      toast.error("Erro ao filtrar clientes");
     }
-  }, [clients, selectedCompanyId, getClientsByCompanyId, companies]);
+  }, [clients, selectedCompanyId, companies, getClientsByCompanyId]);
 
   const handleEditClient = (client: Client) => {
     console.log("Editando cliente:", client);

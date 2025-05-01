@@ -11,16 +11,11 @@ export const fetchSupabaseClients = async () => {
   try {
     logDebug("Iniciando busca de clientes no Supabase...");
     
-    // Modified to include the join with companies table
-    const { data, error } = await retryOperation(
-      async () => await supabase
-        .from('clients')
-        .select('*, companies(name)')
-        .order('name', { ascending: true }),
-      3,
-      500,
-      'Fetch clients'
-    );
+    // Fetch clients with a more direct approach
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*, companies(name)')
+      .order('name', { ascending: true });
       
     if (error) {
       logDebug("Erro ao buscar clientes do Supabase:", error);
@@ -31,22 +26,19 @@ export const fetchSupabaseClients = async () => {
       logDebug(`${data.length} clientes encontrados no Supabase`);
       
       const clients = await Promise.all(data.map(async c => {
-        // Extrair o nome da empresa do join, se disponível
+        // Get company name either from join or direct fetch
         let companyName;
         
-        if (c.companies) {
-          // Check if companies is an object (not an array) and has name property
-          if (typeof c.companies === 'object' && !Array.isArray(c.companies) && c.companies.name) {
-            companyName = c.companies.name;
-          }
-        }
-        
-        // If company name is still not found, try to fetch it directly
-        if (!companyName && c.company_id) {
+        if (c.companies && typeof c.companies === 'object' && c.companies.name) {
+          companyName = c.companies.name;
+          logDebug(`Nome da empresa extraído do join: ${companyName}`);
+        } 
+        else if (c.company_id) {
           companyName = await getCompanyNameById(c.company_id);
+          logDebug(`Nome da empresa buscado diretamente: ${companyName}`);
         }
         
-        logDebug(`Cliente carregado: ${c.name}, Empresa: ${companyName || 'não definida'}`);
+        logDebug(`Cliente carregado: ${c.name}, Empresa: ${companyName || 'não definida'}, ID: ${c.id}, CompanyID: ${c.company_id}`);
         
         return {
           id: c.id,
@@ -62,9 +54,11 @@ export const fetchSupabaseClients = async () => {
         };
       }));
       
+      logDebug(`Processados ${clients.length} clientes`);
       return clients;
     }
     
+    logDebug("Nenhum cliente encontrado no Supabase");
     return [];
   } catch (error) {
     logDebug("Erro ao buscar clientes:", error);
@@ -299,6 +293,19 @@ export const syncClientWithSupabase = async (client: Client) => {
     if (!data) {
       // Client doesn't exist, create it
       logDebug(`Cliente ${client.id} não encontrado no Supabase, criando...`);
+      
+      // Make sure we have valid company data
+      if (!client.companyId) {
+        logDebug(`Cliente ${client.id} não tem companyId definido, usando padrão`);
+        if (client.companyName) {
+          const companyResult = await findOrCreateCompanyByName(client.companyName);
+          if (companyResult) {
+            client.companyId = companyResult.id;
+            logDebug(`Empresa criada/encontrada com ID: ${client.companyId}`);
+          }
+        }
+      }
+      
       await addSupabaseClient({
         ...client,
         id: client.id
