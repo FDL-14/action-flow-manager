@@ -4,7 +4,6 @@ import {
   addSupabaseClient,
   updateSupabaseClient,
   deleteSupabaseClient,
-  getClientById,
   syncClientWithSupabase
 } from './supabase/client-operations';
 
@@ -23,7 +22,6 @@ export {
   getAllClients,
   updateSupabaseClient,
   deleteSupabaseClient,
-  getClientById,
   syncClientWithSupabase,
   
   // Company operations

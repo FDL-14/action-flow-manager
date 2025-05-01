@@ -304,7 +304,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
         onOpenChange={setShowDeleteDialog}
         actionId={action.id}
         actionSubject={action.subject}
-        onDelete={onDelete}
+        onDeleted={onDelete}
       />
       
       <EditActionForm

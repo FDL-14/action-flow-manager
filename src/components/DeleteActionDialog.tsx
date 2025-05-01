@@ -19,7 +19,7 @@ interface DeleteActionDialogProps {
   onOpenChange: (open: boolean) => void; // Changed from onClose
   actionId: string;
   actionSubject: string;
-  onDeleted?: () => void;
+  onDeleted?: () => void; // Changed from onDelete to onDeleted to match usage
 }
 
 const DeleteActionDialog = ({
