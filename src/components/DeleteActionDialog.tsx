@@ -15,16 +15,16 @@ import { useActions } from '@/contexts/ActionContext';
 import { toast } from 'sonner';
 
 interface DeleteActionDialogProps {
-  open: boolean; // Changed from isOpen to open
-  onOpenChange: (open: boolean) => void; // Changed from onClose
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   actionId: string;
   actionSubject: string;
-  onDeleted?: () => void; // Changed from onDelete to onDeleted to match usage
+  onDeleted?: () => void;
 }
 
 const DeleteActionDialog = ({
-  open, // Changed from isOpen
-  onOpenChange, // Changed from onClose
+  open,
+  onOpenChange,
   actionId,
   actionSubject,
   onDeleted
@@ -49,7 +49,7 @@ const DeleteActionDialog = ({
       });
     } finally {
       setIsDeleting(false);
-      onOpenChange(false); // Changed from onClose()
+      onOpenChange(false);
     }
   };
   

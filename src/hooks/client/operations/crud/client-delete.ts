@@ -1,28 +1,23 @@
 
-import { toast } from 'sonner';
-import { useClientState } from '../../use-client-state';
-import { deleteSupabaseClient } from '../../use-supabase-clients';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  deleteSupabaseClient 
+} from '../../use-supabase-clients';
 
 /**
- * Hook for deleting a client
+ * Delete a client from localStorage and Supabase
+ * @param id - The ID of the client to delete
+ * @returns Promise<void>
  */
-export const useClientDelete = () => {
-  const { clients, setClients } = useClientState();
+export const deleteClient = async (id: string): Promise<void> => {
+  try {
+    // Delete from Supabase
+    console.log('Deleting client from Supabase:', id);
+    await deleteSupabaseClient(id);
 
-  const deleteClient = async (id: string) => {
-    try {
-      await deleteSupabaseClient(id);
-      setClients(clients.filter(c => c.id !== id));
-      toast.success("Cliente excluído com sucesso");
-      return true;
-    } catch (error) {
-      console.error("Erro ao excluir cliente:", error);
-      toast.error("Erro ao excluir cliente", {
-        description: "Não foi possível excluir o cliente. Por favor, tente novamente."
-      });
-      return false;
-    }
-  };
-
-  return { deleteClient };
+    console.log('Client deleted from Supabase:', id);
+  } catch (error) {
+    console.error('Error deleting client:', error);
+    throw error;
+  }
 };
