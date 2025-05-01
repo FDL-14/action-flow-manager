@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip, Mail, MessageSquare, Phone } from 'lucide-react';
+import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip, Mail, MessageSquare, Phone, User, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Action } from '@/lib/types';
@@ -186,19 +186,19 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
 
         <div className="space-y-6 print:space-y-4">
           {/* Cabeçalho */}
-          <div className="flex justify-between items-start flex-wrap gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-xl font-bold">{action.subject}</h2>
               <div className="mt-2">{getStatusBadge(action.status)}</div>
             </div>
-            <div className="flex gap-2 print:hidden">
+            <div className="flex flex-wrap gap-2 print:hidden">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => handleSendNotification('email')}
                 className="flex items-center gap-1"
               >
-                <Mail className="h-4 w-4" />
+                <Mail className="h-4 w-4 mr-1" />
                 Email
               </Button>
               
@@ -208,7 +208,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
                 onClick={() => handleSendNotification('whatsapp')}
                 className="flex items-center gap-1"
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4 mr-1" />
                 WhatsApp
               </Button>
               
@@ -218,7 +218,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
                 onClick={() => handleSendNotification('sms')}
                 className="flex items-center gap-1"
               >
-                <Phone className="h-4 w-4" />
+                <Phone className="h-4 w-4 mr-1" />
                 SMS
               </Button>
               
@@ -227,7 +227,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
                 size="sm" 
                 onClick={handlePrint}
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4 mr-1" />
                 Imprimir
               </Button>
             </div>
@@ -240,54 +240,84 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-semibold">Empresa</h4>
-                  <p>{getCompanyName(action.companyId)}</p>
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Empresa</h4>
+                    <p>{getCompanyName(action.companyId)}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Cliente</h4>
-                  <p>{getClientName(action.clientId)}</p>
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Cliente</h4>
+                    <p>{getClientName(action.clientId)}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Responsável</h4>
-                  <p>{getResponsibleName(action.responsibleId)}</p>
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Responsável</h4>
+                    <p>{getResponsibleName(action.responsibleId)}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Solicitante</h4>
-                  <p>{getRequesterName(action.requesterId)}</p>
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Solicitante</h4>
+                    <p>{getRequesterName(action.requesterId)}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Criado por</h4>
-                  <p>{action.createdByName || user?.name || "Sistema"}</p>
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Criado por</h4>
+                    <p>{action.createdByName || user?.name || "Sistema"}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Data de Criação</h4>
-                  <p>{format(new Date(action.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Data de Criação</h4>
+                    <p>{format(new Date(action.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Data de Início</h4>
-                  <p>{format(new Date(action.startDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Data de Início</h4>
+                    <p>{format(new Date(action.startDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Data de Término</h4>
-                  <p>{format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h4 className="text-sm font-semibold">Data de Término</h4>
+                    <p>{format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                  </div>
                 </div>
                 {action.completedAt && (
-                  <div>
-                    <h4 className="text-sm font-semibold">Concluído em</h4>
-                    <p>
-                      {format(new Date(action.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
+                  <div className="flex items-center gap-1">
+                    <Check className="h-4 w-4 text-green-500" />
+                    <div>
+                      <h4 className="text-sm font-semibold">Concluído em</h4>
+                      <p>
+                        {format(new Date(action.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
                   </div>
                 )}
                 {action.approved && (
-                  <div>
-                    <h4 className="text-sm font-semibold">Aprovado em</h4>
-                    <p>
-                      {action.approvedAt 
-                        ? format(new Date(action.approvedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                        : 'Aprovado'}
-                    </p>
+                  <div className="flex items-center gap-1">
+                    <Check className="h-4 w-4 text-green-500" />
+                    <div>
+                      <h4 className="text-sm font-semibold">Aprovado em</h4>
+                      <p>
+                        {action.approvedAt 
+                          ? format(new Date(action.approvedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : 'Aprovado'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -351,12 +381,12 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
           )}
 
           {/* Anotações */}
-          {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Anotações</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Anotações</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 ? (
                 <div className="space-y-4">
                   {action.notes
                     .filter(note => !note.isDeleted)
@@ -379,9 +409,13 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
                       </div>
                     ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-center text-muted-foreground">
+                  Nenhuma anotação encontrada para esta ação.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end space-x-2 print:hidden">
             <Button variant="outline" onClick={onClose}>

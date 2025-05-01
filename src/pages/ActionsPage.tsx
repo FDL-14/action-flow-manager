@@ -9,7 +9,6 @@ import ActionView from '@/components/ActionView';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useToast } from '@/hooks/use-toast';
 import { Action } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -31,6 +30,10 @@ const ActionsPage = () => {
     toast("Sucesso", {
       description: "Ação excluída com sucesso"
     });
+  };
+
+  const handleViewAction = (action: Action) => {
+    setViewingAction(action);
   };
 
   const filteredActions = actions.filter(action => {
@@ -84,11 +87,12 @@ const ActionsPage = () => {
           </div>
         ) : (
           filteredActions.map(action => (
-            <ActionCard 
-              key={`${action.id}-${refreshKey}`} 
-              action={action}
-              onDelete={handleActionDeleted} 
-            />
+            <div key={`${action.id}-${refreshKey}`} className="cursor-pointer" onClick={() => handleViewAction(action)}>
+              <ActionCard 
+                action={action}
+                onDelete={handleActionDeleted} 
+              />
+            </div>
           ))
         )}
       </div>
