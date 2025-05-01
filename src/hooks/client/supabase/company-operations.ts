@@ -18,7 +18,7 @@ export const checkSupabaseCompanyExists = async (companyId: string): Promise<boo
     }
     
     const { data, error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('companies')
         .select('id, name')
         .eq('id', companyId)
@@ -86,7 +86,7 @@ export const ensureSupabaseCompanyExists = async (companyData: any) => {
       
       // Cria a empresa
       const { data, error } = await retryOperation(
-        () => supabase
+        async () => await supabase
           .from('companies')
           .insert({
             id: isValidUUID(companyData.id) ? companyData.id : undefined, // Só usa o ID se for um UUID válido
@@ -145,7 +145,7 @@ export const findOrCreateCompanyByName = async (companyName: string | undefined)
     
     // Buscar empresa por nome
     const { data: existingCompanies } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('companies')
         .select('id, name')
         .eq('name', companyName)
@@ -165,7 +165,7 @@ export const findOrCreateCompanyByName = async (companyName: string | undefined)
     
     // Criar uma nova empresa
     const { data: newCompany, error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('companies')
         .insert({
           name: companyName,
@@ -207,7 +207,7 @@ export const getCompanyNameById = async (companyId: string): Promise<string | nu
     }
     
     const { data } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('companies')
         .select('name')
         .eq('id', companyId)
@@ -259,7 +259,7 @@ export const syncLocalCompaniesToSupabase = async (companies: any[]) => {
 export const fetchAllCompanies = async () => {
   try {
     const { data, error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('companies')
         .select('*')
         .order('name'),

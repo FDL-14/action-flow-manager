@@ -34,7 +34,7 @@ export interface Permission {
   canEditAction: boolean;
   canEditClient: boolean;
   canDeleteClient: boolean;
-  canCreateClient: true;  // Added new permission for creating clients
+  canCreateClient: boolean;  // Changed from true to boolean to fix type issue
   canEditCompany: boolean;
   canDeleteCompany: boolean;
   viewOnlyAssignedActions: boolean;

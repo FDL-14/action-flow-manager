@@ -76,7 +76,7 @@ const formSchema = z.object({
   canEditAction: z.boolean().default(false),
   canEditClient: z.boolean().default(false),
   canDeleteClient: z.boolean().default(false),
-  canCreateClient: z.boolean().default(false),
+  canCreateClient: z.boolean().default(false), // Ensure this is boolean and not true
   canEditCompany: z.boolean().default(false),
   canDeleteCompany: z.boolean().default(false),
   viewOnlyAssignedActions: z.boolean().default(false),

@@ -13,7 +13,7 @@ export const fetchSupabaseClients = async () => {
     
     // Modified to include the join with companies table
     const { data, error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('clients')
         .select('*, companies(name)')
         .order('name', { ascending: true }),
@@ -120,7 +120,7 @@ export const addSupabaseClient = async (clientData: any) => {
     logDebug(`Salvando cliente com empresa: ${companyId} (${companyName || 'sem nome'})`);
     
     const { data: supabaseClient, error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('clients')
         .insert({
           name: clientData.name,
@@ -216,7 +216,7 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
     logDebug(`Atualizando cliente ${clientId} com empresa: ${companyId} (${companyName || 'sem nome'})`);
     
     const { error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('clients')
         .update({
           name: clientData.name,
@@ -257,7 +257,7 @@ export const updateSupabaseClient = async (clientId: string, clientData: any) =>
 export const deleteSupabaseClient = async (clientId: string) => {
   try {
     const { error } = await retryOperation(
-      () => supabase
+      async () => await supabase
         .from('clients')
         .delete()
         .eq('id', clientId),

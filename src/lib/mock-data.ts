@@ -164,7 +164,10 @@ export const additionalUsers: User[] = [
 ];
 
 // Export the combined users array for AuthContext to use
-export const mockUsers = [defaultMasterUser, ...additionalUsers];
+export const mockUsers = [
+  defaultMasterUser,
+  ...additionalUsers
+];
 
 export const defaultCompany: Company = {
   id: '1',

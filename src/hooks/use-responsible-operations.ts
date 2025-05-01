@@ -16,7 +16,7 @@ export const useResponsibleOperations = () => {
       try {
         console.log('Buscando responsáveis do Supabase...');
         const { data, error } = await retryOperation(
-          () => supabase
+          async () => await supabase
             .from('responsibles')
             .select('*')
             .order('name'),
@@ -128,7 +128,7 @@ export const useResponsibleOperations = () => {
               
               // Add to Supabase
               await retryOperation(
-                () => supabase
+                async () => await supabase
                   .from('responsibles')
                   .upsert({
                     id: responsible.id,
@@ -165,7 +165,7 @@ export const useResponsibleOperations = () => {
               
               // Add to Supabase
               await retryOperation(
-                () => supabase
+                async () => await supabase
                   .from('responsibles')
                   .upsert({
                     id: requester.id,
@@ -233,7 +233,7 @@ export const useResponsibleOperations = () => {
       
       // Add to Supabase
       const { data, error } = await retryOperation(
-        () => supabase
+        async () => await supabase
           .from('responsibles')
           .insert({
             name: newResponsible.name,
@@ -282,7 +282,7 @@ export const useResponsibleOperations = () => {
     try {
       // Update in Supabase
       const { error } = await retryOperation(
-        () => supabase
+        async () => await supabase
           .from('responsibles')
           .update({
             name: updatedResponsible.name,
@@ -337,7 +337,7 @@ export const useResponsibleOperations = () => {
       
       // Delete from Supabase
       const { error } = await retryOperation(
-        () => supabase
+        async () => await supabase
           .from('responsibles')
           .delete()
           .eq('id', id),

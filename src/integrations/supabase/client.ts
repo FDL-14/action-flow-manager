@@ -31,7 +31,7 @@ supabase.from('actions').select('count').limit(1)
       console.log('Conexão com Supabase estabelecida com sucesso');
     }
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('Falha ao testar conexão com Supabase:', err);
   });
 

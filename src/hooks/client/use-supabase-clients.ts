@@ -4,7 +4,8 @@ export {
   fetchSupabaseClients, 
   addSupabaseClient, 
   updateSupabaseClient,
-  deleteSupabaseClient 
+  deleteSupabaseClient,
+  syncClientWithSupabase 
 } from './supabase/client-operations';
 
 export {
