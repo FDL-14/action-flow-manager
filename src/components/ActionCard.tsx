@@ -79,8 +79,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         return "Data inválida";
       }
       
-      // Ensure we pass BOTH required arguments - the date and locale
-      return formatDateToLocalString(dateObj, 'pt-BR');
+      // Now we only pass the date since we updated the function signature
+      return formatDateToLocalString(dateObj);
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Erro ao formatar data";
