@@ -21,3 +21,8 @@ export const deleteClient = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+// Create a hook wrapper for the deleteClient function
+export const useClientDelete = () => {
+  return { deleteClient };
+};

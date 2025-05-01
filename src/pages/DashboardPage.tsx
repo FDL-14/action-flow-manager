@@ -8,6 +8,7 @@ import ActionFilter from '@/components/ActionFilter';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
+import { isValidDate } from '@/lib/date-utils';
 import {
   BarChart,
   Bar,
@@ -52,13 +53,30 @@ const DashboardPage = () => {
 
   const recentActions = actions.filter(action => {
     if (!action.createdAt) return false;
-    const createdDate = new Date(action.createdAt);
-    return !isNaN(createdDate.getTime()) && 
-           createdDate >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    
+    try {
+      const createdDate = typeof action.createdAt === 'string' 
+        ? new Date(action.createdAt) 
+        : action.createdAt;
+        
+      // Check if the date is valid
+      if (!isValidDate(createdDate)) {
+        console.warn("Invalid createdAt date:", action.createdAt);
+        return false;
+      }
+      
+      return createdDate >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    } catch (error) {
+      console.error("Error filtering recent actions:", error);
+      return false;
+    }
   });
 
   const handleActionDeleted = () => {
-    toast.success("Ação excluída com sucesso");
+    toast({
+      title: "Sucesso",
+      description: "Ação excluída com sucesso"
+    });
   };
   
   const pieChartData = [

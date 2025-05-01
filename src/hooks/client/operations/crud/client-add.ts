@@ -2,8 +2,7 @@
 import { Client } from '@/lib/types';
 import { supabase, convertToUUID } from '@/integrations/supabase/client';
 import { 
-  addSupabaseClient,
-  checkSupabaseCompanyExists 
+  addSupabaseClient
 } from '../../supabase/client-operations';
 
 /**
@@ -13,10 +12,14 @@ import {
  */
 export const addClient = async (client: Omit<Client, 'id'>): Promise<string> => {
   try {
-    // Check if company exists
-    const companyExists = await checkSupabaseCompanyExists(client.companyId);
+    // Check if company exists - removed dependency on checkSupabaseCompanyExists
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', client.companyId)
+      .maybeSingle();
     
-    if (!companyExists) {
+    if (!companyData) {
       throw new Error(`A empresa com ID ${client.companyId} não existe`);
     }
 
@@ -37,4 +40,9 @@ export const addClient = async (client: Omit<Client, 'id'>): Promise<string> => 
     console.error('Error adding client:', error);
     throw error;
   }
+};
+
+// Create a hook wrapper for the addClient function
+export const useClientAdd = () => {
+  return { addClient };
 };

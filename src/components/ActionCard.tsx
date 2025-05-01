@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Card,
@@ -24,7 +23,7 @@ import ActionForm from '@/components/ActionForm';
 import DeleteActionDialog from '@/components/DeleteActionDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { formatDateToLocalString } from '@/lib/date-utils';
+import { formatDateToLocalString, isValidDate } from '@/lib/date-utils';
 
 interface ActionCardProps {
   action: Action;
@@ -54,13 +53,16 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
           break;
       }
       
-      toast.success("Status atualizado", {
+      toast({
+        title: "Status atualizado",
         description: toastMessage
       });
     } catch (error) {
       console.error("Erro ao atualizar status da ação:", error);
-      toast.error("Erro ao atualizar", {
-        description: "Não foi possível atualizar o status desta ação. Tente novamente."
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o status desta ação. Tente novamente.",
+        variant: "destructive"
       });
     }
   };
@@ -74,7 +76,7 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       const dateObj = typeof date === 'string' ? new Date(date) : date;
       
       // Check if the date is valid
-      if (isNaN(dateObj.getTime())) {
+      if (!isValidDate(dateObj)) {
         console.warn("Invalid date value:", date);
         return "Data inválida";
       }

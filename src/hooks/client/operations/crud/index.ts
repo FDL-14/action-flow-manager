@@ -1,6 +1,6 @@
 
-// Re-export all client CRUD operations from a single entry point
-export { useClientAdd } from './client-add';
-export { useClientUpdate } from './client-update';
-export { useClientDelete } from './client-delete';
-export { useClientInit } from './client-init';
+// Export all client CRUD operations
+export * from './client-add';
+export * from './client-update';
+export * from './client-delete';
+export * from './client-init';

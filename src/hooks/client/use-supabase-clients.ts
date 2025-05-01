@@ -5,17 +5,49 @@ import {
   addSupabaseClient,
   updateSupabaseClient,
   deleteSupabaseClient,
-  syncClientWithSupabase,
-  getClientById
+  syncClientWithSupabase
 } from './supabase/client-operations';
 
 import {
   ensureSupabaseCompanyExists,
   findOrCreateCompanyByName,
   getCompanyNameById,
-  checkSupabaseCompanyExists,
   fetchAllCompanies
 } from './supabase/company-operations';
+
+// Define the getClientById function that was missing
+const getClientById = async (id: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*, companies(name)')
+      .eq('id', id)
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error fetching client by ID:', error);
+      return null;
+    }
+    
+    if (!data) return null;
+    
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.contact_email || undefined,
+      phone: data.contact_phone || undefined,
+      address: data.address || undefined,
+      cnpj: data.cnpj || undefined,
+      companyId: data.company_id || '',
+      companyName: data.companies?.name || 'Empresa não especificada', 
+      createdAt: new Date(data.created_at || new Date()),
+      updatedAt: new Date(data.updated_at || new Date())
+    };
+  } catch (error) {
+    console.error('Error in getClientById:', error);
+    return null;
+  }
+};
 
 // Export Supabase client operations with appropriate names
 export {
@@ -31,7 +63,6 @@ export {
   ensureSupabaseCompanyExists,
   findOrCreateCompanyByName,
   getCompanyNameById,
-  checkSupabaseCompanyExists,
   fetchAllCompanies as getCompanies
 };
 

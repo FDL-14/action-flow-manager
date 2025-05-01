@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Eye } from 'lucide-react';
@@ -11,6 +10,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { Action } from '@/lib/types';
+import { toast } from 'sonner';
 
 const ActionsPage = () => {
   const { company } = useCompany();
@@ -24,11 +24,13 @@ const ActionsPage = () => {
     clientId: 'all',
   });
   const [refreshKey, setRefreshKey] = useState(0);
-  const { toast } = useToast();
 
   const handleActionDeleted = () => {
     setRefreshKey(prev => prev + 1);
-    toast.success("Ação excluída com sucesso");
+    toast({
+      title: "Sucesso",
+      description: "Ação excluída com sucesso"
+    });
   };
 
   const filteredActions = actions.filter(action => {
