@@ -24,18 +24,11 @@ const ActionsPage = () => {
     clientId: 'all',
   });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [processingAction, setProcessingAction] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleActionDeleted = () => {
     setRefreshKey(prev => prev + 1);
-  };
-  
-  const handleActionMenuClick = (actionId: string) => {
-    setProcessingAction(actionId);
-    setTimeout(() => {
-      setProcessingAction(null);
-    }, 500);
+    toast.success("Ação excluída com sucesso");
   };
 
   const filteredActions = actions.filter(action => {
@@ -93,9 +86,6 @@ const ActionsPage = () => {
               key={`${action.id}-${refreshKey}`} 
               action={action}
               onDelete={handleActionDeleted} 
-              onMenuClick={() => handleActionMenuClick(action.id)}
-              isProcessing={processingAction === action.id}
-              onView={() => setViewingAction(action)}
             />
           ))
         )}

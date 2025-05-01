@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   updateSupabaseClient,
   checkSupabaseCompanyExists 
-} from '../../use-supabase-clients';
+} from '../../supabase/client-operations';
 
 /**
  * Update a client in localStorage and Supabase

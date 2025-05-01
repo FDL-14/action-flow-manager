@@ -4,7 +4,7 @@ import { supabase, convertToUUID } from '@/integrations/supabase/client';
 import { 
   addSupabaseClient,
   checkSupabaseCompanyExists 
-} from '../../use-supabase-clients';
+} from '../../supabase/client-operations';
 
 /**
  * Add a client to the local storage and to the Supabase database

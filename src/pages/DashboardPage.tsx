@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, ChevronRight } from 'lucide-react';
@@ -51,7 +50,12 @@ const DashboardPage = () => {
     return true;
   });
 
-  const recentActions = actions.filter(action => action.createdAt >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  const recentActions = actions.filter(action => {
+    if (!action.createdAt) return false;
+    const createdDate = new Date(action.createdAt);
+    return !isNaN(createdDate.getTime()) && 
+           createdDate >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  });
 
   const handleActionDeleted = () => {
     toast.success("Ação excluída com sucesso");
@@ -77,10 +81,6 @@ const DashboardPage = () => {
       concluidas: Math.floor(Math.random() * 5)
     }));
   };
-
-  // These are dummy functions to satisfy ActionCard props
-  const handleMenuClick = () => {};
-  const handleViewAction = () => {};
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -230,9 +230,6 @@ const DashboardPage = () => {
                   key={action.id} 
                   action={action}
                   onDelete={handleActionDeleted}
-                  onMenuClick={handleMenuClick}
-                  isProcessing={false}
-                  onView={handleViewAction}
                 />
               ))
             )}

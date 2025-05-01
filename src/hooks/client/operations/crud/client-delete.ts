@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { 
   deleteSupabaseClient 
-} from '../../use-supabase-clients';
+} from '../../supabase/client-operations';
 
 /**
  * Delete a client from localStorage and Supabase

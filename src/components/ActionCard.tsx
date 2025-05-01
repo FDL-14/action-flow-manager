@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Card,
@@ -18,13 +19,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Action } from '@/lib/types';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useActions } from '@/contexts/ActionContext';
 import ActionForm from '@/components/ActionForm';
 import DeleteActionDialog from '@/components/DeleteActionDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { formatDateToLocalString } from '@/lib/date-utils';
 
 interface ActionCardProps {
   action: Action;
@@ -36,21 +36,21 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const handleStatusChange = async (newStatus: 'complete' | 'delayed' | 'pending') => {
+  const handleStatusChange = async (newStatus: 'pendente' | 'concluido' | 'atrasado' | 'aguardando_aprovacao') => {
     try {
       const updatedAction = { ...action, status: newStatus };
       await updateAction(updatedAction);
       
       let toastMessage = '';
       switch (newStatus) {
-        case 'complete':
-          toastMessage = `Ação "${action.title}" marcada como concluída.`;
+        case 'concluido':
+          toastMessage = `Ação "${action.subject}" marcada como concluída.`;
           break;
-        case 'delayed':
-          toastMessage = `Ação "${action.title}" marcada como atrasada.`;
+        case 'atrasado':
+          toastMessage = `Ação "${action.subject}" marcada como atrasada.`;
           break;
         default:
-          toastMessage = `Status da ação "${action.title}" atualizado.`;
+          toastMessage = `Status da ação "${action.subject}" atualizado.`;
           break;
       }
       
@@ -65,15 +65,32 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
     }
   };
 
-  const formatDate = (date: Date): string => {
-    return format(date, 'dd \'de\' MMMM \'de\' yyyy', { locale: ptBR });
+  // Safely format the date, handling both string and Date objects
+  const safeFormatDate = (date: Date | string | undefined): string => {
+    if (!date) return "Data não definida";
+    
+    try {
+      // Convert to Date object if it's a string
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime())) {
+        console.warn("Invalid date value:", date);
+        return "Data inválida";
+      }
+      
+      return formatDateToLocalString(dateObj);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Erro ao formatar data";
+    }
   };
   
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>{action.title}</CardTitle>
+          <CardTitle>{action.subject}</CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -92,11 +109,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
                 Excluir
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleStatusChange('complete')}>
+              <DropdownMenuItem onClick={() => handleStatusChange('concluido')}>
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Marcar como Concluída
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleStatusChange('delayed')}>
+              <DropdownMenuItem onClick={() => handleStatusChange('atrasado')}>
                 <Clock className="h-4 w-4 mr-2" />
                 Marcar como Atrasada
               </DropdownMenuItem>
@@ -108,21 +125,24 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       <CardContent>
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            <strong>Data Limite:</strong> {formatDate(new Date(action.dueDate))}
+            <strong>Data Limite:</strong> {safeFormatDate(action.endDate)}
           </p>
           <p className="text-sm text-muted-foreground">
-            <strong>Responsável:</strong> {action.assignee}
+            <strong>Responsável:</strong> {action.responsibleName || 'Não definido'}
           </p>
           <div>
-            <strong>Status:</strong>
-            {action.status === 'pending' && (
+            <strong>Status:</strong>{' '}
+            {action.status === 'pendente' && (
               <Badge variant="secondary">Pendente</Badge>
             )}
-            {action.status === 'complete' && (
-              <Badge variant="success">Concluída</Badge>
+            {action.status === 'concluido' && (
+              <Badge variant="default" className="bg-green-500">Concluída</Badge>
             )}
-            {action.status === 'delayed' && (
+            {action.status === 'atrasado' && (
               <Badge variant="destructive">Atrasada</Badge>
+            )}
+            {action.status === 'aguardando_aprovacao' && (
+              <Badge variant="outline" className="border-amber-500 text-amber-500">Aguardando Aprovação</Badge>
             )}
           </div>
         </div>
@@ -137,15 +157,13 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       <ActionForm
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
-        action={action}
       />
 
-      {/* Update the DeleteActionDialog to use onDeleted instead of onDelete */}
       <DeleteActionDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         actionId={action.id}
-        actionSubject={action.title}
+        actionSubject={action.subject}
         onDeleted={onDelete}
       />
     </Card>
