@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Eye } from 'lucide-react';
@@ -27,8 +28,7 @@ const ActionsPage = () => {
 
   const handleActionDeleted = () => {
     setRefreshKey(prev => prev + 1);
-    toast({
-      title: "Sucesso",
+    toast("Sucesso", {
       description: "Ação excluída com sucesso"
     });
   };

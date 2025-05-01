@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Card,
@@ -53,14 +54,12 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
           break;
       }
       
-      toast({
-        title: "Status atualizado",
-        description: toastMessage
+      toast(toastMessage, {
+        description: "Status atualizado com sucesso"
       });
     } catch (error) {
       console.error("Erro ao atualizar status da ação:", error);
-      toast({
-        title: "Erro ao atualizar",
+      toast("Erro ao atualizar", {
         description: "Não foi possível atualizar o status desta ação. Tente novamente.",
         variant: "destructive"
       });

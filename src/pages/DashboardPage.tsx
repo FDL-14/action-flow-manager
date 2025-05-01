@@ -73,8 +73,7 @@ const DashboardPage = () => {
   });
 
   const handleActionDeleted = () => {
-    toast({
-      title: "Sucesso",
+    toast("Sucesso", {
       description: "Ação excluída com sucesso"
     });
   };
