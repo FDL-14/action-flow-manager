@@ -11,15 +11,15 @@ import { toast } from 'sonner';
 import FileUpload from './FileUpload';
 
 interface CompleteActionDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean; // Changed from isOpen to open
+  onOpenChange: (open: boolean) => void; // Changed from onClose
   action: Action;
   onComplete?: () => void;
 }
 
 const CompleteActionDialog = ({
-  isOpen,
-  onClose,
+  open, // Changed from isOpen
+  onOpenChange, // Changed from onClose
   action,
   onComplete
 }: CompleteActionDialogProps) => {
@@ -80,7 +80,7 @@ const CompleteActionDialog = ({
       if (onComplete) {
         onComplete();
       }
-      onClose();
+      onOpenChange(false); // Changed from onClose()
     } catch (error) {
       console.error('Erro ao marcar ação como concluída:', error);
       toast.error("Erro ao concluir ação", {
@@ -96,7 +96,7 @@ const CompleteActionDialog = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle className="text-center">Marcar Ação como Concluída</DialogTitle>
@@ -137,7 +137,7 @@ const CompleteActionDialog = ({
           </div>
 
           <DialogFooter className="pt-2">
-            <Button variant="outline" type="button" onClick={onClose} disabled={loading}>
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading || !completionNotes.trim()}>

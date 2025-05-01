@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -304,7 +303,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         actionId={action.id}
-        subject={action.subject}
+        actionSubject={action.subject}
         onDelete={onDelete}
       />
       

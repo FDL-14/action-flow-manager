@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, ChevronRight } from 'lucide-react';
@@ -76,6 +77,10 @@ const DashboardPage = () => {
       concluidas: Math.floor(Math.random() * 5)
     }));
   };
+
+  // These are dummy functions to satisfy ActionCard props
+  const handleMenuClick = () => {};
+  const handleViewAction = () => {};
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -223,8 +228,11 @@ const DashboardPage = () => {
               recentActions.map(action => (
                 <ActionCard 
                   key={action.id} 
-                  action={action} 
-                  onDelete={() => handleActionDeleted()} 
+                  action={action}
+                  onDelete={handleActionDeleted}
+                  onMenuClick={handleMenuClick}
+                  isProcessing={false}
+                  onView={handleViewAction}
                 />
               ))
             )}

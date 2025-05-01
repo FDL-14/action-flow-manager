@@ -1,38 +1,41 @@
 
 import {
-  addClient,
-  getAllClients,
-  updateClient,
-  deleteClient,
+  fetchSupabaseClients as getAllClients,
+  addSupabaseClient,
+  updateSupabaseClient,
+  deleteSupabaseClient,
   getClientById,
   syncClientWithSupabase
 } from './supabase/client-operations';
 
 import {
-  addCompany,
-  updateCompany,
-  deleteCompany,
-  getCompanies,
-  getCompanyByName,
-  getCompanyById
+  ensureSupabaseCompanyExists,
+  findOrCreateCompanyByName,
+  getCompanyNameById,
+  checkSupabaseCompanyExists,
+  fetchAllCompanies as getCompanies
 } from './supabase/company-operations';
 
+// Export Supabase client operations with appropriate names
 export {
   // Client operations
-  addClient,
+  addSupabaseClient,
   getAllClients,
-  updateClient,
-  deleteClient,
+  updateSupabaseClient,
+  deleteSupabaseClient,
   getClientById,
   syncClientWithSupabase,
   
   // Company operations
-  addCompany,
-  updateCompany,
-  deleteCompany,
+  ensureSupabaseCompanyExists as addCompany,
+  findOrCreateCompanyByName,
+  getCompanyNameById as getCompanyById,
+  checkSupabaseCompanyExists,
+  getCompanyNameById as getCompanyByName,
   getCompanies,
-  getCompanyByName,
-  getCompanyById
+  // Placeholder export for functions not implemented yet
+  ensureSupabaseCompanyExists as updateCompany,
+  checkSupabaseCompanyExists as deleteCompany
 };
 
 export const fetchSupabaseClients = async () => {

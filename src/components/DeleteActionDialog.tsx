@@ -15,16 +15,16 @@ import { useActions } from '@/contexts/ActionContext';
 import { toast } from 'sonner';
 
 interface DeleteActionDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean; // Changed from isOpen to open
+  onOpenChange: (open: boolean) => void; // Changed from onClose
   actionId: string;
   actionSubject: string;
   onDeleted?: () => void;
 }
 
 const DeleteActionDialog = ({
-  isOpen,
-  onClose,
+  open, // Changed from isOpen
+  onOpenChange, // Changed from onClose
   actionId,
   actionSubject,
   onDeleted
@@ -49,12 +49,12 @@ const DeleteActionDialog = ({
       });
     } finally {
       setIsDeleting(false);
-      onClose();
+      onOpenChange(false); // Changed from onClose()
     }
   };
   
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-[400px]">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-red-600">
