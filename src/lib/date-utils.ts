@@ -8,15 +8,15 @@ export function isValidDate(date: Date | null | undefined): boolean {
 }
 
 // Format a date to a locale string with proper validation
-export function formatDateToLocalString(date: Date): string {
+// Adding an optional locale parameter with ptBR as the default
+export function formatDateToLocalString(date: Date, locale = ptBR): string {
   if (!isValidDate(date)) {
     return 'Data inválida';
   }
   
   try {
-    // Use format from date-fns with ptBR locale
-    // This ensures consistency in the Portuguese formatting
-    return format(date, 'dd/MM/yyyy', { locale: ptBR });
+    // Use format from date-fns with the provided locale (defaulting to ptBR)
+    return format(date, 'dd/MM/yyyy', { locale });
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'Erro ao formatar data';

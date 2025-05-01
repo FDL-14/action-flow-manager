@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Card,
@@ -25,6 +24,7 @@ import DeleteActionDialog from '@/components/DeleteActionDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { formatDateToLocalString, isValidDate } from '@/lib/date-utils';
+import { ptBR } from 'date-fns/locale';
 
 interface ActionCardProps {
   action: Action;
@@ -79,8 +79,8 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         return "Data inválida";
       }
       
-      // Now we only pass the date since we updated the function signature
-      return formatDateToLocalString(dateObj);
+      // Pass both the date and locale to formatDateToLocalString
+      return formatDateToLocalString(dateObj, ptBR);
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Erro ao formatar data";
