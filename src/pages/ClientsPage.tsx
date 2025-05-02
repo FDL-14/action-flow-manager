@@ -236,7 +236,7 @@ const ClientsPage = () => {
       </div>
 
       {companies.length === 0 && (
-        <Alert className="mb-6" variant="warning">
+        <Alert className="mb-6" variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Não há empresas cadastradas. Cadastre pelo menos uma empresa para poder adicionar clientes.
