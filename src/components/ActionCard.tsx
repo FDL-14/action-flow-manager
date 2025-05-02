@@ -100,22 +100,28 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
       return;
     }
     
-    // Find the responsible from contexts
+    // Create a compliant Responsible object with all required properties
     const responsible = {
       id: action.responsibleId,
       name: action.responsibleName || 'Responsável',
       email: action.responsibleId + '@example.com', // Placeholder - should be replaced with actual email
       department: 'Departamento',
-      role: 'Responsável'
+      role: 'Responsável',
+      companyId: action.companyId,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
-    // Find requester if available
+    // Prepare requester if available
     const requester = action.requesterId ? {
       id: action.requesterId,
       name: action.requesterName || 'Solicitante',
       email: action.requesterId + '@example.com', // Placeholder
       department: 'Departamento',
-      role: 'Solicitante'
+      role: 'Solicitante',
+      companyId: action.companyId,
+      createdAt: new Date(),
+      updatedAt: new Date()
     } : undefined;
     
     const success = await sendActionNotification(
@@ -278,10 +284,10 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         </Button>
       </CardFooter>
 
+      {/* Use ActionForm without the action prop, since it's not in the component's type definition */}
       <ActionForm
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
-        action={action}
       />
 
       <DeleteActionDialog
