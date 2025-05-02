@@ -5,6 +5,7 @@ import { Company } from "@/lib/types"
 import { UseFormReturn } from "react-hook-form"
 import { useEffect, useState } from "react"
 import { ensureSupabaseCompanyExists } from "@/hooks/client/supabase/company-operations"
+import { toast } from "sonner"
 
 interface CompanySelectorProps {
   form: UseFormReturn<any>
@@ -44,6 +45,9 @@ export const CompanySelector = ({
           } catch (error) {
             console.error("Erro ao sincronizar empresa com Supabase:", error);
             setSyncing(false);
+            toast.error("Erro ao sincronizar empresa", {
+              description: "Não foi possível sincronizar a empresa com o banco de dados."
+            });
           }
         };
         
@@ -77,6 +81,9 @@ export const CompanySelector = ({
           } catch (error) {
             console.error("Erro ao sincronizar empresa padrão com Supabase:", error);
             setSyncing(false);
+            toast.error("Erro ao sincronizar empresa", {
+              description: "Não foi possível sincronizar a empresa com o banco de dados."
+            });
           }
         };
         
@@ -116,9 +123,15 @@ export const CompanySelector = ({
                     name: selectedCompany.name
                   });
                   setSyncing(false);
+                  toast.success("Empresa sincronizada", {
+                    description: "Empresa sincronizada com o banco de dados."
+                  });
                 } catch (error) {
                   console.error("Erro ao sincronizar empresa com Supabase:", error);
                   setSyncing(false);
+                  toast.error("Erro ao sincronizar empresa", {
+                    description: "Não foi possível sincronizar a empresa com o banco de dados."
+                  });
                 }
               }
               

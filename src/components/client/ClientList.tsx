@@ -2,7 +2,7 @@
 import { useCompany } from '@/contexts/CompanyContext';
 import { useActions } from '@/contexts/ActionContext';
 import { Client } from '@/lib/types';
-import { Building2, Mail, Phone, Edit, Trash } from 'lucide-react';
+import { Building2, Mail, Phone, Edit, Trash, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -21,6 +21,7 @@ interface ClientListProps {
   getCompanyNameById: (id: string) => string;
   canEditClients: boolean;
   canDeleteClients: boolean;
+  loading?: boolean;
 }
 
 export const ClientList = ({ 
@@ -29,10 +30,21 @@ export const ClientList = ({
   onDelete, 
   getCompanyNameById,
   canEditClients,
-  canDeleteClients 
+  canDeleteClients,
+  loading = false
 }: ClientListProps) => {
   const { getActionsByClient } = useActions();
-  const { companies } = useCompany();
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-10 flex justify-center items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Carregando clientes...</span>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (clients.length === 0) {
     return (

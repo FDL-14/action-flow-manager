@@ -104,7 +104,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
     setSubmitting(true);
     
     try {
-      console.log("Form data:", data);
+      console.log("Dados do formulário:", data);
       
       const companyInfo = companies.find(c => c.id === data.companyId);
       console.log("Empresa selecionada:", companyInfo);
@@ -136,7 +136,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
       
       if (isNew) {
         // Create new client with company name
-        await addClient({
+        const newClient = await addClient({
           name: data.name,
           email: data.email,
           phone: data.phone,
@@ -146,11 +146,12 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
+        console.log("Cliente criado:", newClient);
         toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
         onOpenChange(false);
       } else if (clientData) {
         // Update existing client with company name
-        await updateClient({
+        const updated = await updateClient({
           ...clientData,
           name: data.name,
           email: data.email,
@@ -159,6 +160,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
+        console.log("Cliente atualizado:", updated);
         toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
         onOpenChange(false);
       }
