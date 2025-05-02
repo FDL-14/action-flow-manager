@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Card,
@@ -283,7 +284,6 @@ const ActionCard: React.FC<ActionCardProps> = ({ action, onDelete }) => {
         </Button>
       </CardFooter>
 
-      {/* Use ActionForm without the action prop, since it's not in the component's type definition */}
       <ActionForm
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
