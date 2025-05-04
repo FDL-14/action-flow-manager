@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,13 +33,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Upload, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { syncLocalCompaniesToSupabase } from '@/hooks/client/supabase/company-operations';
+import { syncResponsiblesToSupabase } from '@/hooks/client/supabase/responsible-operations';
+import { Spinner } from '@/components/ui/spinner';
 
 interface ActionFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialData?: any;
 }
 
 const formSchema = z.object({
@@ -54,9 +58,9 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
+const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange, initialData }) => {
   const { companies, responsibles, clients, company: defaultCompany, getClientsByCompanyId } = useCompany();
-  const { addAction } = useActions();
+  const { addAction, updateAction } = useActions();
   const { user, users } = useAuth();
   const [attachments, setAttachments] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -66,41 +70,78 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   >([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompany?.id || '');
   const [submitting, setSubmitting] = useState(false);
-  const [syncingCompanies, setSyncingCompanies] = useState(false);
-  const { toast } = useToast();
+  const [syncingData, setSyncingData] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      subject: '',
-      description: '',
-      companyId: defaultCompany?.id || '',
-      responsibleId: '',
-      clientId: '',
-      requesterId: '',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: '',
+      subject: initialData?.subject || '',
+      description: initialData?.description || '',
+      companyId: initialData?.companyId || defaultCompany?.id || '',
+      responsibleId: initialData?.responsibleId || '',
+      clientId: initialData?.clientId || '',
+      requesterId: initialData?.requesterId || '',
+      startDate: initialData?.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
     },
   });
 
-  // Sincronizar empresas com o Supabase quando o formulário é aberto
+  // Reset form when opening with initial data
   useEffect(() => {
-    if (open && companies.length > 0) {
-      const syncCompanies = async () => {
+    if (open) {
+      setIsEditing(!!initialData);
+      form.reset({
+        subject: initialData?.subject || '',
+        description: initialData?.description || '',
+        companyId: initialData?.companyId || defaultCompany?.id || '',
+        responsibleId: initialData?.responsibleId || '',
+        clientId: initialData?.clientId || '',
+        requesterId: initialData?.requesterId || '',
+        startDate: initialData?.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
+      });
+      
+      if (initialData?.companyId) {
+        setSelectedCompanyId(initialData.companyId);
+      } else if (defaultCompany?.id) {
+        setSelectedCompanyId(defaultCompany.id);
+      }
+    }
+  }, [open, initialData, defaultCompany, form]);
+
+  // Synchronize data with Supabase when the form is opened
+  useEffect(() => {
+    if (open && (companies.length > 0 || responsibles.length > 0)) {
+      const syncData = async () => {
         try {
-          setSyncingCompanies(true);
+          setSyncingData(true);
+          console.log("Iniciando sincronização de dados com o Supabase...");
+          
+          // Sync companies first
+          console.log(`Sincronizando ${companies.length} empresas com o Supabase...`);
           await syncLocalCompaniesToSupabase(companies);
-          setSyncingCompanies(false);
+          
+          // Then sync responsibles
+          console.log(`Sincronizando ${responsibles.length} responsáveis com o Supabase...`);
+          await syncResponsiblesToSupabase(responsibles);
+          
+          console.log("Sincronização concluída com sucesso");
+          setSyncingData(false);
         } catch (error) {
-          console.error('Erro ao sincronizar empresas:', error);
-          setSyncingCompanies(false);
+          console.error('Erro ao sincronizar dados:', error);
+          setSyncingData(false);
+          toast.error("Erro de sincronização", {
+            description: "Não foi possível sincronizar os dados com o banco de dados."
+          });
         }
       };
       
-      syncCompanies();
+      syncData();
     }
-  }, [open, companies]);
+  }, [open, companies, responsibles]);
 
+  // Update filtered clients when company selection changes
   useEffect(() => {
     if (selectedCompanyId) {
       const companyClients = getClientsByCompanyId(selectedCompanyId);
@@ -109,34 +150,39 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     } else {
       setFilteredClients(clients);
     }
+  }, [selectedCompanyId, clients, getClientsByCompanyId]);
+
+  // Update filtered requesters (responsibles + users)
+  useEffect(() => {
+    const getCombinedResponsiblesAndUsers = () => {
+      // Start with responsibles for the selected company
+      const responsiblesList = responsibles
+        .filter(r => !selectedCompanyId || r.companyId === selectedCompanyId)
+        .map(r => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          type: "responsible",
+          isUser: false,
+        }));
+
+      // Add users that aren't already in the responsibles list
+      const responsibleIds = new Set(responsiblesList.map(r => r.id));
+      const usersList = users
+        .filter(u => !responsibleIds.has(u.id))
+        .map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          type: "user",
+          isUser: true,
+        }));
+
+      return [...responsiblesList, ...usersList];
+    };
 
     setFilteredRequesters(getCombinedResponsiblesAndUsers());
-  }, [selectedCompanyId, clients, responsibles, users, defaultCompany]);
-
-  const getCombinedResponsiblesAndUsers = () => {
-    const responsiblesList = responsibles
-      .filter(r => selectedCompanyId ? r.companyId === selectedCompanyId : true)
-      .map(r => ({
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        type: "responsible",
-        isUser: false,
-      }));
-
-    const responsibleEmailsAndIds = new Set(responsiblesList.map(r => r.email || r.id));
-    const usersList = users.filter(u =>
-      !responsibleEmailsAndIds.has(u.email) && !responsibleEmailsAndIds.has(u.id)
-    ).map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      type: "user",
-      isUser: true,
-    }));
-
-    return [...responsiblesList, ...usersList];
-  };
+  }, [selectedCompanyId, responsibles, users]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -165,7 +211,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (submitting || syncingCompanies) return;
+    if (submitting || syncingData) return;
     setSubmitting(true);
     
     try {
@@ -175,6 +221,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
           description: "Usuário não autenticado",
           variant: "destructive",
         });
+        setSubmitting(false);
         return;
       }
 
@@ -190,63 +237,55 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         return;
       }
       
-      const empresa = companies.find(c => c.id === values.companyId);
-      console.log('Empresa selecionada:', empresa);
+      // Create a copy of the values to avoid modifying the form data directly
+      const actionData = { ...values };
       
-      // Aqui garantimos que a empresa seja sincronizada com o Supabase
-      const companyData = {
-        id: empresa?.id || values.companyId,
-        name: empresa?.name || 'Empresa sem nome'
-      };
+      // Ensure the company exists in Supabase
+      const companyInfo = companies.find(c => c.id === values.companyId);
+      console.log('Empresa selecionada:', companyInfo);
       
-      // Sincronizar empresa selecionada com o Supabase
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL || 'https://tsjdsbxgottssqqlzfxl.supabase.co',
-        import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzamRzYnhnb3R0c3NxcWx6ZnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1ODM3NDgsImV4cCI6MjA2MDE1OTc0OH0.3WVd3cIBxyUlJGBjCzwLs5YY14xC6ZNtMbb5zuxF0EY'
-      );
+      // Ensure the company exists in Supabase
+      const companyId = await syncLocalCompaniesToSupabase([{
+        id: values.companyId,
+        name: companyInfo?.name || 'Empresa'
+      }]);
       
-      // Verificar se a empresa já existe
-      const { data: existingCompany } = await supabase
-        .from('companies')
-        .select('id, name')
-        .eq('name', companyData.name)
-        .limit(1);
-        
-      if (!existingCompany || existingCompany.length === 0) {
-        // Criar a empresa
-        const { data, error } = await supabase
-          .from('companies')
-          .insert({
-            name: companyData.name
-          })
-          .select('id')
-          .single();
-
-        if (error) {
-          console.error('Erro ao criar empresa:', error);
-          toast({
-            title: "Erro",
-            description: "Não foi possível criar a empresa no banco de dados",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          return;
-        }
-        
-        values.companyId = data.id;
+      if (!companyId || companyId.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível garantir que a empresa existe no banco de dados",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+      
+      // Get responsible and requester information
+      const responsible = responsibles.find(r => r.id === values.responsibleId);
+      const requesterResponsible = responsibles.find(r => r.id === values.requesterId);
+      const requesterUser = users.find(u => u.id === values.requesterId);
+      
+      // Ensure the responsible exists in Supabase
+      if (responsible) {
+        await syncResponsiblesToSupabase([responsible]);
       } else {
-        values.companyId = existingCompany[0].id;
+        console.warn(`Responsável com ID ${values.responsibleId} não encontrado na lista local`);
+      }
+      
+      // Ensure the requester exists if it's a responsible
+      if (requesterResponsible) {
+        await syncResponsiblesToSupabase([requesterResponsible]);
       }
       
       const uploadedAttachments: string[] = [];
       
+      // Handle file uploads
       if (uploadedFiles.length > 0) {
         for (const file of uploadedFiles) {
           try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-            const filePath = `temp/${fileName}`;
+            const filePath = `action_attachments/${fileName}`;
             
             const { data, error } = await supabase
               .storage
@@ -272,36 +311,59 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         throw new Error("Datas inválidas");
       }
       
-      await addAction({
-        subject: values.subject,
-        description: values.description,
-        responsibleId: values.responsibleId,
-        companyId: values.companyId,
-        clientId: values.clientId || undefined,
-        requesterId: values.requesterId,
-        startDate,
-        endDate,
-        attachments: uploadedAttachments,
-        createdBy: user.id,
-        createdByName: user.name
-      });
+      // Create or update the action
+      if (isEditing && initialData) {
+        // Update existing action
+        await updateAction({
+          ...initialData,
+          subject: values.subject,
+          description: values.description,
+          responsibleId: values.responsibleId,
+          responsibleName: responsible?.name,
+          companyId: values.companyId,
+          companyName: companyInfo?.name,
+          clientId: values.clientId || undefined,
+          clientName: values.clientId ? filteredClients.find(c => c.id === values.clientId)?.name : undefined,
+          requesterId: values.requesterId,
+          requesterName: requesterResponsible?.name || requesterUser?.name,
+          startDate,
+          endDate,
+          attachments: [...(initialData.attachments || []), ...uploadedAttachments],
+          updatedAt: new Date()
+        });
+        
+        toast.success("Ação atualizada com sucesso!");
+      } else {
+        // Create new action
+        await addAction({
+          subject: values.subject,
+          description: values.description,
+          responsibleId: values.responsibleId,
+          responsibleName: responsible?.name,
+          companyId: values.companyId,
+          companyName: companyInfo?.name,
+          clientId: values.clientId || undefined,
+          clientName: values.clientId ? filteredClients.find(c => c.id === values.clientId)?.name : undefined,
+          requesterId: values.requesterId,
+          requesterName: requesterResponsible?.name || requesterUser?.name,
+          startDate,
+          endDate,
+          attachments: uploadedAttachments,
+          createdBy: user.id,
+          createdByName: user.name
+        });
+        
+        toast.success("Ação criada com sucesso!");
+      }
 
       form.reset();
       setAttachments([]);
       setUploadedFiles([]);
       onOpenChange(false);
-      
-      toast({
-        title: "Ação criada",
-        description: "A ação foi criada com sucesso!",
-        variant: "default",
-      });
     } catch (error: any) {
       console.error('Error saving action:', error);
-      toast({
-        title: "Erro",
-        description: error.message || "Ocorreu um erro ao salvar a ação",
-        variant: "destructive",
+      toast.error("Erro ao salvar ação", {
+        description: error.message || "Ocorreu um erro ao salvar a ação"
       });
     } finally {
       setSubmitting(false);
@@ -312,9 +374,15 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nova Ação</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Ação' : 'Nova Ação'}</DialogTitle>
           <DialogDescription>
-            Preencha os detalhes da nova ação ou tarefa a ser executada.
+            {syncingData ? (
+              <div className="flex items-center gap-2 text-amber-500">
+                <Spinner size="sm" /> Sincronizando dados com o banco...
+              </div>
+            ) : (
+              'Preencha os detalhes da ação a ser executada.'
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -345,29 +413,27 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       field.onChange(value);
                       setSelectedCompanyId(value);
                       form.setValue('clientId', '');
-                      form.setValue('responsibleId', '');
-                      form.setValue('requesterId', '');
-                      
-                      const empresa = companies.find(c => c.id === value);
-                      console.log('Empresa selecionada:', empresa);
-                      
-                      const clientesDisponiveis = getClientsByCompanyId(value);
-                      console.log('Clientes disponíveis para esta empresa:', clientesDisponiveis);
                     }} 
                     defaultValue={field.value}
-                    disabled={syncingCompanies}
+                    disabled={syncingData}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder={syncingCompanies ? "Sincronizando empresas..." : "Selecione uma empresa"} />
+                        <SelectValue placeholder={syncingData ? "Sincronizando empresas..." : "Selecione uma empresa"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white">
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
+                      {companies.length === 0 ? (
+                        <SelectItem value="no_companies" disabled>
+                          Nenhuma empresa cadastrada
                         </SelectItem>
-                      ))}
+                      ) : (
+                        companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -384,20 +450,23 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                   <Select 
                     onValueChange={(value) => {
                       field.onChange(value);
-                      console.log(`Cliente selecionado ID: ${value}`);
                     }} 
                     defaultValue={field.value}
+                    disabled={!selectedCompanyId || syncingData}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder={
-                          filteredClients.length > 0 
-                            ? "Selecione um cliente" 
-                            : "Nenhum cliente disponível para esta empresa"
+                          !selectedCompanyId 
+                            ? "Selecione uma empresa primeiro"
+                            : filteredClients.length > 0 
+                              ? "Selecione um cliente" 
+                              : "Nenhum cliente disponível para esta empresa"
                         } />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white">
+                      <SelectItem value="">-- Nenhum cliente --</SelectItem>
                       {filteredClients.length === 0 ? (
                         <SelectItem value="no_clients_available" disabled>
                           Nenhum cliente disponível
@@ -430,6 +499,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                   <Select 
                     onValueChange={field.onChange} 
                     defaultValue={field.value}
+                    disabled={syncingData}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -437,15 +507,18 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {getCombinedResponsiblesAndUsers().map(person => (
-                        <SelectItem key={person.id} value={person.id}>
-                          {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
-                        </SelectItem>
-                      ))}
-                      {getCombinedResponsiblesAndUsers().length === 0 && (
-                        <SelectItem value="no_responsibles_available">
+                      {filteredRequesters.filter(person => person.type === "responsible").length === 0 ? (
+                        <SelectItem value="no_responsibles" disabled>
                           Nenhum responsável disponível
                         </SelectItem>
+                      ) : (
+                        filteredRequesters
+                          .filter(person => person.type === "responsible")
+                          .map(person => (
+                            <SelectItem key={person.id} value={person.id}>
+                              {person.name}
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>
@@ -463,6 +536,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                   <Select 
                     onValueChange={field.onChange} 
                     defaultValue={field.value}
+                    disabled={syncingData}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -470,15 +544,16 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {filteredRequesters.map(person => (
-                        <SelectItem key={person.id} value={person.id}>
-                          {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
-                        </SelectItem>
-                      ))}
-                      {filteredRequesters.length === 0 && (
-                        <SelectItem value="no_requesters_available">
+                      {filteredRequesters.length === 0 ? (
+                        <SelectItem value="no_requesters" disabled>
                           Nenhum solicitante disponível
                         </SelectItem>
+                      ) : (
+                        filteredRequesters.map(person => (
+                          <SelectItem key={person.id} value={person.id}>
+                            {person.name} {person.type === "user" ? "(Usuário)" : "(Responsável)"}
+                          </SelectItem>
+                        ))
                       )}
                     </SelectContent>
                   </Select>
@@ -537,37 +612,31 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
 
             <div>
               <FormLabel>Anexos</FormLabel>
-              <div className="mt-2 border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors duration-150">
-                <input
-                  type="file"
-                  id="file-upload"
-                  className="hidden"
-                  multiple
-                  onChange={handleFileChange}
-                  accept=".png,.jpg,.jpeg,.pdf,.docx,.xlsx,.doc,.xls"
-                />
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <div className="flex flex-col items-center">
-                    <Upload className="h-6 w-6 text-gray-400 mb-1" />
-                    <p className="text-sm text-gray-500">
-                      Enviar arquivos ou arraste e solte
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      PNG, JPG, PDF, DOCX and XLSX
-                    </p>
-                  </div>
+              <div className="border border-dashed rounded-md p-4 mt-1">
+                <label className="flex flex-col items-center justify-center cursor-pointer">
+                  <Upload className="h-6 w-6 text-gray-400" />
+                  <span className="mt-2 text-sm text-gray-500">Clique para adicionar arquivos</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    multiple
+                  />
                 </label>
               </div>
 
-              {uploadedFiles.length > 0 && (
+              {attachments.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-                      <span className="text-sm truncate max-w-[80%]">{file.name}</span>
+                  <p className="text-sm font-medium">Arquivos anexados:</p>
+                  {attachments.map((attachment, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <span className="text-sm truncate">
+                        {uploadedFiles[index].name}
+                      </span>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={() => removeFile(index)}
                       >
                         <X className="h-4 w-4" />
@@ -578,12 +647,20 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
               )}
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting || syncingCompanies}>
+            <DialogFooter className="pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                disabled={submitting || syncingData}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting || syncingCompanies}>
-                {submitting ? 'Salvando...' : (syncingCompanies ? 'Sincronizando...' : 'Salvar Ação')}
+              <Button 
+                type="submit"
+                disabled={submitting || syncingData}
+              >
+                {submitting ? 'Salvando...' : isEditing ? 'Atualizar' : 'Salvar'}
               </Button>
             </DialogFooter>
           </form>

@@ -1,9 +1,8 @@
 
 import { Client } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  updateSupabaseClient
-} from '../../supabase/client-operations';
+import { updateSupabaseClient } from '../../supabase/client-operations';
+import { ensureSupabaseCompanyExists } from '../../supabase/company-operations';
 import { toast } from 'sonner';
 
 /**
@@ -13,83 +12,60 @@ import { toast } from 'sonner';
  */
 export const updateClient = async (client: Client): Promise<boolean> => {
   try {
-    if (!client.companyId) {
-      throw new Error('É necessário informar uma empresa para o cliente');
-    }
+    console.log('Updating client:', client);
     
-    // Check if company exists
-    const { data: companyData, error: companyError } = await supabase
-      .from('companies')
-      .select('id, name')
-      .eq('id', client.companyId)
-      .maybeSingle();
-    
-    if (companyError) {
-      console.error('Erro ao verificar empresa:', companyError);
-      toast.error('Erro ao atualizar cliente', {
-        description: 'Não foi possível verificar a empresa associada.'
+    if (!client.companyId && !client.companyName) {
+      toast.error("Erro ao atualizar cliente", {
+        description: "É necessário associar o cliente a uma empresa"
       });
       return false;
     }
     
-    if (!companyData) {
-      console.warn(`A empresa com ID ${client.companyId} não existe no banco de dados. Tentando criar...`);
-      
-      // Try to create the company if it doesn't exist
-      const { data: newCompany, error: createError } = await supabase
-        .from('companies')
-        .insert({
-          id: client.companyId,
-          name: client.companyName || 'Empresa sem nome',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-        
-      if (createError) {
-        console.error('Erro ao criar empresa:', createError);
-        toast.error('Erro ao atualizar cliente', {
-          description: 'Não foi possível criar a empresa associada.'
-        });
-        return false;
-      }
-      
-      console.log('Empresa criada com sucesso:', newCompany);
-    } else {
-      console.log('Empresa encontrada:', companyData);
-      // If company exists but the name is different, update it
-      if (client.companyName && client.companyName !== companyData.name) {
-        console.log(`Atualizando nome da empresa de "${companyData.name}" para "${client.companyName}"`);
-        
-        const { error: updateError } = await supabase
-          .from('companies')
-          .update({
-            name: client.companyName,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', client.companyId);
-          
-        if (updateError) {
-          console.warn('Erro ao atualizar nome da empresa:', updateError);
-          // Non-critical error, continue
-        }
-      }
+    // Ensure the company exists in Supabase before updating the client
+    let finalCompanyId = client.companyId;
+    
+    // Try to ensure the company exists in Supabase
+    const companyId = await ensureSupabaseCompanyExists({
+      id: client.companyId,
+      name: client.companyName || 'Empresa'
+    });
+    
+    if (!companyId) {
+      console.error(`Não foi possível garantir que a empresa ${client.companyName} existe no banco de dados`);
+      toast.error("Erro ao atualizar cliente", {
+        description: "Não foi possível verificar ou criar a empresa associada"
+      });
+      return false;
     }
-
-    // Update client in Supabase
-    console.log('Atualizando cliente no Supabase:', client);
-    const result = await updateSupabaseClient(client.id, client);
+    
+    // Use the returned company ID (might be different if it was created)
+    finalCompanyId = companyId;
+    console.log(`Empresa garantida com ID: ${finalCompanyId}`);
+    
+    // Update client in Supabase with the guaranteed company ID
+    console.log('Atualizando cliente no Supabase:', { ...client, companyId: finalCompanyId });
+    const result = await updateSupabaseClient(client.id, {
+      ...client,
+      companyId: finalCompanyId
+    });
 
     if (!result) {
       throw new Error('Falha ao atualizar cliente no Supabase');
     }
 
     console.log('Cliente atualizado no Supabase:', result);
+    
+    toast.success("Cliente atualizado com sucesso", {
+      description: `As informações do cliente "${client.name}" foram atualizadas.`
+    });
+    
     return true;
   } catch (error) {
     console.error('Erro ao atualizar cliente:', error);
-    throw error;
+    toast.error("Erro ao atualizar cliente", {
+      description: error instanceof Error ? error.message : "Ocorreu um erro inesperado"
+    });
+    return false;
   }
 };
 
