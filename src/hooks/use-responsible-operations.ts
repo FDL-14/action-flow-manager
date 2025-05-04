@@ -84,7 +84,7 @@ export const useResponsibleOperations = () => {
   }, []);
 
   // Add a new responsible
-  const addResponsible = async (responsible: Omit<Responsible, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
+  const addResponsible = async (responsible: Omit<Responsible, "id" | "createdAt" | "updatedAt">) => {
     try {
       if (!responsible.name.trim()) {
         toast.error("Nome obrigatório", { description: "Informe o nome do responsável." });

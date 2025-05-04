@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -216,10 +215,8 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange, initialData
     
     try {
       if (!user) {
-        toast({
-          title: "Erro",
-          description: "Usuário não autenticado",
-          variant: "destructive",
+        toast.error("Erro", {
+          description: "Usuário não autenticado"
         });
         setSubmitting(false);
         return;
@@ -228,10 +225,8 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange, initialData
       console.log('Submitting form with values:', values);
       
       if (!values.companyId || values.companyId.trim() === '') {
-        toast({
-          title: "Erro",
-          description: "Selecione uma empresa",
-          variant: "destructive",
+        toast.error("Erro", {
+          description: "Selecione uma empresa"
         });
         setSubmitting(false);
         return;
@@ -251,10 +246,8 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange, initialData
       }]);
       
       if (!companyId || companyId.length === 0) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível garantir que a empresa existe no banco de dados",
-          variant: "destructive",
+        toast.error("Erro", {
+          description: "Não foi possível garantir que a empresa existe no banco de dados"
         });
         setSubmitting(false);
         return;
