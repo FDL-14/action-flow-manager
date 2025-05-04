@@ -7,6 +7,6 @@
 // Then add this component inside your App component:
 // <ToastPatcher />
 
-import { ToastPatcher } from './components/ToastPatcher';
+import ToastPatcher from './components/ToastPatcher';
 
 // This is just a reminder - you need to add ToastPatcher to App.tsx

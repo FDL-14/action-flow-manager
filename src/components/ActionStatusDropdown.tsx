@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Action } from '@/lib/types';
 
 interface ActionStatusDropdownProps {
   actionId: string;
@@ -22,7 +23,7 @@ const ActionStatusDropdown: React.FC<ActionStatusDropdownProps> = ({ actionId, s
   const { updateActionStatus } = useActions();
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: 'pendente' | 'concluido' | 'atrasado' | 'aguardando_aprovacao') => {
     setIsUpdating(true);
     try {
       await updateActionStatus(actionId, newStatus);
