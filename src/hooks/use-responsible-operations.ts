@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Responsible } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';

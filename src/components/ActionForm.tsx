@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { syncLocalCompaniesToSupabase } from '@/hooks/client/supabase/company-operations';
 import { syncResponsiblesToSupabase } from '@/hooks/client/supabase/responsible-operations';
 import { Spinner } from '@/components/ui/spinner';
+import { ptBR } from 'date-fns/locale';
 
 interface ActionFormProps {
   open: boolean;
@@ -207,6 +208,10 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange, initialData
     
     setUploadedFiles(newFiles);
     setAttachments(newAttachments);
+  };
+
+  const formatDateToLocalString = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -459,7 +464,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange, initialData
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white">
-                      <SelectItem value="">-- Nenhum cliente --</SelectItem>
+                      <SelectItem value="none">-- Nenhum cliente --</SelectItem>
                       {filteredClients.length === 0 ? (
                         <SelectItem value="no_clients_available" disabled>
                           Nenhum cliente disponível

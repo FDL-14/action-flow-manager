@@ -1,4 +1,3 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Company } from "@/lib/types"
@@ -137,26 +136,25 @@ export const CompanySelector = ({
               
               form.trigger("companyId");
             }}
-            defaultValue={field.value || selectedCompanyId}
-            value={field.value || selectedCompanyId}
-            disabled={syncing}
+            defaultValue={field.value}
+            value={field.value || undefined}
           >
             <FormControl>
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder={syncing ? "Sincronizando..." : "Selecione uma empresa"} />
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Selecione uma empresa" />
               </SelectTrigger>
             </FormControl>
-            <SelectContent className="bg-white min-w-[240px] max-h-[300px] overflow-y-auto z-50">
-              {companies.length > 0 ? (
+            <SelectContent>
+              {companies.length === 0 ? (
+                <SelectItem value="no_companies_available" disabled>
+                  Nenhuma empresa disponível
+                </SelectItem>
+              ) : (
                 companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
                     {company.name}
                   </SelectItem>
                 ))
-              ) : (
-                <SelectItem value="no_companies" disabled>
-                  Nenhuma empresa disponível
-                </SelectItem>
               )}
             </SelectContent>
           </Select>
@@ -164,5 +162,5 @@ export const CompanySelector = ({
         </FormItem>
       )}
     />
-  )
-}
+  );
+};

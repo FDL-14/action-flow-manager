@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -203,25 +202,25 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                     <Select 
                       onValueChange={field.onChange} 
                       defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {filteredClients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {filteredClients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
               
               <FormField
                 control={form.control}
@@ -236,15 +235,15 @@ const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, act
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um responsável" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {getCompanyUsers().map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {getCompanyUsers().map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
