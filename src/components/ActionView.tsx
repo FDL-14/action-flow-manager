@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { useActions } from '@/contexts/ActionContext';
 import { Badge } from './ui/badge';
 import { useMessaging } from '@/services/messaging';
 import { toast } from 'sonner';
+import ActionNotes from './ActionNotes';
 
 interface ActionViewProps {
   action: Action;
@@ -25,6 +27,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
   const { getAttachmentUrl } = useActions();
   const { sendActionNotification } = useMessaging();
   const [attachmentUrls, setAttachmentUrls] = useState<{ path: string; url: string }[]>([]);
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
 
   // Find the responsible and requester
   const responsible = responsibles.find(r => r.id === action.responsibleId);
@@ -181,7 +184,30 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
     window.print();
   };
 
+  const handleAddNotes = () => {
+    setShowNotesPanel(true);
+  };
+
   if (!action) return null;
+
+  if (showNotesPanel) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Anotações da Ação</DialogTitle>
+            <DialogDescription>Adicione ou visualize anotações para esta ação</DialogDescription>
+          </DialogHeader>
+          
+          <ActionNotes 
+            action={action} 
+            onClose={() => setShowNotesPanel(false)}
+            onComplete={onClose}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -399,8 +425,20 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
 
           {/* Anotações */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Anotações</CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleAddNotes}
+                className="flex items-center gap-1"
+              >
+                <Paperclip className="h-4 w-4 mr-1" />
+                {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 
+                  ? "Adicionar Anotação" 
+                  : "Nova Anotação"
+                }
+              </Button>
             </CardHeader>
             <CardContent>
               {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 ? (

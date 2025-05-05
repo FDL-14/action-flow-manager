@@ -8,22 +8,25 @@ import { AlertCircle } from 'lucide-react';
 import { useActions } from '@/contexts/ActionContext';
 import { Action } from '@/lib/types';
 import { toast } from 'sonner';
-import FileUpload from './FileUpload';
+import { useNotifications } from '@/services/notifications';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CompleteActionDialogProps {
-  open: boolean; // Changed from isOpen to open
-  onOpenChange: (open: boolean) => void; // Changed from onClose
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   action: Action;
   onComplete?: () => void;
 }
 
 const CompleteActionDialog = ({
-  open, // Changed from isOpen
-  onOpenChange, // Changed from onClose
+  open,
+  onOpenChange,
   action,
   onComplete
 }: CompleteActionDialogProps) => {
   const { updateAction } = useActions();
+  const { sendApprovalNotification } = useNotifications();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [completionNotes, setCompletionNotes] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -40,14 +43,12 @@ const CompleteActionDialog = ({
 
     setLoading(true);
     try {
-      // First upload any files if present
-      let attachments: string[] = [];
-      
-      // Mock file upload success - in a real implementation this would upload to storage
-      if (files.length > 0) {
-        toast.info("Enviando anexos...");
-        // This is placeholder - in a real implementation you'd upload the files
-        attachments = files.map(file => `https://example.com/files/${encodeURIComponent(file.name)}`);
+      // Verificar se existe um solicitante para aprovar
+      if (!action.requesterId) {
+        toast.error("Não é possível concluir", {
+          description: "Esta ação não possui um solicitante definido para aprovação."
+        });
+        return;
       }
 
       // Add a note with completion justification
@@ -58,10 +59,10 @@ const CompleteActionDialog = ({
           id: Date.now().toString(),
           actionId: action.id,
           content: noteContent,
-          createdBy: 'current-user-id', // This should be the actual user ID
+          createdBy: user?.id || 'system',
+          createdByName: user?.name || 'Sistema',
           createdAt: new Date(),
           isDeleted: false,
-          attachments: attachments
         }
       ];
 
@@ -69,9 +70,18 @@ const CompleteActionDialog = ({
       await updateAction(action.id, {
         status: 'aguardando_aprovacao',
         notes: updatedNotes,
-        completionNotes: completionNotes,
-        attachments: [...(action.attachments || []), ...attachments]
+        completionNotes: completionNotes
       });
+      
+      // Enviar notificação para o solicitante
+      if (action.requesterId) {
+        await sendApprovalNotification(
+          action.requesterId,
+          user?.id,
+          action.id,
+          action.subject
+        );
+      }
       
       toast.success("Ação enviada para aprovação", {
         description: "A ação foi marcada como concluída e está aguardando aprovação do solicitante"
@@ -80,7 +90,7 @@ const CompleteActionDialog = ({
       if (onComplete) {
         onComplete();
       }
-      onOpenChange(false); // Changed from onClose()
+      onOpenChange(false);
     } catch (error) {
       console.error('Erro ao marcar ação como concluída:', error);
       toast.error("Erro ao concluir ação", {
@@ -91,8 +101,10 @@ const CompleteActionDialog = ({
     }
   };
 
-  const handleFilesChange = (newFiles: File[]) => {
-    setFiles(newFiles);
+  const handleFilesChange = (newFiles: FileList | null) => {
+    if (newFiles) {
+      setFiles(Array.from(newFiles));
+    }
   };
 
   return (
@@ -128,12 +140,50 @@ const CompleteActionDialog = ({
 
           <div className="space-y-2">
             <Label className="text-sm font-medium">Anexos</Label>
-            <FileUpload
-              onFilesChange={handleFilesChange}
-              maxFiles={5}
-              acceptedFileTypes={['.png', '.jpg', '.jpeg', '.pdf', '.docx', '.xlsx']}
-            />
-            <p className="text-xs text-gray-500">Formatos aceitos: PNG, JPG, PDF, DOCX, XLSX. Máx. 5 arquivos.</p>
+            <div 
+              className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50"
+              onClick={() => document.getElementById('file-upload')?.click()}
+            >
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFilesChange(e.target.files)}
+              />
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="rounded-full bg-gray-100 p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+                <span className="text-sm text-gray-500">Arraste e solte arquivos aqui, ou clique para selecionar</span>
+                <span className="text-xs text-gray-400">Formatos aceitos: PNG, JPG, PDF, DOCX, XLSX. Máx. 5 arquivos.</span>
+              </div>
+            </div>
+            
+            {files.length > 0 && (
+              <div className="mt-2">
+                <p className="text-sm font-medium mb-1">Arquivos selecionados:</p>
+                <div className="space-y-1">
+                  {files.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+                      <span className="truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
           </div>
 
           <DialogFooter className="pt-2">

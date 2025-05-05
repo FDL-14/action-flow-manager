@@ -124,6 +124,31 @@ export function NotificationCenter() {
     }
   };
 
+  // Função para aprovar ou reprovar uma ação
+  const handleActionApproval = async (notificationId: string, actionId: string, approve: boolean) => {
+    try {
+      // Implementar lógica de aprovação/reprovação
+      const { updateActionStatus } = await import('@/contexts/ActionContext');
+      
+      if (approve) {
+        // Aprovar a ação - marcar como concluída
+        await updateActionStatus(actionId, 'concluido', new Date());
+      } else {
+        // Reprovar a ação - voltar para pendente
+        await updateActionStatus(actionId, 'pendente');
+      }
+      
+      // Marcar notificação como lida
+      await markAsRead(notificationId);
+      
+      // Recarregar notificações
+      loadNotifications();
+      
+    } catch (error) {
+      console.error("Erro ao processar aprovação/reprovação:", error);
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -202,6 +227,29 @@ export function NotificationCenter() {
                   </div>
                   <p className="text-xs text-gray-600 mb-2">{notif.conteudo}</p>
                   <span className="text-xs text-gray-400">{formatDate(notif.criado_em)}</span>
+                  
+                  {/* Botões de aprovar/reprovar para ações aguardando aprovação */}
+                  {notif.tipo_referencia === 'acao' && notif.referencia_id && notif.conteudo.includes('aguardando sua aprovação') && (
+                    <div className="mt-3 flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:text-red-700 w-1/2"
+                        onClick={() => handleActionApproval(notif.id, notif.referencia_id!, false)}
+                      >
+                        Reprovar
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700 w-1/2"
+                        onClick={() => handleActionApproval(notif.id, notif.referencia_id!, true)}
+                      >
+                        Aprovar
+                      </Button>
+                    </div>
+                  )}
+                  
                   {!notif.lida && (
                     <div className="absolute top-3 left-0 w-1 h-1 rounded-full bg-primary"></div>
                   )}

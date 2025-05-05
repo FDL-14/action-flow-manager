@@ -154,12 +154,30 @@ export const useNotifications = () => {
     }
   };
 
+  // Nova função para enviar notificação de aprovação
+  const sendApprovalNotification = async (
+    destinatarioId: string,
+    remetenteId: string | undefined,
+    actionId: string,
+    actionTitle: string
+  ) => {
+    return await sendInternalNotification(
+      destinatarioId,
+      remetenteId,
+      `Ação aguardando aprovação: ${actionTitle}`,
+      `A ação "${actionTitle}" foi marcada como concluída e está aguardando sua aprovação. Por favor, verifique os detalhes e aprove ou reprove.`,
+      actionId,
+      'acao'
+    );
+  };
+
   return {
     sendInternalNotification,
     getNotifications,
     getUnreadCount,
     markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    sendApprovalNotification
   };
 };

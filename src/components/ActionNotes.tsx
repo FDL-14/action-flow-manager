@@ -40,6 +40,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isCompletingAction, setIsCompletingAction] = useState(false);
   const [isDeletingNote, setIsDeletingNote] = useState<string | null>(null);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -220,39 +221,8 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       return;
     }
     
-    setIsCompletingAction(true);
-    
-    try {
-      console.log('Marcando ação como concluída via handleComplete:', action.id);
-      
-      const completionDate = new Date();
-      
-      // Garantindo que awaits sejam usados corretamente
-      const result = await updateActionStatus(action.id, 'concluido', completionDate);
-      console.log('Resultado da atualização de status:', result);
-      
-      toast({
-        title: "Ação concluída",
-        description: "A ação foi marcada como concluída com sucesso.",
-      });
-      
-      // Chamar o callback onComplete se ele existir
-      if (onComplete) {
-        onComplete();
-      }
-      
-      // Fechar o diálogo de anotações
-      onClose();
-    } catch (error) {
-      console.error("Erro ao concluir ação:", error);
-      toast({
-        title: "Erro ao concluir ação",
-        description: "Não foi possível marcar a ação como concluída. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCompletingAction(false);
-    }
+    // Abrir o diálogo de conclusão em vez de concluir diretamente
+    setShowCompleteDialog(true);
   };
 
   const getFileIcon = (fileUrl: string) => {
@@ -450,7 +420,7 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
         </form>
       </Form>
 
-      {showCompleteButton && (
+      {showCompleteButton && action.status !== 'aguardando_aprovacao' && (
         <div className="pt-4 border-t mt-4">
           <Button 
             variant="default" 
@@ -474,6 +444,21 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
             </p>
           )}
         </div>
+      )}
+      
+      {/* Importar CompleteActionDialog */}
+      {showCompleteDialog && (
+        <React.Suspense fallback={<div>Carregando...</div>}>
+          {React.createElement(
+            React.lazy(() => import('@/components/CompleteActionDialog')),
+            {
+              open: showCompleteDialog,
+              onOpenChange: setShowCompleteDialog,
+              action: action,
+              onComplete: onComplete
+            }
+          )}
+        </React.Suspense>
       )}
     </div>
   );
