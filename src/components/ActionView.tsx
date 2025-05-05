@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip, Mail, MessageSquare, Phone, User, Calendar } from 'lucide-react';
+import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip, Mail, MessageSquare, Phone, User, Calendar, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Action } from '@/lib/types';
@@ -80,7 +79,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
     return requester ? requester.name : 'Solicitante não encontrado';
   };
 
-  const handleSendNotification = async (type: 'email' | 'whatsapp' | 'sms') => {
+  const handleSendNotification = async (type: 'email' | 'whatsapp' | 'sms' | 'internal') => {
     if (!responsible) {
       toast.error("Não foi possível enviar notificação", {
         description: "Nenhum responsável encontrado para esta ação."
@@ -97,7 +96,15 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
     );
     
     if (success) {
-      toast.success(`${type === 'email' ? 'Email' : type === 'whatsapp' ? 'WhatsApp' : 'SMS'} enviado com sucesso!`);
+      if (type === 'email') {
+        toast.success("Email enviado com sucesso!");
+      } else if (type === 'whatsapp') {
+        toast.success("WhatsApp enviado com sucesso!");
+      } else if (type === 'sms') {
+        toast.success("SMS enviado com sucesso!");
+      } else if (type === 'internal') {
+        toast.success("Notificação interna enviada com sucesso!");
+      }
     }
   };
 
@@ -220,6 +227,16 @@ const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
               >
                 <Phone className="h-4 w-4 mr-1" />
                 SMS
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSendNotification('internal')}
+                className="flex items-center gap-1"
+              >
+                <Bell className="h-4 w-4 mr-1" />
+                Interna
               </Button>
               
               <Button 

@@ -306,6 +306,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes_internas: {
+        Row: {
+          atualizado_em: string | null
+          conteudo: string
+          criado_em: string | null
+          destinatario_id: string
+          id: string
+          lida: boolean | null
+          referencia_id: string | null
+          remetente_id: string | null
+          tipo_referencia: string | null
+          titulo: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          conteudo: string
+          criado_em?: string | null
+          destinatario_id: string
+          id?: string
+          lida?: boolean | null
+          referencia_id?: string | null
+          remetente_id?: string | null
+          tipo_referencia?: string | null
+          titulo: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          conteudo?: string
+          criado_em?: string | null
+          destinatario_id?: string
+          id?: string
+          lida?: boolean | null
+          referencia_id?: string | null
+          remetente_id?: string | null
+          tipo_referencia?: string | null
+          titulo?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           client_ids: string[] | null

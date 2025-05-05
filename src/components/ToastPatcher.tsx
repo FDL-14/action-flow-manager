@@ -1,19 +1,13 @@
 
-import { useEffect } from 'react';
-import { patchToastCalls } from '@/lib/toast-helpers';
+import React from 'react';
+import { NotificationCenter } from './NotificationCenter';
 
-// This component patches toast calls globally to ensure proper formatting
-const ToastPatcher: React.FC = () => {
-  useEffect(() => {
-    // Patch toast methods
-    const cleanup = patchToastCalls();
-    
-    // Restore original methods when component unmounts
-    return cleanup;
-  }, []);
-  
-  // This is just a utility component, it doesn't render anything
-  return null;
+const ToastPatcher = () => {
+  return (
+    <div className="fixed top-5 right-5 z-50 flex gap-2">
+      <NotificationCenter />
+    </div>
+  );
 };
 
 export default ToastPatcher;
