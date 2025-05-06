@@ -44,46 +44,59 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
       const recipients = [];
       let success = false;
 
+      // Fix: Check if IDs exist before trying to send notifications
       // Notificar responsável
       if (notifyResponsible && action.responsibleId) {
-        const result = await sendInternalNotification(
-          action.responsibleId,
-          user?.id,
-          `Notificação sobre ação: ${action.subject}`,
-          notificationMessage,
-          action.id,
-          'acao'
-        );
-        if (result) success = true;
-        recipients.push('responsável');
+        try {
+          const result = await sendInternalNotification(
+            action.responsibleId,
+            user?.id || undefined,
+            `Notificação sobre ação: ${action.subject}`,
+            notificationMessage,
+            action.id,
+            'acao'
+          );
+          if (result) success = true;
+          recipients.push('responsável');
+        } catch (err) {
+          console.error("Erro ao notificar responsável:", err);
+        }
       }
 
       // Notificar solicitante
       if (notifyRequester && action.requesterId) {
-        const result = await sendInternalNotification(
-          action.requesterId,
-          user?.id,
-          `Notificação sobre ação: ${action.subject}`,
-          notificationMessage,
-          action.id,
-          'acao'
-        );
-        if (result) success = true;
-        recipients.push('solicitante');
+        try {
+          const result = await sendInternalNotification(
+            action.requesterId,
+            user?.id || undefined,
+            `Notificação sobre ação: ${action.subject}`,
+            notificationMessage,
+            action.id,
+            'acao'
+          );
+          if (result) success = true;
+          recipients.push('solicitante');
+        } catch (err) {
+          console.error("Erro ao notificar solicitante:", err);
+        }
       }
 
       // Notificar criador
       if (notifyCreator && action.createdBy) {
-        const result = await sendInternalNotification(
-          action.createdBy,
-          user?.id,
-          `Notificação sobre ação: ${action.subject}`,
-          notificationMessage,
-          action.id,
-          'acao'
-        );
-        if (result) success = true;
-        recipients.push('criador');
+        try {
+          const result = await sendInternalNotification(
+            action.createdBy,
+            user?.id || undefined,
+            `Notificação sobre ação: ${action.subject}`,
+            notificationMessage,
+            action.id,
+            'acao'
+          );
+          if (result) success = true;
+          recipients.push('criador');
+        } catch (err) {
+          console.error("Erro ao notificar criador:", err);
+        }
       }
 
       if (success) {

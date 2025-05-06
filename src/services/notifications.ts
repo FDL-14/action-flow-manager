@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/lib/types";
 import { toast } from "sonner";
@@ -25,6 +26,21 @@ export const useNotifications = () => {
     tipoReferencia?: string
   ) => {
     try {
+      console.log("Enviando notificação interna:", {
+        destinatario_id: destinatarioId,
+        remetente_id: remetenteId,
+        titulo,
+        conteudo,
+        referencia_id: referenciaId,
+        tipo_referencia: tipoReferencia
+      });
+
+      // Make sure both IDs are valid UUIDs
+      if (!destinatarioId || !destinatarioId.match(/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i)) {
+        console.error("ID de destinatário inválido:", destinatarioId);
+        return false;
+      }
+
       const { data, error } = await supabase
         .from('notificacoes_internas')
         .insert({

@@ -102,6 +102,13 @@ export const useMessaging = () => {
               return false;
             }
             
+            // Fix: Check for valid user ID format before sending
+            if (!responsible.userId.match(/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i)) {
+              console.warn("ID de usuário invalido:", responsible.userId);
+              toast.error("ID de usuário inválido para o responsável");
+              return false;
+            }
+            
             const remetente = user?.id || undefined;
             
             const internalSent = await sendInternalNotification(
@@ -133,65 +140,77 @@ export const useMessaging = () => {
         }
       }
       
-      // Caso padrão: enviar todas as notificações disponíveis
-      console.log("Enviando todas as notificações disponíveis");
+      // Caso padrão: tentar todas as formas de notificação disponíveis
+      console.log("Tentando todas as notificações disponíveis");
       let successCount = 0;
       let notificationsSent = [];
       
-      // Send email if email is available
+      // Try to send email if email is available
       if (responsible.email) {
-        const recipients = [responsible.email];
-        if (requester?.email) {
-          recipients.push(requester.email);
-        }
-        
-        const emailSent = await sendEmail({
-          to: recipients,
-          subject: subject || "Nova ação atribuída a você",
-          content: `
-            <h2>Olá ${responsible.name},</h2>
-            <p>${requester ? requester.name : 'O sistema'} atribuiu uma nova ação para você:</p>
-            <h3>${subject || 'Nova ação'}</h3>
-            <p>${description || 'Uma nova ação foi atribuída a você no sistema. Por favor, verifique.'}</p>
-            <p>Acesse o sistema para mais detalhes.</p>
-            <p>Atenciosamente,<br>Total Data</p>
-          `
-        });
-        
-        if (emailSent) {
-          successCount++;
-          notificationsSent.push("email");
+        try {
+          const recipients = [responsible.email];
+          if (requester?.email) {
+            recipients.push(requester.email);
+          }
+          
+          const emailSent = await sendEmail({
+            to: recipients,
+            subject: subject || "Nova ação atribuída a você",
+            content: `
+              <h2>Olá ${responsible.name},</h2>
+              <p>${requester ? requester.name : 'O sistema'} atribuiu uma nova ação para você:</p>
+              <h3>${subject || 'Nova ação'}</h3>
+              <p>${description || 'Uma nova ação foi atribuída a você no sistema. Por favor, verifique.'}</p>
+              <p>Acesse o sistema para mais detalhes.</p>
+              <p>Atenciosamente,<br>Total Data</p>
+            `
+          });
+          
+          if (emailSent) {
+            successCount++;
+            notificationsSent.push("email");
+          }
+        } catch (e) {
+          console.error("Erro ao enviar email:", e);
         }
       }
       
-      // Send internal notification if user account is linked
-      if (responsible.userId) {
-        const remetente = user?.id || undefined;
-        
-        const internalSent = await sendInternalNotification(
-          responsible.userId,
-          remetente,
-          subject || "Nova ação atribuída a você",
-          description || 'Uma nova ação foi atribuída a você no sistema. Por favor, verifique.',
-          undefined,
-          'acao'
-        );
-        
-        if (internalSent) {
-          successCount++;
-          notificationsSent.push("notificação interna");
+      // Try to send internal notification if user ID exists and is valid
+      if (responsible.userId && responsible.userId.match(/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i)) {
+        try {
+          const remetente = user?.id || undefined;
           
-          // Se houver um solicitante que também é usuário do sistema, enviar para ele também
-          if (requester?.userId && requester.userId !== responsible.userId) {
-            await sendInternalNotification(
-              requester.userId,
-              remetente,
-              `Ação atribuída a ${responsible.name}`,
-              description || `Uma ação foi atribuída a ${responsible.name}. Você está configurado como solicitante.`,
-              undefined,
-              'acao'
-            );
+          const internalSent = await sendInternalNotification(
+            responsible.userId,
+            remetente,
+            subject || "Nova ação atribuída a você",
+            description || 'Uma nova ação foi atribuída a você no sistema. Por favor, verifique.',
+            undefined,
+            'acao'
+          );
+          
+          if (internalSent) {
+            successCount++;
+            notificationsSent.push("notificação interna");
+            
+            // Se houver um solicitante que também é usuário do sistema, enviar para ele também
+            if (requester?.userId && requester.userId !== responsible.userId) {
+              try {
+                await sendInternalNotification(
+                  requester.userId,
+                  remetente,
+                  `Ação atribuída a ${responsible.name}`,
+                  description || `Uma ação foi atribuída a ${responsible.name}. Você está configurado como solicitante.`,
+                  undefined,
+                  'acao'
+                );
+              } catch (e) {
+                console.error("Erro ao notificar solicitante:", e);
+              }
+            }
           }
+        } catch (e) {
+          console.error("Erro ao enviar notificação interna:", e);
         }
       }
       
