@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
-import { additionalUsers, defaultMasterUser } from '@/lib/mock-data';
+import { defaultMasterUser } from '@/lib/mock-data';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -37,10 +37,10 @@ const Index = () => {
     checkSupabaseConnection();
   }, []);
 
-  // Function to initialize only user data (not companies)
+  // Function to initialize only the admin user if not exists
   useEffect(() => {
-    // Remove forced re-initialization 
-    // localStorage.removeItem('data_initialized');
+    // Force data reinitialization
+    localStorage.removeItem('data_initialized');
     
     const initializeDefaultData = async () => {
       try {
@@ -72,28 +72,6 @@ const Index = () => {
             });
           } else {
             console.log(`Usuário master ${defaultMasterUser.name} já existe (ID: ${existingMasterUser.id})`);
-          }
-          
-          // Check and add additional users
-          for (const userToAdd of additionalUsers) {
-            // Normalize CPFs for comparison
-            const normalizedCPFs = users.map(u => u.cpf.replace(/\D/g, ''));
-            const normalizedCpf = userToAdd.cpf.replace(/\D/g, '');
-            
-            if (!normalizedCPFs.includes(normalizedCpf)) {
-              console.log(`Adicionando usuário ${userToAdd.name} (CPF: ${userToAdd.cpf}) ao localStorage`);
-              await addUser({
-                name: userToAdd.name,
-                cpf: userToAdd.cpf,
-                email: userToAdd.email,
-                role: userToAdd.role,
-                companyIds: userToAdd.companyIds,
-                clientIds: userToAdd.clientIds,
-                permissions: userToAdd.permissions
-              });
-            } else {
-              console.log(`Usuário ${userToAdd.name} já existe no localStorage`);
-            }
           }
         }
         

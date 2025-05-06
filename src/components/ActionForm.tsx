@@ -214,11 +214,17 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {responsibles.map(responsible => (
-                          <SelectItem key={responsible.id} value={responsible.id}>
-                            {responsible.name}
+                        {responsibles.length > 0 ? 
+                          responsibles.map(responsible => (
+                            <SelectItem key={responsible.id} value={responsible.id}>
+                              {responsible.name}
+                            </SelectItem>
+                          ))
+                        : 
+                          <SelectItem value="create-new" disabled>
+                            Nenhum responsável encontrado
                           </SelectItem>
-                        ))}
+                        }
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -242,11 +248,17 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {clients.map(client => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
+                        {clients.length > 0 ? 
+                          clients.map(client => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.name}
+                            </SelectItem>
+                          ))
+                        : 
+                          <SelectItem value="create-new" disabled>
+                            Nenhum cliente encontrado
                           </SelectItem>
-                        ))}
+                        }
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -272,11 +284,17 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {requesters.map(requester => (
-                          <SelectItem key={requester.id} value={requester.id}>
-                            {requester.name}
+                        {requesters.length > 0 ? 
+                          requesters.map(requester => (
+                            <SelectItem key={requester.id} value={requester.id}>
+                              {requester.name}
+                            </SelectItem>
+                          ))
+                        : 
+                          <SelectItem value="create-new" disabled>
+                            Nenhum solicitante encontrado
                           </SelectItem>
-                        ))}
+                        }
                       </SelectContent>
                     </Select>
                     <FormMessage />
