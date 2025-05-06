@@ -148,7 +148,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        if (newClient) {
+        if (newClient !== null) {
           console.log("Cliente criado:", newClient);
           toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
           success = true;
@@ -164,7 +164,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        if (updated) {
+        if (updated === true) {
           console.log("Cliente atualizado:", updated);
           toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
           success = true;
