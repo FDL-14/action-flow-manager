@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNotifications, InternalNotification } from '@/services/notifications';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActions } from '@/contexts/ActionContext';
 import { Bell, BellOff, Check, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -23,6 +23,8 @@ export function NotificationCenter() {
     markAllAsRead,
     deleteNotification 
   } = useNotifications();
+  
+  const { updateActionStatus } = useActions();
   
   const [notifications, setNotifications] = useState<InternalNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -127,9 +129,6 @@ export function NotificationCenter() {
   // Função para aprovar ou reprovar uma ação
   const handleActionApproval = async (notificationId: string, actionId: string, approve: boolean) => {
     try {
-      // Implementar lógica de aprovação/reprovação
-      const { updateActionStatus } = await import('@/contexts/ActionContext');
-      
       if (approve) {
         // Aprovar a ação - marcar como concluída
         await updateActionStatus(actionId, 'concluido', new Date());
