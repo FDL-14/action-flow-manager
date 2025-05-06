@@ -185,6 +185,8 @@ const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
             {activeTab === "edit" && (
               <EditActionForm 
                 action={currentAction} 
+                open={true}
+                onOpenChange={() => setActiveTab('details')}
                 onSuccess={() => {
                   const updatedAction = getActionById(currentAction.id);
                   if (updatedAction) {

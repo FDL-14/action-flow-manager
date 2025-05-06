@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +37,7 @@ interface EditActionFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   action: Action;
+  onSuccess?: () => void; // Added missing onSuccess prop
 }
 
 const EditActionForm: React.FC<EditActionFormProps> = ({ open, onOpenChange, action }) => {
