@@ -21,8 +21,8 @@ export const useCompanyOperations = (
     setCompanies(updatedCompanies);
     
     toast({
-      title: "Company updated",
-      description: `Company information has been updated successfully.`,
+      title: "Empresa atualizada",
+      description: `As informações da empresa foram atualizadas com sucesso.`,
       variant: "default",
     });
   };
@@ -37,8 +37,8 @@ export const useCompanyOperations = (
     setCompanies(updatedCompanies);
     
     toast({
-      title: "Company added",
-      description: `Company ${companyData.name} has been added successfully.`,
+      title: "Empresa adicionada",
+      description: `A empresa ${companyData.name} foi adicionada com sucesso.`,
       variant: "default",
     });
     
@@ -59,8 +59,8 @@ export const useCompanyOperations = (
     }
     
     toast({
-      title: "Company updated",
-      description: `Company ${updatedCompany.name} has been updated successfully.`,
+      title: "Empresa atualizada",
+      description: `A empresa ${updatedCompany.name} foi atualizada com sucesso.`,
       variant: "default",
     });
   };
@@ -68,8 +68,8 @@ export const useCompanyOperations = (
   const deleteCompany = (id: string) => {
     if (company && company.id === id) {
       toast({
-        title: "Operation not allowed",
-        description: "Cannot delete the main company",
+        title: "Operação não permitida",
+        description: "Não é possível excluir a empresa principal",
         variant: "destructive",
       });
       return;
@@ -79,8 +79,8 @@ export const useCompanyOperations = (
     setCompanies(updatedCompanies);
     
     toast({
-      title: "Company deleted",
-      description: "Company has been deleted successfully",
+      title: "Empresa excluída",
+      description: "A empresa foi excluída com sucesso",
       variant: "default",
     });
   };
@@ -103,8 +103,8 @@ export const useCompanyOperations = (
     setCompanies(updatedCompanies);
     
     toast({
-      title: "Logo updated",
-      description: "Company logo has been updated successfully.",
+      title: "Logo atualizado",
+      description: "O logo da empresa foi atualizado com sucesso.",
       variant: "default",
     });
   };

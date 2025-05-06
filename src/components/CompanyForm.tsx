@@ -39,6 +39,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
   const { addCompany, updateCompany } = useCompany();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize the form with the schema
   const form = useForm<z.infer<typeof companyFormSchema>>({
@@ -93,6 +94,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
 
   const onSubmit = async (data: z.infer<typeof companyFormSchema>) => {
     try {
+      setIsSubmitting(true);
       // Handle logo upload if there's a new file
       let logoUrl = data.logo;
       if (logoFile) {
@@ -106,7 +108,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
       };
 
       if (isNewCompany) {
-        await addCompany({
+        addCompany({
           name: companyData.name,
           cnpj: companyData.cnpj,
           address: companyData.address,
@@ -117,13 +119,14 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
         });
         toast.success('Empresa adicionada', { description: 'A empresa foi criada com sucesso.' });
       } else if (initialData) {
-        await updateCompany({
+        updateCompany({
           ...initialData,
           name: companyData.name,
           cnpj: companyData.cnpj,
           address: companyData.address,
           phone: companyData.phone,
           logo: companyData.logo,
+          updatedAt: new Date(),
         });
         toast.success('Empresa atualizada', { description: 'Os dados da empresa foram atualizados.' });
       }
@@ -132,6 +135,8 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
       toast.error('Erro ao salvar', { description: 'Não foi possível salvar os dados da empresa.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -175,7 +180,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

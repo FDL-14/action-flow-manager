@@ -12,15 +12,15 @@ import { toast } from 'sonner';
 
 const CompaniesPage = () => {
   const { user } = useAuth();
-  const { company: mainCompany, companies, clients, getClientsByCompanyId } = useCompany();
+  const { company: mainCompany, companies, clients, deleteCompany, getClientsByCompanyId } = useCompany();
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [companyClients, setCompanyClients] = useState<{[key: string]: Client[]}>({});
   const [loading, setLoading] = useState(true);
 
   // Verify permissions for company editing
-  const canEditCompany = user?.role === 'master' || user?.permissions.some(p => p.canEditCompany);
-  const canDeleteCompany = user?.role === 'master' || user?.permissions.some(p => p.canDeleteCompany);
+  const canEditCompany = user?.role === 'master' || user?.permissions?.some(p => p.canEditCompany);
+  const canDeleteCompany = user?.role === 'master' || user?.permissions?.some(p => p.canDeleteCompany);
 
   useEffect(() => {
     const loadClientsByCompany = () => {
@@ -52,6 +52,26 @@ const CompaniesPage = () => {
   const handleEditCompany = (company: Company) => {
     setEditingCompany(company);
     setShowCompanyForm(true);
+  };
+  
+  const handleDeleteCompany = (companyId: string) => {
+    if (companyId === mainCompany?.id) {
+      toast.error("Não é possível excluir", { description: "A empresa principal não pode ser excluída" });
+      return;
+    }
+    
+    if (getClientCountByCompany(companyId) > 0) {
+      toast.error("Não é possível excluir", { description: "Existem clientes associados a esta empresa" });
+      return;
+    }
+    
+    try {
+      deleteCompany(companyId);
+      toast.success("Empresa excluída", { description: "A empresa foi removida com sucesso" });
+    } catch (error) {
+      console.error("Error deleting company:", error);
+      toast.error("Erro ao excluir", { description: "Não foi possível excluir a empresa" });
+    }
   };
 
   const getClientCountByCompany = (companyId: string): number => {
@@ -219,6 +239,7 @@ const CompaniesPage = () => {
                         ? "Não é possível excluir - existem clientes associados" 
                         : "Excluir empresa"
                     }
+                    onClick={() => handleDeleteCompany(company.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
