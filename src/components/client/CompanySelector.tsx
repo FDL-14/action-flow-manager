@@ -1,3 +1,4 @@
+
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Company } from "@/lib/types"
@@ -11,13 +12,15 @@ interface CompanySelectorProps {
   companies: Company[]
   selectedCompanyId: string
   setSelectedCompanyId: (value: string) => void
+  required?: boolean
 }
 
 export const CompanySelector = ({ 
   form, 
   companies, 
   selectedCompanyId, 
-  setSelectedCompanyId 
+  setSelectedCompanyId,
+  required = true
 }: CompanySelectorProps) => {
   const [syncing, setSyncing] = useState(false);
   
@@ -99,7 +102,7 @@ export const CompanySelector = ({
       name="companyId"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Empresa</FormLabel>
+          <FormLabel>Empresa {required && <span className="text-red-500">*</span>}</FormLabel>
           <Select
             onValueChange={async (value) => {
               console.log("Empresa selecionada:", value);
@@ -122,9 +125,6 @@ export const CompanySelector = ({
                     name: selectedCompany.name
                   });
                   setSyncing(false);
-                  toast.success("Empresa sincronizada", {
-                    description: "Empresa sincronizada com o banco de dados."
-                  });
                 } catch (error) {
                   console.error("Erro ao sincronizar empresa com Supabase:", error);
                   setSyncing(false);
@@ -158,6 +158,7 @@ export const CompanySelector = ({
               )}
             </SelectContent>
           </Select>
+          {syncing && <p className="text-xs text-muted-foreground mt-1">Sincronizando empresa...</p>}
           <FormMessage />
         </FormItem>
       )}

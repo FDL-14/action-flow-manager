@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,7 +81,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
         
         setSelectedCompanyId(clientData.companyId || '');
       } else {
-        // Para novos clientes, inicializar com a primeira empresa disponível
+        // Para novos clientes, inicializar com a primeira empresa disponível se houver
         const defaultCompanyId = companies.length > 0 ? companies[0].id : '';
         const defaultCompanyName = companies.length > 0 ? companies[0].name : '';
         
@@ -145,9 +146,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        console.log("Cliente criado:", newClient);
-        toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
-        onOpenChange(false);
+        if (newClient) {
+          console.log("Cliente criado:", newClient);
+          toast.success('Cliente adicionado', { description: 'O cliente foi criado com sucesso.' });
+          onOpenChange(false);
+        }
       } else if (clientData) {
         // Update existing client with company name
         const updated = await updateClient({
@@ -159,9 +162,11 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        console.log("Cliente atualizado:", updated);
-        toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
-        onOpenChange(false);
+        if (updated) {
+          console.log("Cliente atualizado:", updated);
+          toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
+          onOpenChange(false);
+        }
       }
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
@@ -184,7 +189,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome</FormLabel>
+                  <FormLabel>Nome <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input placeholder="Nome do cliente" {...field} />
                   </FormControl>
@@ -227,6 +232,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
               companies={companies}
               selectedCompanyId={selectedCompanyId}
               setSelectedCompanyId={setSelectedCompanyId}
+              required={true}
             />
 
             <DialogFooter className="pt-4">

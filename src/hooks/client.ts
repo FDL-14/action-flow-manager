@@ -12,9 +12,13 @@ export const useClientOperations = () => {
     const fetchClients = async () => {
       setLoading(true);
       try {
+        // Use a join para obter o nome da empresa junto com os dados do cliente
         const { data, error } = await supabase
           .from('clients')
-          .select('*')
+          .select(`
+            *,
+            companies:company_id (name)
+          `)
           .order('name');
 
         if (error) {
@@ -30,6 +34,7 @@ export const useClientOperations = () => {
             address: '',
             cnpj: '',
             companyId: client.company_id || '',
+            companyName: client.companies?.name || 'Empresa não associada',
             createdAt: new Date(client.created_at),
             updatedAt: new Date(client.updated_at)
           }));
@@ -70,6 +75,20 @@ export const useClientOperations = () => {
         return null;
       }
 
+      // Get the company name for the selected company ID
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', client.companyId)
+        .single();
+      
+      if (companyError || !companyData) {
+        toast.error("Erro ao adicionar cliente", { description: "Empresa selecionada não existe." });
+        return null;
+      }
+      
+      const companyName = companyData.name;
+
       const { data, error } = await supabase
         .from('clients')
         .insert({
@@ -93,6 +112,7 @@ export const useClientOperations = () => {
         address: '',
         cnpj: '',
         companyId: data.company_id,
+        companyName: companyName, // Use the company name we retrieved
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
@@ -115,6 +135,20 @@ export const useClientOperations = () => {
         return false;
       }
       
+      // Get the company name for the selected company ID
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', client.companyId)
+        .single();
+      
+      if (companyError || !companyData) {
+        toast.error("Erro ao atualizar cliente", { description: "Empresa selecionada não existe." });
+        return false;
+      }
+      
+      const companyName = companyData.name;
+      
       const { error } = await supabase
         .from('clients')
         .update({
@@ -133,6 +167,7 @@ export const useClientOperations = () => {
       setClients(prevClients => prevClients.map(c => c.id === client.id ? {
         ...c,
         ...client,
+        companyName: companyName, // Update the company name
         updatedAt: new Date()
       } : c));
 
