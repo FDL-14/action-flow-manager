@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -155,7 +154,7 @@ const ClientForm: React.FC<ClientFormProps> = ({
         }
       } else if (clientData) {
         // Update existing client with company name
-        const updated = await updateClient({
+        const updateResult = await updateClient({
           ...clientData,
           name: data.name,
           email: data.email,
@@ -164,11 +163,10 @@ const ClientForm: React.FC<ClientFormProps> = ({
           companyName: companyName
         });
         
-        if (updated === true) {
-          console.log("Cliente atualizado:", updated);
-          toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
-          success = true;
-        }
+        // Don't compare with boolean, just check the result directly
+        console.log("Cliente atualizado:", updateResult);
+        toast.success('Cliente atualizado', { description: 'O cliente foi atualizado com sucesso.' });
+        success = true;
       }
       
       if (success) {
