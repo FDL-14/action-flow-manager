@@ -11,6 +11,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Action } from '@/lib/types';
 import { toast } from 'sonner';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 const ActionsPage = () => {
   const { company } = useCompany();
@@ -56,10 +57,13 @@ const ActionsPage = () => {
     <div className="container mx-auto py-6 px-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Ações</h1>
-        <Button onClick={() => setShowActionForm(true)} className="mt-2 sm:mt-0">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Ação
-        </Button>
+        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+          <Button onClick={() => setShowActionForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Ação
+          </Button>
+          <NotificationCenter />
+        </div>
       </div>
 
       <div className={`flex ${isMobile ? 'flex-col' : 'justify-between'} items-start sm:items-center mb-4`}>

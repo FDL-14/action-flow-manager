@@ -1,483 +1,219 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertTriangle, Download, Eye, FileText, Paperclip, Mail, MessageSquare, Phone, User, Calendar, Bell } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Action } from '@/lib/types';
-import { useCompany } from '@/contexts/CompanyContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { useActions } from '@/contexts/ActionContext';
-import { Badge } from './ui/badge';
-import { useMessaging } from '@/services/messaging';
-import { toast } from 'sonner';
-import ActionNotes from './ActionNotes';
+import ActionNotes from '@/components/ActionNotes';
+import EditActionForm from '@/components/EditActionForm';
+import CompleteActionDialog from '@/components/CompleteActionDialog';
+import DeleteActionDialog from './DeleteActionDialog';
+import { Pencil, Trash2, FileText, MessageCircle, CheckCircle, Bell } from 'lucide-react';
+import ActionNotification from './ActionNotification';
 
 interface ActionViewProps {
   action: Action;
-  onClose: () => void;
   open: boolean;
+  onClose: () => void;
 }
 
-const ActionView: React.FC<ActionViewProps> = ({ action, onClose, open }) => {
-  const { responsibles, clients, companies } = useCompany();
-  const { user } = useAuth();
-  const { getAttachmentUrl } = useActions();
-  const { sendActionNotification } = useMessaging();
-  const [attachmentUrls, setAttachmentUrls] = useState<{ path: string; url: string }[]>([]);
-  const [showNotesPanel, setShowNotesPanel] = useState(false);
-
-  // Find the responsible and requester
-  const responsible = responsibles.find(r => r.id === action.responsibleId);
-  const requester = action.requesterId ? responsibles.find(r => r.id === action.requesterId) : undefined;
-
+const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
+  const [activeTab, setActiveTab] = useState('details');
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showNotificationForm, setShowNotificationForm] = useState(false);
+  const { getActionById } = useActions();
+  const [currentAction, setCurrentAction] = useState<Action>(action);
+  
   useEffect(() => {
-    const loadAttachments = async () => {
-      if (!action.attachments || action.attachments.length === 0) return;
-
-      try {
-        const urlPromises = action.attachments.map(async (path) => {
-          try {
-            const url = await getAttachmentUrl(path);
-            return { path, url };
-          } catch (error) {
-            console.error(`Erro ao carregar URL para anexo ${path}:`, error);
-            return { path, url: '' };
-          }
-        });
-
-        const urls = await Promise.all(urlPromises);
-        setAttachmentUrls(urls.filter((u) => u.url));
-      } catch (error) {
-        console.error('Erro ao carregar URLs de anexos:', error);
-      }
-    };
-
-    if (open && action) {
-      loadAttachments();
-    }
-  }, [action, open, getAttachmentUrl]);
-
-  const getResponsibleName = (id: string) => {
-    const responsible = responsibles.find((r) => r.id === id);
-    return responsible ? responsible.name : 'Não atribuído';
-  };
-
-  const getClientName = (id?: string) => {
-    if (!id) return 'Não especificado';
-    const client = clients.find((c) => c.id === id);
-    return client ? client.name : 'Cliente não encontrado';
-  };
-
-  const getCompanyName = (id: string) => {
-    const company = companies.find((c) => c.id === id);
-    return company ? company.name : 'Empresa não encontrada';
-  };
-
-  const getRequesterName = (id?: string) => {
-    if (!id) return 'Não especificado';
-    const requester = responsibles.find((r) => r.id === id);
-    return requester ? requester.name : 'Solicitante não encontrado';
-  };
-
-  const handleSendNotification = async (type: 'email' | 'whatsapp' | 'sms' | 'internal') => {
-    if (!responsible) {
-      toast.error("Não foi possível enviar notificação", {
-        description: "Nenhum responsável encontrado para esta ação."
-      });
-      return;
-    }
-    
-    const success = await sendActionNotification(
-      responsible,
-      requester,
-      `Lembrete: Ação "${action.subject}"`,
-      `Esta é uma notificação sobre a ação "${action.subject}" que foi atribuída a você.\n\nDescrição: ${action.description}\n\nData de término: ${format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}`,
-      type
-    );
-    
-    if (success) {
-      if (type === 'email') {
-        toast.success("Email enviado com sucesso!");
-      } else if (type === 'whatsapp') {
-        toast.success("WhatsApp enviado com sucesso!");
-      } else if (type === 'sms') {
-        toast.success("SMS enviado com sucesso!");
-      } else if (type === 'internal') {
-        toast.success("Notificação interna enviada com sucesso!");
+    if (open && action?.id) {
+      const freshAction = getActionById(action.id);
+      if (freshAction) {
+        setCurrentAction(freshAction);
       }
     }
-  };
+  }, [open, action, getActionById]);
 
-  const getStatusBadge = (status: string) => {
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+  
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pendente':
-        return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-            <Clock className="h-3 w-3 mr-1" />
-            Pendente
-          </Badge>
-        );
       case 'concluido':
-        return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-            <Check className="h-3 w-3 mr-1" />
-            Concluído
-          </Badge>
-        );
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'pendente':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'atrasado':
-        return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Atrasado
-          </Badge>
-        );
+        return 'bg-red-100 text-red-800 border-red-300';
       case 'aguardando_aprovacao':
-        return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-            <Clock className="h-3 w-3 mr-1" />
-            Aguardando Aprovação
-          </Badge>
-        );
+        return 'bg-blue-100 text-blue-800 border-blue-300';
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
-
-  const getAttachmentFileType = (url: string) => {
-    const extension = url.split('.').pop()?.toLowerCase() || '';
+  
+  const formatStatus = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'concluido': 'Concluído',
+      'pendente': 'Pendente',
+      'atrasado': 'Atrasado',
+      'aguardando_aprovacao': 'Aguardando Aprovação'
+    };
     
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension)) {
-      return 'image';
-    } else if (extension === 'pdf') {
-      return 'pdf';
-    } else if (['xls', 'xlsx', 'csv'].includes(extension)) {
-      return 'excel';
-    } else if (['doc', 'docx'].includes(extension)) {
-      return 'word';
-    } else {
-      return 'other';
-    }
+    return statusMap[status] || status;
   };
-
-  const getFileName = (filePath: string) => {
-    const parts = filePath.split('/');
-    return parts[parts.length - 1];
+  
+  const handleClose = () => {
+    setActiveTab('details');
+    setShowEditForm(false);
+    onClose();
   };
-
-  const handleDownload = (url: string, filename: string = 'arquivo') => {
-    try {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Erro ao fazer download:', error);
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleAddNotes = () => {
-    setShowNotesPanel(true);
-  };
-
-  if (!action) return null;
-
-  if (showNotesPanel) {
-    return (
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Anotações da Ação</DialogTitle>
-            <DialogDescription>Adicione ou visualize anotações para esta ação</DialogDescription>
-          </DialogHeader>
-          
-          <ActionNotes 
-            action={action} 
-            onClose={() => setShowNotesPanel(false)}
-            onComplete={onClose}
-          />
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Visualização de Ação</DialogTitle>
-          <DialogDescription>Detalhes completos da ação</DialogDescription>
+          <DialogTitle className="text-xl font-bold">{currentAction.subject}</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-6 print:space-y-4">
-          {/* Cabeçalho */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-xl font-bold">{action.subject}</h2>
-              <div className="mt-2">{getStatusBadge(action.status)}</div>
-            </div>
-            <div className="flex flex-wrap gap-2 print:hidden">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleSendNotification('email')}
-                className="flex items-center gap-1"
-              >
-                <Mail className="h-4 w-4 mr-1" />
-                Email
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleSendNotification('whatsapp')}
-                className="flex items-center gap-1"
-              >
-                <MessageSquare className="h-4 w-4 mr-1" />
-                WhatsApp
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleSendNotification('sms')}
-                className="flex items-center gap-1"
-              >
-                <Phone className="h-4 w-4 mr-1" />
-                SMS
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handleSendNotification('internal')}
-                className="flex items-center gap-1"
-              >
-                <Bell className="h-4 w-4 mr-1" />
-                Interna
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handlePrint}
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Imprimir
-              </Button>
-            </div>
-          </div>
-
-          {/* Informações da Ação */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalhes da Ação</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Empresa</h4>
-                    <p>{getCompanyName(action.companyId)}</p>
-                  </div>
+        
+        <Tabs defaultValue="details" value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid grid-cols-4">
+            <TabsTrigger value="details" className="text-xs sm:text-sm">Detalhes</TabsTrigger>
+            <TabsTrigger value="notes" className="text-xs sm:text-sm">Anotações</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notificações</TabsTrigger>
+            <TabsTrigger value="edit" className="text-xs sm:text-sm">Editar</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="details" className="mt-4">
+            <div className="space-y-4">
+              <div className="flex justify-between items-start">
+                <Badge className={`${getStatusColor(currentAction.status)} text-xs px-2 py-1`}>
+                  {formatStatus(currentAction.status)}
+                </Badge>
+                <div className="flex gap-2">
+                  {currentAction.status !== "concluido" && currentAction.status !== "aguardando_aprovacao" && (
+                    <Button 
+                      onClick={() => setShowCompleteDialog(true)} 
+                      variant="outline" 
+                      size="sm"
+                      className="text-green-600 border-green-200 bg-green-50 hover:bg-green-100"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Concluir
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => setShowNotificationForm(true)} 
+                    variant="outline" 
+                    size="sm"
+                    className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100"
+                  >
+                    <Bell className="h-4 w-4 mr-1" />
+                    Notificar
+                  </Button>
+                  <Button 
+                    onClick={() => setShowDeleteDialog(true)} 
+                    variant="outline" 
+                    size="sm"
+                    className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Excluir
+                  </Button>
                 </div>
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Cliente</h4>
-                    <p>{getClientName(action.clientId)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Responsável</h4>
-                    <p>{getResponsibleName(action.responsibleId)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Solicitante</h4>
-                    <p>{getRequesterName(action.requesterId)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Criado por</h4>
-                    <p>{action.createdByName || user?.name || "Sistema"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Data de Criação</h4>
-                    <p>{format(new Date(action.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Data de Início</h4>
-                    <p>{format(new Date(action.startDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <h4 className="text-sm font-semibold">Data de Término</h4>
-                    <p>{format(new Date(action.endDate), 'dd/MM/yyyy', { locale: ptBR })}</p>
-                  </div>
-                </div>
-                {action.completedAt && (
-                  <div className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-green-500" />
-                    <div>
-                      <h4 className="text-sm font-semibold">Concluído em</h4>
-                      <p>
-                        {format(new Date(action.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {action.approved && (
-                  <div className="flex items-center gap-1">
-                    <Check className="h-4 w-4 text-green-500" />
-                    <div>
-                      <h4 className="text-sm font-semibold">Aprovado em</h4>
-                      <p>
-                        {action.approvedAt 
-                          ? format(new Date(action.approvedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                          : 'Aprovado'}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
-
+              
               <div>
-                <h4 className="text-sm font-semibold">Descrição</h4>
-                <p className="whitespace-pre-line">{action.description || "Sem descrição disponível."}</p>
+                <p className="text-sm font-medium text-gray-500 mb-1">Descrição</p>
+                <p className="text-sm">{currentAction.description || "Sem descrição"}</p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Anexos */}
-          {action.attachments && action.attachments.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Anexos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {attachmentUrls.map((item, index) => {
-                    const fileType = getAttachmentFileType(item.url);
-                    const fileName = getFileName(item.path);
-                    return (
-                      <div key={index} className="flex items-center justify-between border p-3 rounded">
-                        <div className="flex items-center space-x-2">
-                          {fileType === 'image' && (
-                            <img
-                              src={item.url}
-                              alt={fileName}
-                              className="h-8 w-8 object-cover rounded"
-                            />
-                          )}
-                          <span className="text-sm truncate max-w-[150px]">{fileName}</span>
-                        </div>
-                        <div className="flex space-x-1">
-                          {fileType === 'image' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => window.open(item.url, '_blank')}
-                              className="h-8 w-8"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDownload(item.url, fileName)}
-                            className="h-8 w-8"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Data de Início</p>
+                  <p className="text-sm">{format(new Date(currentAction.startDate), "dd/MM/yyyy", { locale: ptBR })}</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Anotações */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Anotações</CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleAddNotes}
-                className="flex items-center gap-1"
-              >
-                <Paperclip className="h-4 w-4 mr-1" />
-                {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 
-                  ? "Adicionar Anotação" 
-                  : "Nova Anotação"
-                }
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {action.notes && action.notes.filter(n => !n.isDeleted).length > 0 ? (
-                <div className="space-y-4">
-                  {action.notes
-                    .filter(note => !note.isDeleted)
-                    .map(note => (
-                      <div key={note.id} className="border p-3 rounded">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-500">
-                            {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                          {note.createdBy === user?.id && (
-                            <Badge variant="outline">Sua anotação</Badge>
-                          )}
-                          {note.createdByName && (
-                            <span className="text-xs text-gray-500">
-                              Por: {note.createdByName}
-                            </span>
-                          )}
-                        </div>
-                        <p className="whitespace-pre-line">{note.content}</p>
-                      </div>
-                    ))}
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Data de Término</p>
+                  <p className="text-sm">{format(new Date(currentAction.endDate), "dd/MM/yyyy", { locale: ptBR })}</p>
                 </div>
-              ) : (
-                <p className="text-center text-muted-foreground">
-                  Nenhuma anotação encontrada para esta ação.
-                </p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Responsável</p>
+                <p className="text-sm">{currentAction.responsibleId || "Não definido"}</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Solicitante</p>
+                <p className="text-sm">{currentAction.requesterId || "Não definido"}</p>
+              </div>
+              
+              {currentAction.completedAt && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Concluído em</p>
+                  <p className="text-sm">{format(new Date(currentAction.completedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="notes">
+            <ActionNotes action={currentAction} />
+          </TabsContent>
+          
+          <TabsContent value="notifications">
+            <ActionNotification 
+              action={currentAction} 
+              onClose={() => setActiveTab('details')}
+            />
+          </TabsContent>
+          
+          <TabsContent value="edit">
+            {activeTab === "edit" && (
+              <EditActionForm 
+                action={currentAction} 
+                onSuccess={() => {
+                  const updatedAction = getActionById(currentAction.id);
+                  if (updatedAction) {
+                    setCurrentAction(updatedAction);
+                  }
+                  setActiveTab('details');
+                }} 
+              />
+            )}
+          </TabsContent>
+        </Tabs>
 
-          <div className="flex justify-end space-x-2 print:hidden">
-            <Button variant="outline" onClick={onClose}>
-              Fechar
-            </Button>
-          </div>
-        </div>
+        {showCompleteDialog && (
+          <CompleteActionDialog 
+            actionId={currentAction.id}
+            open={showCompleteDialog}
+            onOpenChange={setShowCompleteDialog}
+            onSuccess={() => {
+              const updatedAction = getActionById(currentAction.id);
+              if (updatedAction) {
+                setCurrentAction(updatedAction);
+              }
+            }}
+          />
+        )}
+        
+        {showDeleteDialog && (
+          <DeleteActionDialog 
+            actionId={currentAction.id}
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+            onDeleted={onClose}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

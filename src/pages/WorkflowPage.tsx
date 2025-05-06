@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, BarChart2, Plus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ActionForm from '@/components/ActionForm';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 const WorkflowPage = () => {
   const { company } = useCompany();
@@ -20,15 +21,19 @@ const WorkflowPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Workflow de Ações</h1>
         <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row items-center gap-2">
-          <Button 
-            onClick={() => setShowActionForm(true)} 
-            variant="default" 
-            size="sm" 
-            className="mb-2 sm:mb-0 sm:mr-4"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Nova Ação
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => setShowActionForm(true)} 
+              variant="default" 
+              size="sm" 
+              className="mb-2 sm:mb-0 sm:mr-2"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nova Ação
+            </Button>
+            
+            <NotificationCenter />
+          </div>
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList>

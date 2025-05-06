@@ -644,7 +644,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updated_at: new Date().toISOString()
       };
       
-      if (status === 'concluido') {
+      if (status === 'concluido' || status === 'aguardando_aprovacao') {
         updateData.completed_at = (completedAt || new Date()).toISOString();
       } else {
         updateData.completed_at = null;
@@ -666,7 +666,7 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return { 
               ...action, 
               status, 
-              completedAt: status === 'concluido' ? (completedAt || new Date()) : undefined,
+              completedAt: (status === 'concluido' || status === 'aguardando_aprovacao') ? (completedAt || new Date()) : undefined,
               updatedAt: new Date() 
             };
           }
@@ -674,7 +674,14 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         })
       );
       
-      toast.success(`Status da ação atualizado para ${status}!`);
+      const statusText = {
+        'concluido': 'Concluído',
+        'pendente': 'Pendente', 
+        'atrasado': 'Atrasado',
+        'aguardando_aprovacao': 'Aguardando Aprovação'
+      };
+      
+      toast.success(`Status da ação atualizado para ${statusText[status] || status}!`);
       
       return true;
     } catch (error) {
