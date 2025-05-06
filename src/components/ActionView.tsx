@@ -76,6 +76,11 @@ const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
     onClose();
   };
 
+  // Handle notes tab close
+  const handleNotesClose = () => {
+    setActiveTab('details');
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
@@ -166,7 +171,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
           </TabsContent>
           
           <TabsContent value="notes">
-            <ActionNotes action={currentAction} />
+            <ActionNotes action={currentAction} onClose={handleNotesClose} />
           </TabsContent>
           
           <TabsContent value="notifications">
@@ -209,6 +214,7 @@ const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
         {showDeleteDialog && (
           <DeleteActionDialog 
             actionId={currentAction.id}
+            actionSubject={currentAction.subject}
             open={showDeleteDialog}
             onOpenChange={setShowDeleteDialog}
             onDeleted={onClose}

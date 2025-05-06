@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,6 +14,7 @@ import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
 import { UserRound, Trash2, Upload, Paperclip, ExternalLink, File, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CompleteActionDialog } from '@/components/CompleteActionDialog';
 
 const formSchema = z.object({
   content: z.string().min(10, {
@@ -448,17 +448,12 @@ const ActionNotes: React.FC<ActionNotesProps> = ({ action, onClose, onComplete }
       
       {/* Importar CompleteActionDialog */}
       {showCompleteDialog && (
-        <React.Suspense fallback={<div>Carregando...</div>}>
-          {React.createElement(
-            React.lazy(() => import('@/components/CompleteActionDialog')),
-            {
-              open: showCompleteDialog,
-              onOpenChange: setShowCompleteDialog,
-              action: action,
-              onComplete: onComplete
-            }
-          )}
-        </React.Suspense>
+        <CompleteActionDialog 
+          actionId={action.id}
+          open={showCompleteDialog}
+          onOpenChange={setShowCompleteDialog}
+          onComplete={onComplete}
+        />
       )}
     </div>
   );

@@ -15,19 +15,24 @@ import { useActions } from '@/contexts/ActionContext';
 import { toast } from 'sonner';
 import { useNotifications } from '@/services/notifications';
 import { useAuth } from '@/contexts/AuthContext';
+import { Action } from '@/lib/types';
 
 interface CompleteActionDialogProps {
   actionId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  action?: Action; // Added optional action prop for flexibility
+  onComplete?: () => void; // Added for compatibility with ActionNotes
 }
 
 const CompleteActionDialog: React.FC<CompleteActionDialogProps> = ({ 
   actionId, 
+  action,
   open, 
   onOpenChange,
-  onSuccess
+  onSuccess,
+  onComplete
 }) => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,14 +43,14 @@ const CompleteActionDialog: React.FC<CompleteActionDialogProps> = ({
   const handleComplete = async () => {
     setIsSubmitting(true);
     try {
-      const action = getActionById(actionId);
-      if (!action) {
+      const currentAction = action || getActionById(actionId);
+      if (!currentAction) {
         toast.error('Ação não encontrada');
         return;
       }
 
       // Marcar a ação como aguardando aprovação
-      await updateAction(actionId, {
+      await updateAction(currentAction.id, {
         status: 'aguardando_aprovacao',
         completionNotes: notes,
         completedAt: new Date()
@@ -56,17 +61,21 @@ const CompleteActionDialog: React.FC<CompleteActionDialogProps> = ({
       });
 
       // Se tiver solicitante, enviar notificação de aprovação
-      if (action.requesterId) {
+      if (currentAction.requesterId) {
         await sendApprovalNotification(
-          action.requesterId,
+          currentAction.requesterId,
           user?.id,
-          actionId,
-          action.subject
+          currentAction.id,
+          currentAction.subject
         );
       }
 
       if (onSuccess) {
         onSuccess();
+      }
+      
+      if (onComplete) {
+        onComplete();
       }
       
       onOpenChange(false);
