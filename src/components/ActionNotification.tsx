@@ -44,10 +44,18 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
       const recipients = [];
       let success = false;
 
-      // Fix: Check if IDs exist before trying to send notifications
+      // Log action data to help debug
+      console.log("Dados da ação para notificação:", {
+        actionId: action.id,
+        responsibleId: action.responsibleId,
+        requesterId: action.requesterId,
+        createdBy: action.createdBy
+      });
+
       // Notificar responsável
       if (notifyResponsible && action.responsibleId) {
         try {
+          console.log("Tentando enviar notificação para o responsável:", action.responsibleId);
           const result = await sendInternalNotification(
             action.responsibleId,
             user?.id || undefined,
@@ -56,8 +64,10 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
             action.id,
             'acao'
           );
-          if (result) success = true;
-          recipients.push('responsável');
+          if (result) {
+            success = true;
+            recipients.push('responsável');
+          }
         } catch (err) {
           console.error("Erro ao notificar responsável:", err);
         }
@@ -66,6 +76,7 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
       // Notificar solicitante
       if (notifyRequester && action.requesterId) {
         try {
+          console.log("Tentando enviar notificação para o solicitante:", action.requesterId);
           const result = await sendInternalNotification(
             action.requesterId,
             user?.id || undefined,
@@ -74,8 +85,10 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
             action.id,
             'acao'
           );
-          if (result) success = true;
-          recipients.push('solicitante');
+          if (result) {
+            success = true;
+            recipients.push('solicitante');
+          }
         } catch (err) {
           console.error("Erro ao notificar solicitante:", err);
         }
@@ -84,6 +97,7 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
       // Notificar criador
       if (notifyCreator && action.createdBy) {
         try {
+          console.log("Tentando enviar notificação para o criador:", action.createdBy);
           const result = await sendInternalNotification(
             action.createdBy,
             user?.id || undefined,
@@ -92,8 +106,10 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
             action.id,
             'acao'
           );
-          if (result) success = true;
-          recipients.push('criador');
+          if (result) {
+            success = true;
+            recipients.push('criador');
+          }
         } catch (err) {
           console.error("Erro ao notificar criador:", err);
         }
@@ -106,7 +122,9 @@ const ActionNotification: React.FC<ActionNotificationProps> = ({ action, onClose
         setNotificationMessage('');
         if (onClose) onClose();
       } else {
-        toast.error('Falha ao enviar notificação');
+        toast.error('Falha ao enviar notificação', {
+          description: 'Verifique se os destinatários selecionados existem'
+        });
       }
     } catch (error) {
       console.error('Erro ao enviar notificação:', error);

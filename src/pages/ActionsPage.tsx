@@ -37,6 +37,11 @@ const ActionsPage = () => {
     setViewingAction(action);
   };
 
+  const handleAddAction = () => {
+    console.log('Abrindo formulário de nova ação');
+    setShowActionForm(true);
+  };
+
   const filteredActions = actions.filter(action => {
     if (filters.status !== 'all' && action.status !== filters.status) {
       return false;
@@ -58,7 +63,7 @@ const ActionsPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Ações</h1>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <Button onClick={() => setShowActionForm(true)}>
+          <Button onClick={handleAddAction}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Ação
           </Button>

@@ -36,9 +36,24 @@ export const useNotifications = () => {
       });
 
       // Make sure both IDs are valid UUIDs
-      if (!destinatarioId || !destinatarioId.match(/^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i)) {
-        console.error("ID de destinatário inválido:", destinatarioId);
+      if (!destinatarioId) {
+        console.error("ID de destinatário inválido (vazio)");
         return false;
+      }
+      
+      // Convert simple IDs to UUIDs if they're not in UUID format
+      const uuidRegex = /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+      
+      if (!uuidRegex.test(destinatarioId)) {
+        console.error("ID de destinatário não está no formato UUID:", destinatarioId);
+        
+        // Try to format as UUID if it's a simple ID
+        if (/^[0-9]+$/.test(destinatarioId)) {
+          destinatarioId = `00000000-0000-0000-0000-${destinatarioId.padStart(12, '0')}`;
+          console.log("ID de destinatário formatado para UUID:", destinatarioId);
+        } else {
+          return false;
+        }
       }
 
       const { data, error } = await supabase
