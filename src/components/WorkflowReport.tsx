@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useActions } from '@/contexts/ActionContext';
 import { format } from 'date-fns';
@@ -15,7 +16,7 @@ import {
   File 
 } from 'lucide-react';
 import WorkflowReportFilter from './WorkflowReportFilter';
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { toast } from 'sonner';
 
