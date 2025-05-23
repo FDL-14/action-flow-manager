@@ -28,7 +28,15 @@ export const defaultMasterUser: User = {
       canCreateClient: true,
       canEditCompany: true,
       canDeleteCompany: true,
-      viewOnlyAssignedActions: false
+      viewOnlyAssignedActions: false,
+      canCreateUsersAdmin: true,
+      canCreateUsersLimited: true,
+      canCreateCompanies: true,
+      canCreateClientsLimited: true,
+      canCreateStages: true,
+      canDownloadReportsLimited: true,
+      canDeleteActionsLimited: true,
+      canDeleteStages: true
     }
   ]
 };
