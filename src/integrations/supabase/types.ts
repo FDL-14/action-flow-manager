@@ -85,8 +85,74 @@ export type Database = {
           },
         ]
       }
+      action_stages: {
+        Row: {
+          action_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_sequential: boolean | null
+          order_index: number
+          parent_stage_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_sequential?: boolean | null
+          order_index?: number
+          parent_stage_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_sequential?: boolean | null
+          order_index?: number
+          parent_stage_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_stages_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_stages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_stages_parent_stage_id_fkey"
+            columns: ["parent_stage_id"]
+            isOneToOne: false
+            referencedRelation: "action_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       actions: {
         Row: {
+          approval_required: boolean | null
+          approved: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approver_id: string | null
           client_id: string | null
           company_id: string | null
           completed_at: string | null
@@ -94,15 +160,26 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_personal: boolean | null
+          is_subtask: boolean | null
           notes: Json | null
+          order_index: number | null
+          parent_action_id: string | null
+          personal_reminder_settings: Json | null
           priority: string | null
           requester_id: string | null
           responsible_id: string | null
+          stage_id: string | null
           status: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          approval_required?: boolean | null
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approver_id?: string | null
           client_id?: string | null
           company_id?: string | null
           completed_at?: string | null
@@ -110,15 +187,26 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_personal?: boolean | null
+          is_subtask?: boolean | null
           notes?: Json | null
+          order_index?: number | null
+          parent_action_id?: string | null
+          personal_reminder_settings?: Json | null
           priority?: string | null
           requester_id?: string | null
           responsible_id?: string | null
+          stage_id?: string | null
           status?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          approval_required?: boolean | null
+          approved?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approver_id?: string | null
           client_id?: string | null
           company_id?: string | null
           completed_at?: string | null
@@ -126,15 +214,35 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_personal?: boolean | null
+          is_subtask?: boolean | null
           notes?: Json | null
+          order_index?: number | null
+          parent_action_id?: string | null
+          personal_reminder_settings?: Json | null
           priority?: string | null
           requester_id?: string | null
           responsible_id?: string | null
+          stage_id?: string | null
           status?: string | null
           title?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "actions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "actions_client_id_fkey"
             columns: ["client_id"]
@@ -147,6 +255,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actions_parent_action_id_fkey"
+            columns: ["parent_action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
             referencedColumns: ["id"]
           },
           {
@@ -501,38 +616,47 @@ export type Database = {
       }
       notificacoes_internas: {
         Row: {
+          action_data: Json | null
           atualizado_em: string | null
           conteudo: string
           criado_em: string | null
           destinatario_id: string
           id: string
           lida: boolean | null
+          notification_type: string | null
           referencia_id: string | null
           remetente_id: string | null
+          scheduled_for: string | null
           tipo_referencia: string | null
           titulo: string
         }
         Insert: {
+          action_data?: Json | null
           atualizado_em?: string | null
           conteudo: string
           criado_em?: string | null
           destinatario_id: string
           id?: string
           lida?: boolean | null
+          notification_type?: string | null
           referencia_id?: string | null
           remetente_id?: string | null
+          scheduled_for?: string | null
           tipo_referencia?: string | null
           titulo: string
         }
         Update: {
+          action_data?: Json | null
           atualizado_em?: string | null
           conteudo?: string
           criado_em?: string | null
           destinatario_id?: string
           id?: string
           lida?: boolean | null
+          notification_type?: string | null
           referencia_id?: string | null
           remetente_id?: string | null
+          scheduled_for?: string | null
           tipo_referencia?: string | null
           titulo?: string
         }
@@ -839,13 +963,68 @@ export type Database = {
           },
         ]
       }
+      user_notification_settings: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          internal_enabled: boolean | null
+          reminder_before_hours: number | null
+          reminder_frequency_hours: number | null
+          sms_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+          whatsapp_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          internal_enabled?: boolean | null
+          reminder_before_hours?: number | null
+          reminder_frequency_hours?: number | null
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          whatsapp_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          internal_enabled?: boolean | null
+          reminder_before_hours?: number | null
+          reminder_frequency_hours?: number | null
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          whatsapp_enabled?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           can_add_notes: boolean | null
           can_create: boolean | null
+          can_create_clients_limited: boolean | null
+          can_create_companies: boolean | null
+          can_create_stages: boolean | null
+          can_create_users_admin: boolean | null
+          can_create_users_limited: boolean | null
           can_delete: boolean | null
+          can_delete_actions_limited: boolean | null
           can_delete_client: boolean | null
           can_delete_company: boolean | null
+          can_delete_stages: boolean | null
+          can_download_reports_limited: boolean | null
           can_edit: boolean | null
           can_edit_action: boolean | null
           can_edit_client: boolean | null
@@ -863,9 +1042,17 @@ export type Database = {
         Insert: {
           can_add_notes?: boolean | null
           can_create?: boolean | null
+          can_create_clients_limited?: boolean | null
+          can_create_companies?: boolean | null
+          can_create_stages?: boolean | null
+          can_create_users_admin?: boolean | null
+          can_create_users_limited?: boolean | null
           can_delete?: boolean | null
+          can_delete_actions_limited?: boolean | null
           can_delete_client?: boolean | null
           can_delete_company?: boolean | null
+          can_delete_stages?: boolean | null
+          can_download_reports_limited?: boolean | null
           can_edit?: boolean | null
           can_edit_action?: boolean | null
           can_edit_client?: boolean | null
@@ -883,9 +1070,17 @@ export type Database = {
         Update: {
           can_add_notes?: boolean | null
           can_create?: boolean | null
+          can_create_clients_limited?: boolean | null
+          can_create_companies?: boolean | null
+          can_create_stages?: boolean | null
+          can_create_users_admin?: boolean | null
+          can_create_users_limited?: boolean | null
           can_delete?: boolean | null
+          can_delete_actions_limited?: boolean | null
           can_delete_client?: boolean | null
           can_delete_company?: boolean | null
+          can_delete_stages?: boolean | null
+          can_download_reports_limited?: boolean | null
           can_edit?: boolean | null
           can_edit_action?: boolean | null
           can_edit_client?: boolean | null

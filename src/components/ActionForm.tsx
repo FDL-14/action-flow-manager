@@ -1,432 +1,481 @@
 
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useActions } from '@/contexts/ActionContext';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
+import { Action, PersonalReminderSettings } from '@/lib/types';
 
 interface ActionFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  action?: Action;
+  isPersonal?: boolean;
 }
 
-const formSchema = z.object({
-  subject: z.string().min(3, {
-    message: "Assunto deve ter pelo menos 3 caracteres.",
-  }),
-  description: z.string().optional(),
-  responsibleId: z.string({
-    required_error: "Por favor selecione um responsável.",
-  }),
-  clientId: z.string().optional(),
-  requesterId: z.string().optional(),
-  endDate: z.date({
-    required_error: "Por favor selecione uma data de conclusão.",
-  }),
-  approvalRequired: z.boolean().optional(),
-  approverId: z.string().optional(),
-});
-
-const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
-  const { company } = useCompany();
-  const { addAction } = useActions();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [responsibles, setResponsibles] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
-  const [requesters, setRequesters] = useState<any[]>([]);
-  const [approvalRequired, setApprovalRequired] = useState(false);
+const ActionForm: React.FC<ActionFormProps> = ({ 
+  open, 
+  onOpenChange, 
+  action,
+  isPersonal = false 
+}) => {
+  const { addAction, updateAction } = useActions();
+  const { companies, clients, responsibles } = useCompany();
+  const { user } = useAuth();
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      subject: "",
-      description: "",
-      endDate: new Date(),
-      approvalRequired: false
-    },
+  const [formData, setFormData] = useState({
+    subject: '',
+    description: '',
+    responsibleId: '',
+    requesterId: '',
+    companyId: '',
+    clientId: '',
+    startDate: new Date(),
+    endDate: new Date(),
+    approvalRequired: false,
+    approverId: '',
+    isPersonal: isPersonal,
+    personalReminderSettings: {
+      reminderBeforeHours: 24,
+      reminderFrequencyHours: 1,
+      emailEnabled: true,
+      whatsappEnabled: false,
+      smsEnabled: false,
+      internalEnabled: true
+    } as PersonalReminderSettings
   });
 
-  useEffect(() => {
-    // Reset form when dialog opens/closes
-    if (!open) {
-      setTimeout(() => form.reset(), 300);
-    }
-  }, [open, form]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchResponsibles = async () => {
-      try {
-        // Simulate fetching responsibles
-        setResponsibles([
-          { id: '12345678-1234-1234-1234-123456789012', name: 'Responsável 1' },
-          { id: '87654321-4321-4321-4321-210987654321', name: 'Responsável 2' },
-          // Add more mock responsibles as needed
-        ]);
-      } catch (error) {
-        console.error('Erro ao buscar responsáveis:', error);
-      }
-    };
-
-    const fetchClients = async () => {
-      try {
-        // Simulate fetching clients
-        setClients([
-          { id: '11111111-1111-1111-1111-111111111111', name: 'Cliente 1' },
-          { id: '22222222-2222-2222-2222-222222222222', name: 'Cliente 2' },
-          // Add more mock clients as needed
-        ]);
-      } catch (error) {
-        console.error('Erro ao buscar clientes:', error);
-      }
-    };
-
-    const fetchRequesters = async () => {
-      try {
-        // Simulate fetching requesters
-        setRequesters([
-          { id: '33333333-3333-3333-3333-333333333333', name: 'Solicitante 1' },
-          { id: '44444444-4444-4444-4444-444444444444', name: 'Solicitante 2' },
-          // Add more mock requesters as needed
-        ]);
-      } catch (error) {
-        console.error('Erro ao buscar solicitantes:', error);
-      }
-    };
-
-    if (open) {
-      fetchResponsibles();
-      fetchClients();
-      fetchRequesters();
-    }
-  }, [open]);
-
-  const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    if (!company?.id) {
-      toast.error("Erro", {
-        description: "É necessário selecionar uma empresa"
+    if (action) {
+      setFormData({
+        subject: action.subject,
+        description: action.description,
+        responsibleId: action.responsibleId,
+        requesterId: action.requesterId || '',
+        companyId: action.companyId,
+        clientId: action.clientId || '',
+        startDate: action.startDate,
+        endDate: action.endDate,
+        approvalRequired: action.approvalRequired || false,
+        approverId: action.approverId || '',
+        isPersonal: action.isPersonal || false,
+        personalReminderSettings: action.personalReminderSettings || {
+          reminderBeforeHours: 24,
+          reminderFrequencyHours: 1,
+          emailEnabled: true,
+          whatsappEnabled: false,
+          smsEnabled: false,
+          internalEnabled: true
+        }
       });
+    } else {
+      setFormData({
+        subject: '',
+        description: '',
+        responsibleId: isPersonal ? (user?.id || '') : '',
+        requesterId: isPersonal ? (user?.id || '') : '',
+        companyId: '',
+        clientId: '',
+        startDate: new Date(),
+        endDate: new Date(),
+        approvalRequired: false,
+        approverId: '',
+        isPersonal: isPersonal,
+        personalReminderSettings: {
+          reminderBeforeHours: 24,
+          reminderFrequencyHours: 1,
+          emailEnabled: true,
+          whatsappEnabled: false,
+          smsEnabled: false,
+          internalEnabled: true
+        }
+      });
+    }
+  }, [action, isPersonal, user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.subject.trim()) {
+      toast.error('O assunto é obrigatório');
       return;
     }
-    
-    setIsSubmitting(true);
-    
+
+    if (!isPersonal) {
+      if (!formData.responsibleId) {
+        toast.error('O responsável é obrigatório');
+        return;
+      }
+
+      if (!formData.companyId) {
+        toast.error('A empresa é obrigatória');
+        return;
+      }
+    }
+
+    setLoading(true);
     try {
-      await addAction({
-        subject: data.subject,
-        description: data.description || "",
-        responsibleId: data.responsibleId,
-        clientId: data.clientId,
-        requesterId: data.requesterId,
-        startDate: new Date(),
-        endDate: data.endDate,
-        companyId: company.id,
-        approvalRequired: data.approvalRequired,
-        approverId: data.approverId
-      });
-      
-      toast.success("Sucesso", {
-        description: "Ação/Tarefa criada com sucesso!"
-      });
+      const actionData = {
+        subject: formData.subject,
+        description: formData.description,
+        responsibleId: formData.responsibleId,
+        requesterId: formData.requesterId,
+        companyId: formData.companyId,
+        clientId: formData.clientId,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        approvalRequired: formData.approvalRequired,
+        approverId: formData.approverId,
+        isPersonal: formData.isPersonal,
+        personalReminderSettings: formData.personalReminderSettings
+      };
+
+      if (action) {
+        await updateAction(action.id, actionData);
+        toast.success('Ação/Tarefa atualizada com sucesso!');
+      } else {
+        await addAction(actionData);
+        toast.success(isPersonal ? 'Lembrete pessoal criado com sucesso!' : 'Ação/Tarefa criada com sucesso!');
+      }
       
       onOpenChange(false);
-    } catch (error: any) {
-      console.error("Erro ao criar ação/tarefa:", error);
-      toast.error("Erro", {
-        description: error.message || "Ocorreu um erro ao criar a ação/tarefa."
-      });
+    } catch (error) {
+      console.error('Erro ao salvar ação:', error);
+      toast.error('Erro ao salvar ação/tarefa');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
+  // Filtrar responsáveis por empresa/cliente selecionado
+  const availableResponsibles = responsibles.filter(resp => {
+    if (formData.companyId && resp.companyId !== formData.companyId) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nova Ação/Tarefa</DialogTitle>
+          <DialogTitle>
+            {action ? 'Editar' : 'Nova'} {isPersonal ? 'Lembrete Pessoal' : 'Ação/Tarefa'}
+          </DialogTitle>
         </DialogHeader>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="subject"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assunto</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite o assunto da ação/tarefa" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="subject">Assunto *</Label>
+            <Input
+              id="subject"
+              value={formData.subject}
+              onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+              placeholder="Digite o assunto da ação/tarefa"
+              required
             />
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Digite uma descrição detalhada" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div>
+            <Label htmlFor="description">Descrição</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Digite a descrição"
+              rows={3}
             />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="responsibleId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Responsável</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o responsável" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {responsibles.length > 0 ? 
-                          responsibles.map(responsible => (
-                            <SelectItem key={responsible.id} value={responsible.id}>
-                              {responsible.name}
-                            </SelectItem>
-                          ))
-                        : 
-                          <SelectItem value="create-new" disabled>
-                            Nenhum responsável encontrado
-                          </SelectItem>
-                        }
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients.length > 0 ? 
-                          clients.map(client => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {client.name}
-                            </SelectItem>
-                          ))
-                        : 
-                          <SelectItem value="create-new" disabled>
-                            Nenhum cliente encontrado
-                          </SelectItem>
-                        }
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          </div>
+
+          {!isPersonal && (
+            <>
+              <div>
+                <Label htmlFor="company">Empresa *</Label>
+                <Select
+                  value={formData.companyId}
+                  onValueChange={(value) => setFormData(prev => ({ 
+                    ...prev, 
+                    companyId: value,
+                    clientId: '' // Reset client when company changes
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="client">Cliente</Label>
+                <Select
+                  value={formData.clientId}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, clientId: value }))}
+                  disabled={!formData.companyId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients
+                      .filter(client => client.companyId === formData.companyId)
+                      .map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="responsible">Responsável *</Label>
+                <Select
+                  value={formData.responsibleId}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, responsibleId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableResponsibles.map((responsible) => (
+                      <SelectItem key={responsible.id} value={responsible.id}>
+                        {responsible.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="requester">Solicitante</Label>
+                <Select
+                  value={formData.requesterId}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, requesterId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um solicitante" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableResponsibles.map((responsible) => (
+                      <SelectItem key={responsible.id} value={responsible.id}>
+                        {responsible.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="approval"
+                  checked={formData.approvalRequired}
+                  onCheckedChange={(checked) => setFormData(prev => ({ 
+                    ...prev, 
+                    approvalRequired: checked,
+                    approverId: checked ? prev.approverId : ''
+                  }))}
+                />
+                <Label htmlFor="approval">Requer Aprovação</Label>
+              </div>
+
+              {formData.approvalRequired && (
+                <div>
+                  <Label htmlFor="approver">Aprovador</Label>
+                  <Select
+                    value={formData.approverId}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, approverId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um aprovador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableResponsibles.map((responsible) => (
+                        <SelectItem key={responsible.id} value={responsible.id}>
+                          {responsible.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Data de Início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.startDate ? format(formData.startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.startDate}
+                    onSelect={(date) => date && setFormData(prev => ({ ...prev, startDate: date }))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="requesterId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Solicitante</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o solicitante" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {requesters.length > 0 ? 
-                          requesters.map(requester => (
-                            <SelectItem key={requester.id} value={requester.id}>
-                              {requester.name}
-                            </SelectItem>
-                          ))
-                        : 
-                          <SelectItem value="create-new" disabled>
-                            Nenhum solicitante encontrado
-                          </SelectItem>
-                        }
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Data de conclusão</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "dd/MM/yyyy")
-                            ) : (
-                              <span>Selecione uma data</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date("1900-01-01")}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
+            <div>
+              <Label>Data de Conclusão</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.endDate ? format(formData.endDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.endDate}
+                    onSelect={(date) => date && setFormData(prev => ({ ...prev, endDate: date }))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            
-            {/* New approval fields */}
-            <FormField
-              control={form.control}
-              name="approvalRequired"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <input
-                      type="checkbox"
-                      checked={field.value}
-                      onChange={(e) => {
-                        field.onChange(e.target.checked);
-                        setApprovalRequired(e.target.checked);
-                      }}
-                      className="h-4 w-4 rounded border-gray-300"
+          </div>
+
+          {isPersonal && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-medium">Configurações de Lembrete</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="reminderBefore">Lembrar quantas horas antes</Label>
+                  <Input
+                    id="reminderBefore"
+                    type="number"
+                    min="1"
+                    value={formData.personalReminderSettings.reminderBeforeHours}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      personalReminderSettings: {
+                        ...prev.personalReminderSettings,
+                        reminderBeforeHours: parseInt(e.target.value) || 24
+                      }
+                    }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="reminderFrequency">Frequência (horas)</Label>
+                  <Input
+                    id="reminderFrequency"
+                    type="number"
+                    min="1"
+                    value={formData.personalReminderSettings.reminderFrequencyHours}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      personalReminderSettings: {
+                        ...prev.personalReminderSettings,
+                        reminderFrequencyHours: parseInt(e.target.value) || 1
+                      }
+                    }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipos de Notificação</Label>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.personalReminderSettings.emailEnabled}
+                      onCheckedChange={(checked) => setFormData(prev => ({
+                        ...prev,
+                        personalReminderSettings: {
+                          ...prev.personalReminderSettings,
+                          emailEnabled: checked
+                        }
+                      }))}
                     />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Requer aprovação inicial</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      A ação/tarefa precisará ser aprovada antes de iniciar.
-                    </p>
+                    <Label>E-mail</Label>
                   </div>
-                </FormItem>
-              )}
-            />
-            
-            {approvalRequired && (
-              <FormField
-                control={form.control}
-                name="approverId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Aprovador</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o aprovador" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {responsibles.length > 0 ? 
-                          responsibles.map(responsible => (
-                            <SelectItem key={responsible.id} value={responsible.id}>
-                              {responsible.name}
-                            </SelectItem>
-                          ))
-                        : 
-                          <SelectItem value="create-new" disabled>
-                            Nenhum aprovador encontrado
-                          </SelectItem>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.personalReminderSettings.whatsappEnabled}
+                      onCheckedChange={(checked) => setFormData(prev => ({
+                        ...prev,
+                        personalReminderSettings: {
+                          ...prev.personalReminderSettings,
+                          whatsappEnabled: checked
                         }
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            
-            <DialogFooter>
-              <Button 
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Criando...' : 'Criar Ação/Tarefa'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                      }))}
+                    />
+                    <Label>WhatsApp</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.personalReminderSettings.smsEnabled}
+                      onCheckedChange={(checked) => setFormData(prev => ({
+                        ...prev,
+                        personalReminderSettings: {
+                          ...prev.personalReminderSettings,
+                          smsEnabled: checked
+                        }
+                      }))}
+                    />
+                    <Label>SMS</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.personalReminderSettings.internalEnabled}
+                      onCheckedChange={(checked) => setFormData(prev => ({
+                        ...prev,
+                        personalReminderSettings: {
+                          ...prev.personalReminderSettings,
+                          internalEnabled: checked
+                        }
+                      }))}
+                    />
+                    <Label>Interna</Label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Salvando...' : action ? 'Atualizar' : 'Criar'}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

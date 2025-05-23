@@ -6,11 +6,12 @@ import Workflow from '@/components/Workflow';
 import WorkflowReport from '@/components/WorkflowReport';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart2, Plus, KanbanSquare } from 'lucide-react';
+import { FileText, BarChart2, Plus, KanbanSquare, Calendar } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ActionForm from '@/components/ActionForm';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import Kanban from '@/components/Kanban';
+import PersonalCalendar from '@/components/PersonalCalendar';
 import { Action } from '@/lib/types';
 import ActionViewKanban from '@/components/ActionViewKanban';
 
@@ -20,6 +21,7 @@ const WorkflowPage = () => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<string>("workflow");
   const [showActionForm, setShowActionForm] = useState(false);
+  const [showPersonalForm, setShowPersonalForm] = useState(false);
   const [viewingAction, setViewingAction] = useState<Action | null>(null);
 
   const handleActionClick = (action: Action) => {
@@ -42,6 +44,16 @@ const WorkflowPage = () => {
               Nova Ação/Tarefa
             </Button>
             
+            <Button 
+              onClick={() => setShowPersonalForm(true)} 
+              variant="outline" 
+              size="sm" 
+              className="mb-2 sm:mb-0 sm:mr-2"
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              Lembrete Pessoal
+            </Button>
+            
             <NotificationCenter />
           </div>
           
@@ -54,6 +66,10 @@ const WorkflowPage = () => {
               <TabsTrigger value="kanban" className="flex items-center gap-1">
                 <KanbanSquare className="h-4 w-4" />
                 <span className={isMobile ? "hidden" : "inline"}>Kanban</span>
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span className={isMobile ? "hidden" : "inline"}>Agenda</span>
               </TabsTrigger>
               <TabsTrigger value="report" className="flex items-center gap-1">
                 <FileText className="h-4 w-4" />
@@ -80,6 +96,10 @@ const WorkflowPage = () => {
             description="Visualize as ações/tarefas por status (somente visualização)"
           />
         </div>
+      ) : activeTab === "calendar" ? (
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <PersonalCalendar />
+        </div>
       ) : (
         <WorkflowReport onClose={() => setActiveTab("workflow")} />
       )}
@@ -87,6 +107,12 @@ const WorkflowPage = () => {
       <ActionForm 
         open={showActionForm} 
         onOpenChange={setShowActionForm} 
+      />
+
+      <ActionForm 
+        open={showPersonalForm} 
+        onOpenChange={setShowPersonalForm}
+        isPersonal={true}
       />
 
       {viewingAction && (

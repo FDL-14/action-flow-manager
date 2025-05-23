@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -33,10 +34,18 @@ export interface Permission {
   canEditAction: boolean;
   canEditClient: boolean;
   canDeleteClient: boolean;
-  canCreateClient: boolean;  // Changed from true to boolean to fix type issue
+  canCreateClient: boolean;
   canEditCompany: boolean;
   canDeleteCompany: boolean;
   viewOnlyAssignedActions: boolean;
+  canCreateUsersAdmin: boolean;
+  canCreateUsersLimited: boolean;
+  canCreateCompanies: boolean;
+  canCreateClientsLimited: boolean;
+  canCreateStages: boolean;
+  canDownloadReportsLimited: boolean;
+  canDeleteActionsLimited: boolean;
+  canDeleteStages: boolean;
 }
 
 export interface Action {
@@ -73,6 +82,17 @@ export interface Action {
   isSubtask?: boolean;
   order?: number;
   stages?: ActionStage[];
+  isPersonal?: boolean;
+  personalReminderSettings?: PersonalReminderSettings;
+}
+
+export interface PersonalReminderSettings {
+  reminderBeforeHours: number;
+  reminderFrequencyHours: number;
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  smsEnabled: boolean;
+  internalEnabled: boolean;
 }
 
 export interface ActionNote {
@@ -145,6 +165,9 @@ export interface ActionSummary {
   pending: number;
   total: number;
   completionRate: number;
+  notStarted: number;
+  notViewed: number;
+  awaitingApproval: number;
 }
 
 export interface ActionStage {
@@ -159,4 +182,17 @@ export interface ActionStage {
   updatedAt?: Date;
   createdBy?: string;
   tasks?: Action[];
+}
+
+export interface NotificationSettings {
+  id: string;
+  userId: string;
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  smsEnabled: boolean;
+  internalEnabled: boolean;
+  reminderBeforeHours: number;
+  reminderFrequencyHours: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
