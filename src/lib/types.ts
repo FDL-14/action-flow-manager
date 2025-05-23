@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -44,17 +43,17 @@ export interface Action {
   id: string;
   subject: string;
   description: string;
-  status: 'pendente' | 'concluido' | 'atrasado' | 'aguardando_aprovacao';
+  status: 'nao_visualizada' | 'nao_iniciada' | 'pendente' | 'concluido' | 'atrasado' | 'aguardando_aprovacao';
   responsibleId: string;
   startDate: Date;
   endDate: Date;
   companyId: string;
-  companyName?: string; // Added to store company name directly
+  companyName?: string; 
   clientId?: string;
-  clientName?: string; // Added to store client name directly
+  clientName?: string;
   requesterId?: string;
-  requesterName?: string; // Added to store requester name directly
-  responsibleName?: string; // Added to store responsible name directly
+  requesterName?: string;
+  responsibleName?: string;
   completedAt?: Date;
   attachments?: string[];
   notes: ActionNote[];
@@ -62,10 +61,18 @@ export interface Action {
   updatedAt: Date;
   createdBy?: string;
   createdByName?: string;
-  approved?: boolean; // Added for requester approval
-  approvedAt?: Date; // Date when the action was approved
-  approvedBy?: string; // ID of the user who approved the action
-  completionNotes?: string; // Notes added when marking as completed
+  approved?: boolean;
+  approvedAt?: Date;
+  approvedBy?: string;
+  completionNotes?: string;
+  approvalRequired?: boolean;
+  approverId?: string;
+  approverName?: string;
+  stageId?: string;
+  parentActionId?: string;
+  isSubtask?: boolean;
+  order?: number;
+  stages?: ActionStage[];
 }
 
 export interface ActionNote {
@@ -138,4 +145,18 @@ export interface ActionSummary {
   pending: number;
   total: number;
   completionRate: number;
+}
+
+export interface ActionStage {
+  id: string;
+  actionId: string;
+  title: string;
+  description?: string;
+  order: number;
+  parentStageId?: string;
+  isSequential: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  tasks?: Action[];
 }

@@ -13,8 +13,9 @@ import ActionNotes from '@/components/ActionNotes';
 import EditActionForm from '@/components/EditActionForm';
 import CompleteActionDialog from '@/components/CompleteActionDialog';
 import DeleteActionDialog from './DeleteActionDialog';
-import { Pencil, Trash2, FileText, MessageCircle, CheckCircle, Bell } from 'lucide-react';
+import { Pencil, Trash2, FileText, MessageCircle, CheckCircle, Bell, Kanban } from 'lucide-react';
 import ActionNotification from './ActionNotification';
+import ActionKanban from './ActionKanban';
 
 interface ActionViewProps {
   action: Action;
@@ -89,8 +90,9 @@ const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
         </DialogHeader>
         
         <Tabs defaultValue="details" value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid grid-cols-4">
+          <TabsList className="grid grid-cols-5">
             <TabsTrigger value="details" className="text-xs sm:text-sm">Detalhes</TabsTrigger>
+            <TabsTrigger value="kanban" className="text-xs sm:text-sm">Kanban</TabsTrigger>
             <TabsTrigger value="notes" className="text-xs sm:text-sm">Anotações</TabsTrigger>
             <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notificações</TabsTrigger>
             <TabsTrigger value="edit" className="text-xs sm:text-sm">Editar</TabsTrigger>
@@ -168,6 +170,28 @@ const ActionView: React.FC<ActionViewProps> = ({ action, open, onClose }) => {
                 </div>
               )}
             </div>
+          </TabsContent>
+          
+          <TabsContent value="kanban">
+            <ActionKanban 
+              action={currentAction}
+              onAddStage={(parentId, isSequential) => {
+                console.log('Add stage', { parentId, isSequential });
+                // Handle adding stage here
+              }}
+              onEditStage={(stageId) => {
+                console.log('Edit stage', stageId);
+                // Handle editing stage here
+              }}
+              onAddTask={(stageId) => {
+                console.log('Add task to stage', stageId);
+                // Handle adding task here
+              }}
+              onEditTask={(taskId) => {
+                console.log('Edit task', taskId);
+                // Handle editing task here
+              }}
+            />
           </TabsContent>
           
           <TabsContent value="notes">

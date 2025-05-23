@@ -49,6 +49,8 @@ const formSchema = z.object({
   endDate: z.date({
     required_error: "Por favor selecione uma data de conclusão.",
   }),
+  approvalRequired: z.boolean().optional(),
+  approverId: z.string().optional(),
 });
 
 const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
@@ -58,6 +60,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
   const [responsibles, setResponsibles] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [requesters, setRequesters] = useState<any[]>([]);
+  const [approvalRequired, setApprovalRequired] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,6 +68,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
       subject: "",
       description: "",
       endDate: new Date(),
+      approvalRequired: false
     },
   });
 
@@ -142,17 +146,19 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
         startDate: new Date(),
         endDate: data.endDate,
         companyId: company.id,
+        approvalRequired: data.approvalRequired,
+        approverId: data.approverId
       });
       
       toast.success("Sucesso", {
-        description: "Ação criada com sucesso!"
+        description: "Ação/Tarefa criada com sucesso!"
       });
       
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Erro ao criar ação:", error);
+      console.error("Erro ao criar ação/tarefa:", error);
       toast.error("Erro", {
-        description: error.message || "Ocorreu um erro ao criar a ação."
+        description: error.message || "Ocorreu um erro ao criar a ação/tarefa."
       });
     } finally {
       setIsSubmitting(false);
@@ -163,7 +169,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Nova Ação</DialogTitle>
+          <DialogTitle>Nova Ação/Tarefa</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -175,7 +181,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                 <FormItem>
                   <FormLabel>Assunto</FormLabel>
                   <FormControl>
-                    <Input placeholder="Digite o assunto da ação" {...field} />
+                    <Input placeholder="Digite o assunto da ação/tarefa" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -343,6 +349,69 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
               />
             </div>
             
+            {/* New approval fields */}
+            <FormField
+              control={form.control}
+              name="approvalRequired"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(e) => {
+                        field.onChange(e.target.checked);
+                        setApprovalRequired(e.target.checked);
+                      }}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Requer aprovação inicial</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      A ação/tarefa precisará ser aprovada antes de iniciar.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            {approvalRequired && (
+              <FormField
+                control={form.control}
+                name="approverId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Aprovador</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o aprovador" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {responsibles.length > 0 ? 
+                          responsibles.map(responsible => (
+                            <SelectItem key={responsible.id} value={responsible.id}>
+                              {responsible.name}
+                            </SelectItem>
+                          ))
+                        : 
+                          <SelectItem value="create-new" disabled>
+                            Nenhum aprovador encontrado
+                          </SelectItem>
+                        }
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
             <DialogFooter>
               <Button 
                 type="button"
@@ -353,7 +422,7 @@ const ActionForm: React.FC<ActionFormProps> = ({ open, onOpenChange }) => {
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Criando...' : 'Criar Ação'}
+                {isSubmitting ? 'Criando...' : 'Criar Ação/Tarefa'}
               </Button>
             </DialogFooter>
           </form>
