@@ -76,10 +76,18 @@ const formSchema = z.object({
   canEditAction: z.boolean().default(false),
   canEditClient: z.boolean().default(false),
   canDeleteClient: z.boolean().default(false),
-  canCreateClient: z.boolean().default(false), // Ensure this is boolean and not true
+  canCreateClient: z.boolean().default(false),
   canEditCompany: z.boolean().default(false),
   canDeleteCompany: z.boolean().default(false),
   viewOnlyAssignedActions: z.boolean().default(false),
+  canCreateUsersAdmin: z.boolean().default(false),
+  canCreateUsersLimited: z.boolean().default(false),
+  canCreateCompanies: z.boolean().default(false),
+  canCreateClientsLimited: z.boolean().default(false),
+  canCreateStages: z.boolean().default(false),
+  canDownloadReportsLimited: z.boolean().default(false),
+  canDeleteActionsLimited: z.boolean().default(false),
+  canDeleteStages: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof formSchema>
@@ -123,6 +131,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       canEditCompany: editUser?.permissions?.[0]?.canEditCompany || false,
       canDeleteCompany: editUser?.permissions?.[0]?.canDeleteCompany || false,
       viewOnlyAssignedActions: editUser?.permissions?.[0]?.viewOnlyAssignedActions || false,
+      canCreateUsersAdmin: editUser?.permissions?.[0]?.canCreateUsersAdmin || false,
+      canCreateUsersLimited: editUser?.permissions?.[0]?.canCreateUsersLimited || false,
+      canCreateCompanies: editUser?.permissions?.[0]?.canCreateCompanies || false,
+      canCreateClientsLimited: editUser?.permissions?.[0]?.canCreateClientsLimited || false,
+      canCreateStages: editUser?.permissions?.[0]?.canCreateStages || false,
+      canDownloadReportsLimited: editUser?.permissions?.[0]?.canDownloadReportsLimited || false,
+      canDeleteActionsLimited: editUser?.permissions?.[0]?.canDeleteActionsLimited || false,
+      canDeleteStages: editUser?.permissions?.[0]?.canDeleteStages || false,
     },
   });
 
@@ -152,6 +168,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
       canEditCompany: editUser?.permissions?.[0]?.canEditCompany || false,
       canDeleteCompany: editUser?.permissions?.[0]?.canDeleteCompany || false,
       viewOnlyAssignedActions: editUser?.permissions?.[0]?.viewOnlyAssignedActions || false,
+      canCreateUsersAdmin: editUser?.permissions?.[0]?.canCreateUsersAdmin || false,
+      canCreateUsersLimited: editUser?.permissions?.[0]?.canCreateUsersLimited || false,
+      canCreateCompanies: editUser?.permissions?.[0]?.canCreateCompanies || false,
+      canCreateClientsLimited: editUser?.permissions?.[0]?.canCreateClientsLimited || false,
+      canCreateStages: editUser?.permissions?.[0]?.canCreateStages || false,
+      canDownloadReportsLimited: editUser?.permissions?.[0]?.canDownloadReportsLimited || false,
+      canDeleteActionsLimited: editUser?.permissions?.[0]?.canDeleteActionsLimited || false,
+      canDeleteStages: editUser?.permissions?.[0]?.canDeleteStages || false,
     });
   }, [editUser, form]);
 
@@ -193,6 +217,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
               canEditCompany: data.canEditCompany,
               canDeleteCompany: data.canDeleteCompany,
               viewOnlyAssignedActions: data.viewOnlyAssignedActions,
+              canCreateUsersAdmin: data.canCreateUsersAdmin,
+              canCreateUsersLimited: data.canCreateUsersLimited,
+              canCreateCompanies: data.canCreateCompanies,
+              canCreateClientsLimited: data.canCreateClientsLimited,
+              canCreateStages: data.canCreateStages,
+              canDownloadReportsLimited: data.canDownloadReportsLimited,
+              canDeleteActionsLimited: data.canDeleteActionsLimited,
+              canDeleteStages: data.canDeleteStages,
             }
           ]
         });
@@ -227,6 +259,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
               canEditCompany: data.canEditCompany,
               canDeleteCompany: data.canDeleteCompany,
               viewOnlyAssignedActions: data.viewOnlyAssignedActions,
+              canCreateUsersAdmin: data.canCreateUsersAdmin,
+              canCreateUsersLimited: data.canCreateUsersLimited,
+              canCreateCompanies: data.canCreateCompanies,
+              canCreateClientsLimited: data.canCreateClientsLimited,
+              canCreateStages: data.canCreateStages,
+              canDownloadReportsLimited: data.canDownloadReportsLimited,
+              canDeleteActionsLimited: data.canDeleteActionsLimited,
+              canDeleteStages: data.canDeleteStages,
             }
           ]
         });
@@ -308,7 +348,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Email do usu��rio" {...field} />
+                      <Input placeholder="Email do usuário" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -736,6 +776,166 @@ const UserForm: React.FC<UserFormProps> = ({ open, onOpenChange, editUser }) => 
                         <FormLabel className="text-sm">Visualizar Apenas Ações Atribuídas</FormLabel>
                         <FormDescription>
                           Permissão para visualizar apenas as ações que foram atribuídas a este usuário.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canCreateUsersAdmin"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Cadastrar Usuários (Admin)</FormLabel>
+                        <FormDescription>
+                          Permissão para cadastrar usuários com função de administrador.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canCreateUsersLimited"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Cadastrar Usuários (Limitado)</FormLabel>
+                        <FormDescription>
+                          Permissão para cadastrar usuários limitados às empresas e clientes associados.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canCreateCompanies"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Cadastrar Empresas</FormLabel>
+                        <FormDescription>
+                          Permissão para cadastrar novas empresas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canCreateClientsLimited"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Cadastrar Clientes (Limitado)</FormLabel>
+                        <FormDescription>
+                          Permissão para cadastrar clientes apenas nas empresas permitidas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canCreateStages"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Criar Etapas</FormLabel>
+                        <FormDescription>
+                          Permissão para criar etapas dentro das ações/tarefas.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canDownloadReportsLimited"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Baixar Relatórios (Limitado)</FormLabel>
+                        <FormDescription>
+                          Permissão para baixar relatórios das empresas e clientes permitidos.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canDeleteActionsLimited"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Excluir Ações/Tarefas (Limitado)</FormLabel>
+                        <FormDescription>
+                          Permissão para excluir ações/tarefas das empresas e clientes permitidos.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="canDeleteStages"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Excluir Etapas</FormLabel>
+                        <FormDescription>
+                          Permissão para excluir etapas das ações/tarefas.
                         </FormDescription>
                       </div>
                       <FormControl>

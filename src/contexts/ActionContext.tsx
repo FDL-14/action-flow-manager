@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Action, ActionNote, ActionSummary } from '@/lib/types';
 import { supabase, convertToUUID } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,36 +19,41 @@ interface ActionContextType {
   sendActionEmail: (id: string, method?: string) => Promise<void>;
   addAttachment: (actionId: string, file: File) => Promise<void>;
   getAttachmentUrl: (path: string) => Promise<string>;
-  getActionSummary: () => ActionSummary;
+  getActionSummary: (companyId?: string, clientId?: string) => ActionSummary;
   getActionsByStatus: (status: string) => Action[];
   getActionsByResponsible: (responsibleId: string) => Action[];
   getActionsByClient: (clientId: string) => Action[];
 }
 
-const ActionContext = createContext<ActionContextType>({
-  actions: [],
-  setActions: () => {},
-  addAction: async () => {},
-  updateAction: () => {},
-  deleteAction: () => {},
-  addActionNote: () => {},
-  deleteActionNote: () => {},
-  getActionById: () => undefined,
-  updateActionStatus: () => {},
-  sendActionEmail: async () => {},
-  addAttachment: async () => {},
-  getAttachmentUrl: async () => "",
-  getActionSummary: () => ({ completed: 0, delayed: 0, pending: 0, total: 0, completionRate: 0 }),
-  getActionsByStatus: () => [],
-  getActionsByResponsible: () => [],
-  getActionsByClient: () => [],
-});
+const ActionContext = createContext<ActionContextType | undefined>(undefined);
 
 export const useActions = () => useContext(ActionContext);
 
 export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [actions, setActions] = useState<Action[]>([]);
   const { user } = useAuth();
+
+  const calculateSummary = useCallback((actions: Action[]): ActionSummary => {
+    const completed = actions.filter(a => a.status === 'concluido').length;
+    const delayed = actions.filter(a => a.status === 'atrasado').length;
+    const pending = actions.filter(a => a.status === 'pendente').length;
+    const notStarted = actions.filter(a => a.status === 'nao_iniciada').length;
+    const notViewed = actions.filter(a => a.status === 'nao_visualizada').length;
+    const awaitingApproval = actions.filter(a => a.status === 'aguardando_aprovacao').length;
+    const total = actions.length;
+    const completionRate = total > 0 ? (completed / total) * 100 : 0;
+
+    return {
+      completed,
+      delayed,
+      pending,
+      notStarted,
+      notViewed,
+      awaitingApproval,
+      total,
+      completionRate
+    };
+  }, []);
 
   useEffect(() => {
     const fetchActions = async () => {
@@ -781,21 +786,37 @@ export const ActionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return data.publicUrl;
   };
 
-  const getActionSummary = (): ActionSummary => {
-    const completed = actions.filter(action => action.status === 'concluido').length;
-    const delayed = actions.filter(action => action.status === 'atrasado').length;
-    const pending = actions.filter(action => action.status === 'pendente').length;
-    const total = actions.length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const getActionSummary = useCallback((companyId?: string, clientId?: string): ActionSummary => {
+    let filteredActions = actions;
     
+    if (companyId) {
+      filteredActions = filteredActions.filter(action => action.companyId === companyId);
+    }
+    
+    if (clientId) {
+      filteredActions = filteredActions.filter(action => action.clientId === clientId);
+    }
+
+    const completed = filteredActions.filter(a => a.status === 'concluido').length;
+    const delayed = filteredActions.filter(a => a.status === 'atrasado').length;
+    const pending = filteredActions.filter(a => a.status === 'pendente').length;
+    const notStarted = filteredActions.filter(a => a.status === 'nao_iniciada').length;
+    const notViewed = filteredActions.filter(a => a.status === 'nao_visualizada').length;
+    const awaitingApproval = filteredActions.filter(a => a.status === 'aguardando_aprovacao').length;
+    const total = filteredActions.length;
+    const completionRate = total > 0 ? (completed / total) * 100 : 0;
+
     return {
       completed,
       delayed,
       pending,
+      notStarted,
+      notViewed,
+      awaitingApproval,
       total,
       completionRate
     };
-  };
+  }, [actions]);
 
   const getActionsByStatus = (status: string): Action[] => {
     if (status === 'all') return actions;
