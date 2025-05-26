@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { User, Permission } from '@/lib/types';
 import { mockUsers } from '@/lib/mock-data';
@@ -6,12 +7,16 @@ import { toast } from 'sonner';
 interface AuthContextType {
   user: User | null | undefined;
   users: User[];
+  isAuthenticated: boolean;
+  loading: boolean;
   login: (email: string, password?: string) => Promise<boolean>;
   logout: () => void;
   addUser: (userData: Omit<User, 'id'>) => Promise<boolean>;
   updateUser: (userData: User) => Promise<boolean>;
   deleteUser: (userId: string) => Promise<boolean>;
   resetUserPassword: (userId: string) => Promise<boolean>;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
+  syncWithSupabase: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +25,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Compute isAuthenticated and loading
+  const isAuthenticated = user !== null && user !== undefined;
+  const loading = isLoading;
 
   useEffect(() => {
     // Simulate fetching users from an API or database
@@ -148,15 +157,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [users]);
 
+  const changePassword = useCallback(async (userId: string, currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      const userToUpdate = users.find(u => u.id === userId);
+      if (!userToUpdate) {
+        toast.error('Usuário não encontrado');
+        return false;
+      }
+
+      // Check if current password matches
+      if (userToUpdate.password !== currentPassword) {
+        toast.error('Senha atual incorreta');
+        return false;
+      }
+
+      // Update password
+      const updatedUser: User = {
+        ...userToUpdate,
+        password: newPassword,
+      };
+
+      setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+      
+      // Update current user if changing own password
+      if (user && user.id === userId) {
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao alterar senha:', error);
+      return false;
+    }
+  }, [users, user]);
+
+  const syncWithSupabase = useCallback(async (): Promise<void> => {
+    try {
+      // Simulate syncing with Supabase
+      console.log('Sincronizando dados com Supabase...');
+      // In a real implementation, this would sync local data with Supabase
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Erro ao sincronizar com Supabase:', error);
+    }
+  }, []);
+
   const value: AuthContextType = {
     user,
     users,
+    isAuthenticated,
+    loading,
     login,
     logout,
     addUser,
     updateUser,
     deleteUser,
     resetUserPassword,
+    changePassword,
+    syncWithSupabase,
   };
 
   if (isLoading) {
