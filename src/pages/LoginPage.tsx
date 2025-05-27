@@ -20,7 +20,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
-import { supabase } from '@/integrations/supabase/client';
 
 const formSchema = z.object({
   cpf: z.string().min(1, 'CPF é obrigatório'),
@@ -80,111 +79,23 @@ const LoginPage = () => {
     setLoginError(null);
     
     try {
-      // Limpar o CPF de qualquer formatação (pontos, traços)
-      const cleanedCpf = data.cpf.replace(/\D/g, '');
-      console.log(`Tentando login com CPF limpo: ${cleanedCpf}, senha: ${data.password.substring(0, 1)}${'*'.repeat(data.password.length - 1)}`);
+      console.log('LoginPage: Tentando fazer login');
+      console.log('LoginPage: CPF/Email:', data.cpf);
+      console.log('LoginPage: Senha fornecida:', data.password ? 'sim' : 'não');
       
-      // Special handling for master user
-      if (cleanedCpf === '80243088191' && data.password === '@54321') {
-        console.log("Login direto com usuário master");
-        
-        try {
-          // Try to login to Supabase first with admin email
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: 'admin@totaldata.com.br',
-            password: data.password,
-          });
-          
-          if (signInError) {
-            console.log("Tentando criar conta de admin no Supabase:", signInError);
-            
-            // If login fails, create the admin user in Supabase
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: 'admin@totaldata.com.br',
-              password: data.password,
-              options: {
-                data: {
-                  cpf: cleanedCpf,
-                  name: 'Administrador Master',
-                  role: 'master',
-                }
-              }
-            });
-            
-            if (signUpError && signUpError.message !== "User already registered") {
-              console.error("Erro ao criar usuário master no Supabase:", signUpError);
-              throw new Error(`Erro de autenticação: ${signUpError.message}`);
-            } else {
-              console.log("Usuário master criado/já existe no Supabase");
-              
-              // Try login again after signup
-              const { data: retrySignInData, error: retrySignInError } = await supabase.auth.signInWithPassword({
-                email: 'admin@totaldata.com.br',
-                password: data.password,
-              });
-              
-              if (retrySignInError) {
-                console.error("Erro de login após criação:", retrySignInError);
-                // Continue with local auth even if Supabase auth fails
-              }
-            }
-          }
-          
-          // Force login for master user in localStorage
-          localStorage.setItem('userAuthenticated', 'true');
-          localStorage.setItem('userRole', 'master');
-          localStorage.setItem('userCPF', cleanedCpf);
-          localStorage.setItem('userName', 'Administrador Master');
-          
-          toast.success("Login bem-sucedido", {
-            description: "Você foi autenticado com sucesso como Administrador Master"
-          });
-          
-          // Use window.location.replace instead of window.location.href
-          window.location.replace('/dashboard');
-          return;
-        } catch (e: any) {
-          console.error("Erro ao interagir com Supabase:", e);
-          
-          // Even if Supabase interaction fails, proceed with localStorage auth for master user
-          localStorage.setItem('userAuthenticated', 'true');
-          localStorage.setItem('userRole', 'master');
-          localStorage.setItem('userCPF', cleanedCpf);
-          localStorage.setItem('userName', 'Administrador Master');
-          
-          toast.success("Login bem-sucedido", {
-            description: "Você foi autenticado com sucesso como Administrador Master (modo local)"
-          });
-          
-          window.location.replace('/dashboard');
-          return;
-        }
-      }
+      const success = await login(data.cpf, data.password);
       
-      // Regular user login flow
-      const success = await login(cleanedCpf, data.password);
-      
-      if (!success) {
-        console.error("Falha no login");
-        setLoginError("CPF ou senha incorretos. Por favor, verifique suas credenciais.");
-        toast.error("Erro no login", {
-          description: "CPF ou senha incorretos"
-        });
+      if (success) {
+        console.log('LoginPage: Login bem-sucedido, redirecionando...');
+        toast.success('Login realizado com sucesso!');
+        // Navigation will be handled by the redirect logic below
       } else {
-        console.log("Login bem-sucedido");
-        toast.success("Login bem-sucedido", {
-          description: "Você foi autenticado com sucesso"
-        });
-        
-        // Use replace instead of href for better navigation
-        window.location.replace('/dashboard');
+        console.log('LoginPage: Falha no login');
+        setLoginError('CPF ou senha incorretos. Verifique suas credenciais.');
       }
     } catch (error: any) {
-      console.error('Erro no login:', error);
-      setLoginError(error.message || "Ocorreu um erro durante o login. Tente novamente.");
-      toast.error("Erro no login", {
-        description: error.message || "Ocorreu um erro durante o login. Tente novamente."
-      });
+      console.error('LoginPage: Erro no login:', error);
+      setLoginError(error.message || 'Erro interno. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -192,8 +103,8 @@ const LoginPage = () => {
 
   // If user is already authenticated, redirect to dashboard
   if (isAuthenticated) {
-    console.log("Usuário autenticado, redirecionando para a home");
-    return <Navigate to="/dashboard" />;
+    console.log('LoginPage: Usuário autenticado, redirecionando para dashboard');
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (

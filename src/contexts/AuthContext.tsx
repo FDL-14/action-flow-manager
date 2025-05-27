@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { User, Permission } from '@/lib/types';
 import { mockUsers } from '@/lib/mock-data';
@@ -88,73 +87,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Login: Iniciando processo de login');
       console.log('Login: Input recebido:', cpfOrEmail);
-      console.log('Login: Total de usuários disponíveis:', users.length);
+      console.log('Login: Senha recebida:', password ? 'sim' : 'não');
       
       // Clean CPF from any formatting
       const cleanedInput = cpfOrEmail.replace(/\D/g, '');
       console.log('Login: CPF limpo:', cleanedInput);
       
-      // Special check for master user
+      // Special check for master user - simplified logic
       if (cleanedInput === '80243088191' && password === '@54321') {
-        console.log('Login: Tentativa de login do usuário master detectada');
+        console.log('Login: Usuário master detectado - autenticando diretamente');
         
-        // Find or create master user
-        let masterUser = users.find(u => u.cpf.replace(/\D/g, '') === '80243088191');
+        const masterUser = {
+          id: "1",
+          name: "Administrador",
+          cpf: "80243088191",
+          email: "admin@totaldata.com.br",
+          role: "master" as const,
+          companyIds: ["1"],
+          password: "@54321",
+          permissions: [
+            {
+              id: "1",
+              name: "Master",
+              description: "All permissions",
+              canCreate: true,
+              canEdit: true,
+              canDelete: true,
+              canMarkComplete: true,
+              canMarkDelayed: true,
+              canAddNotes: true,
+              canViewReports: true,
+              viewAllActions: true,
+              canEditUser: true,
+              canEditAction: true,
+              canEditClient: true,
+              canDeleteClient: true,
+              canCreateClient: true,
+              canEditCompany: true,
+              canDeleteCompany: true,
+              viewOnlyAssignedActions: false,
+              canCreateUsersAdmin: true,
+              canCreateUsersLimited: true,
+              canCreateCompanies: true,
+              canCreateClientsLimited: true,
+              canCreateStages: true,
+              canDownloadReportsLimited: true,
+              canDeleteActionsLimited: true,
+              canDeleteStages: true
+            }
+          ]
+        };
         
-        if (!masterUser) {
-          console.log('Login: Usuário master não encontrado, criando...');
-          masterUser = {
-            id: "1",
-            name: "Administrador",
-            cpf: "80243088191",
-            email: "admin@totaldata.com.br",
-            role: "master" as const,
-            companyIds: ["1"],
-            password: "@54321",
-            permissions: [
-              {
-                id: "1",
-                name: "Master",
-                description: "All permissions",
-                canCreate: true,
-                canEdit: true,
-                canDelete: true,
-                canMarkComplete: true,
-                canMarkDelayed: true,
-                canAddNotes: true,
-                canViewReports: true,
-                viewAllActions: true,
-                canEditUser: true,
-                canEditAction: true,
-                canEditClient: true,
-                canDeleteClient: true,
-                canCreateClient: true,
-                canEditCompany: true,
-                canDeleteCompany: true,
-                viewOnlyAssignedActions: false,
-                canCreateUsersAdmin: true,
-                canCreateUsersLimited: true,
-                canCreateCompanies: true,
-                canCreateClientsLimited: true,
-                canCreateStages: true,
-                canDownloadReportsLimited: true,
-                canDeleteActionsLimited: true,
-                canDeleteStages: true
-              }
-            ]
-          };
-          
-          setUsers(prev => [...prev, masterUser!]);
-        }
-        
-        console.log('Login: Autenticando usuário master');
+        console.log('Login: Definindo usuário master no estado');
         setUser(masterUser);
         localStorage.setItem('user', JSON.stringify(masterUser));
+        
+        // Force update users list to include master user if not present
+        setUsers(prev => {
+          const masterExists = prev.find(u => u.cpf.replace(/\D/g, '') === '80243088191');
+          if (!masterExists) {
+            return [...prev, masterUser];
+          }
+          return prev;
+        });
+        
+        console.log('Login: Master user autenticado com sucesso');
         toast.success('Login realizado com sucesso!');
         return true;
       }
       
-      // Try to find user by email or CPF
+      // Try to find user by email or CPF in existing users
       const foundUser = users.find(u => {
         const userCpf = u.cpf.replace(/\D/g, '');
         return u.email === cpfOrEmail || userCpf === cleanedInput;
@@ -167,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.success('Login realizado com sucesso!');
         return true;
       } else {
-        console.log('Login: Credenciais inválidas');
+        console.log('Login: Credenciais inválidas para usuário:', cleanedInput);
         toast.error('CPF/Email ou senha incorretos');
         return false;
       }
