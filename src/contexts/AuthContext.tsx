@@ -1,6 +1,4 @@
 
-
-
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { User, Permission } from '@/lib/types';
 import { mockUsers } from '@/lib/mock-data';
@@ -33,13 +31,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loading = isLoading;
 
   useEffect(() => {
-    // Simulate fetching users from an API or database
+    console.log('AuthProvider: Inicializando contexto de autenticação');
+    
+    // Initialize users with mock data
+    setUsers(mockUsers);
+    console.log('AuthProvider: Usuários carregados:', mockUsers.length);
+    
+    // Check for stored user
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        console.log('AuthProvider: Usuário encontrado no localStorage:', parsedUser.name);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('AuthProvider: Erro ao analisar usuário armazenado:', error);
+        localStorage.removeItem('user');
+      }
     }
-    setUsers(mockUsers);
+    
     setIsLoading(false);
+    console.log('AuthProvider: Inicialização concluída');
   }, []);
 
   const createDefaultPermission = () => ({
@@ -74,18 +86,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (cpfOrEmail: string, password?: string): Promise<boolean> => {
     try {
+      console.log('Login: Iniciando processo de login');
+      console.log('Login: Input recebido:', cpfOrEmail);
+      console.log('Login: Total de usuários disponíveis:', users.length);
+      
       // Clean CPF from any formatting
       const cleanedInput = cpfOrEmail.replace(/\D/g, '');
+      console.log('Login: CPF limpo:', cleanedInput);
       
-      // Check if it's the master user by CPF
+      // Special check for master user
       if (cleanedInput === '80243088191' && password === '@54321') {
-        const masterUser = users.find(u => u.cpf.replace(/\D/g, '') === '80243088191');
-        if (masterUser) {
-          setUser(masterUser);
-          localStorage.setItem('user', JSON.stringify(masterUser));
-          toast.success('Login realizado com sucesso!');
-          return true;
+        console.log('Login: Tentativa de login do usuário master detectada');
+        
+        // Find or create master user
+        let masterUser = users.find(u => u.cpf.replace(/\D/g, '') === '80243088191');
+        
+        if (!masterUser) {
+          console.log('Login: Usuário master não encontrado, criando...');
+          masterUser = {
+            id: "1",
+            name: "Administrador",
+            cpf: "80243088191",
+            email: "admin@totaldata.com.br",
+            role: "master" as const,
+            companyIds: ["1"],
+            password: "@54321",
+            permissions: [
+              {
+                id: "1",
+                name: "Master",
+                description: "All permissions",
+                canCreate: true,
+                canEdit: true,
+                canDelete: true,
+                canMarkComplete: true,
+                canMarkDelayed: true,
+                canAddNotes: true,
+                canViewReports: true,
+                viewAllActions: true,
+                canEditUser: true,
+                canEditAction: true,
+                canEditClient: true,
+                canDeleteClient: true,
+                canCreateClient: true,
+                canEditCompany: true,
+                canDeleteCompany: true,
+                viewOnlyAssignedActions: false,
+                canCreateUsersAdmin: true,
+                canCreateUsersLimited: true,
+                canCreateCompanies: true,
+                canCreateClientsLimited: true,
+                canCreateStages: true,
+                canDownloadReportsLimited: true,
+                canDeleteActionsLimited: true,
+                canDeleteStages: true
+              }
+            ]
+          };
+          
+          setUsers(prev => [...prev, masterUser!]);
         }
+        
+        console.log('Login: Autenticando usuário master');
+        setUser(masterUser);
+        localStorage.setItem('user', JSON.stringify(masterUser));
+        toast.success('Login realizado com sucesso!');
+        return true;
       }
       
       // Try to find user by email or CPF
@@ -95,22 +161,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (foundUser && foundUser.password === password) {
+        console.log('Login: Usuário encontrado e autenticado:', foundUser.name);
         setUser(foundUser);
         localStorage.setItem('user', JSON.stringify(foundUser));
         toast.success('Login realizado com sucesso!');
         return true;
       } else {
+        console.log('Login: Credenciais inválidas');
         toast.error('CPF/Email ou senha incorretos');
         return false;
       }
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('Login: Erro no processo:', error);
       toast.error('Erro ao fazer login');
       return false;
     }
   };
 
   const logout = () => {
+    console.log('Logout: Fazendo logout do usuário');
     setUser(null);
     localStorage.removeItem('user');
   };
@@ -136,8 +205,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUser = useCallback(async (userData: User): Promise<boolean> => {
     try {
       setUsers(prev => prev.map(u => u.id === userData.id ? userData : u));
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      if (user && user.id === userData.id) {
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+      }
       toast.success('Usuário atualizado com sucesso!');
       return true;
     } catch (error) {
@@ -145,7 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error('Erro ao atualizar usuário');
       return false;
     }
-  }, []);
+  }, [user]);
 
   const deleteUser = useCallback(async (userId: string): Promise<boolean> => {
     try {
@@ -161,17 +232,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetUserPassword = useCallback(async (userId: string): Promise<boolean> => {
     try {
-      // In a real app, this would make an API call to reset the password
       const userToUpdate = users.find(u => u.id === userId);
       if (!userToUpdate) {
         toast.error('Usuário não encontrado');
         return false;
       }
 
-      // Simulate password reset
       const updatedUser: User = {
         ...userToUpdate,
-        password: '@54321', // Default password
+        password: '@54321',
         permissions: userToUpdate.permissions.length > 0 ? userToUpdate.permissions : [createDefaultPermission()]
       };
 
@@ -191,13 +260,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      // Check if current password matches
       if (userToUpdate.password !== currentPassword) {
         toast.error('Senha atual incorreta');
         return false;
       }
 
-      // Update password
       const updatedUser: User = {
         ...userToUpdate,
         password: newPassword,
@@ -205,7 +272,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
       
-      // Update current user if changing own password
       if (user && user.id === userId) {
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -220,9 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const syncWithSupabase = useCallback(async (): Promise<void> => {
     try {
-      // Simulate syncing with Supabase
       console.log('Sincronizando dados com Supabase...');
-      // In a real implementation, this would sync local data with Supabase
       await new Promise(resolve => setTimeout(resolve, 100));
     } catch (error) {
       console.error('Erro ao sincronizar com Supabase:', error);
@@ -262,5 +326,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-
