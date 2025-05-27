@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { User, Permission } from '@/lib/types';
 import { mockUsers } from '@/lib/mock-data';
@@ -70,16 +71,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     canDeleteStages: true
   });
 
-  const login = async (email: string, password?: string): Promise<boolean> => {
-    // Simulate authentication logic
-    const foundUser = users.find(u => u.email === email);
+  const login = async (cpfOrEmail: string, password?: string): Promise<boolean> => {
+    try {
+      // Clean CPF from any formatting
+      const cleanedInput = cpfOrEmail.replace(/\D/g, '');
+      
+      // Check if it's the master user by CPF
+      if (cleanedInput === '80243088191' && password === '@54321') {
+        const masterUser = users.find(u => u.cpf.replace(/\D/g, '') === '80243088191');
+        if (masterUser) {
+          setUser(masterUser);
+          localStorage.setItem('user', JSON.stringify(masterUser));
+          toast.success('Login realizado com sucesso!');
+          return true;
+        }
+      }
+      
+      // Try to find user by email or CPF
+      const foundUser = users.find(u => {
+        const userCpf = u.cpf.replace(/\D/g, '');
+        return u.email === cpfOrEmail || userCpf === cleanedInput;
+      });
 
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
-      return true;
-    } else {
-      toast.error('Credenciais inválidas');
+      if (foundUser && foundUser.password === password) {
+        setUser(foundUser);
+        localStorage.setItem('user', JSON.stringify(foundUser));
+        toast.success('Login realizado com sucesso!');
+        return true;
+      } else {
+        toast.error('CPF/Email ou senha incorretos');
+        return false;
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      toast.error('Erro ao fazer login');
       return false;
     }
   };
@@ -236,3 +261,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

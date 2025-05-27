@@ -1,4 +1,5 @@
 
+
 import { User, Company, Responsible, Client, Action, ActionNote } from './types';
 
 export const defaultMasterUser: User = {
@@ -8,6 +9,7 @@ export const defaultMasterUser: User = {
   email: "admin@totaldata.com.br",
   role: "master" as const,
   companyIds: ["1"],
+  password: "@54321", // Senha padrão definida
   permissions: [
     {
       id: "1",
@@ -74,3 +76,4 @@ export const sampleActionNotes: ActionNote[] = [];
 
 // Limpando ações
 export const mockActions: Action[] = [];
+
